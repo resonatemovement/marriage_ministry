@@ -1,4 +1,4 @@
-import { GlobalActions } from "./global-actions";
+import { GlobalActions } from "@/components/shared/global-actions";
 
 export function DashboardHeader() {
   return (

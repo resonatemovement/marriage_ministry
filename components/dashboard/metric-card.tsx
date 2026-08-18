@@ -7,11 +7,10 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import type { DashboardMetric } from "@/lib/dashboard-data";
+import type { DashboardMetric } from "@/features/dashboard/data";
 import { cn } from "@/lib/utils";
 
 const toneStyles: Record<DashboardMetric["tone"], { surface: string; icon: typeof Clock3 }> = {
-  navy: { surface: "bg-surface-muted text-text-primary", icon: HeartHandshake },
   blue: { surface: "bg-info-soft text-info-strong", icon: HeartHandshake },
   amber: { surface: "bg-warning-soft text-warning-strong", icon: UserRoundPlus },
   green: { surface: "bg-success-soft text-success-strong", icon: CheckCircle2 },

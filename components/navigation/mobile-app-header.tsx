@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-import { GlobalActions } from "./global-actions";
+import { GlobalActions } from "@/components/shared/global-actions";
+
 import { type NavigationItem, navigationItems } from "./navigation";
 import { ResonateBrand } from "./resonate-brand";
 
