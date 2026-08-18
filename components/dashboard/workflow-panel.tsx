@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { workflow } from "@/lib/dashboard-data";
+import { workflow } from "@/features/dashboard/data";
 
 import { SectionHeading } from "./section-heading";
 

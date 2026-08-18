@@ -1,6 +1,6 @@
-import type { CaseStatus } from "./domain";
+import type { CaseStatus } from "@/lib/counseling/domain";
 
-export type MetricTone = "navy" | "blue" | "amber" | "green" | "coral";
+type MetricTone = "blue" | "amber" | "green" | "coral";
 
 export interface DashboardMetric {
   label: string;

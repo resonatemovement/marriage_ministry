@@ -1,7 +1,7 @@
 import { CalendarDays } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { upcomingItems } from "@/lib/dashboard-data";
+import { upcomingItems } from "@/features/dashboard/data";
 
 import { SectionHeading } from "./section-heading";
 

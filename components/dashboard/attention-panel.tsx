@@ -2,7 +2,7 @@ import { ArrowRight, Clock3 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { attentionItems } from "@/lib/dashboard-data";
+import { attentionItems } from "@/features/dashboard/data";
 
 import { SectionHeading } from "./section-heading";
 

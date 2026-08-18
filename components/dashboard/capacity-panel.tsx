@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { teamCapacity } from "@/lib/dashboard-data";
+import { teamCapacity } from "@/features/dashboard/data";
 
 import { CapacityRing } from "./capacity-ring";
 import { SectionHeading } from "./section-heading";
