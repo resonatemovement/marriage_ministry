@@ -61,7 +61,7 @@ function MobileNavigationList({
   );
 }
 
-export function MobileAppHeader() {
+export function MobileAppHeader({ activeHref = "#overview" }: { activeHref?: string }) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-4 lg:hidden">
       <ResonateBrand />
@@ -90,7 +90,7 @@ export function MobileAppHeader() {
               </SheetDescription>
             </SheetHeader>
             <nav aria-label="Mobile primary" className="overflow-y-auto px-4 py-5">
-              <MobileNavigationList items={navigationItems} />
+              <MobileNavigationList items={navigationItems.map((item) => ({ ...item, active: item.href === activeHref }))} />
             </nav>
           </SheetContent>
         </Sheet>
