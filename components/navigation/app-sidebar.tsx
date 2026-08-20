@@ -3,7 +3,7 @@ import { Settings } from "lucide-react";
 import { navigationItems } from "./navigation";
 import { ResonateBrand } from "./resonate-brand";
 
-export function AppSidebar() {
+export function AppSidebar({ activeHref = "#overview" }: { activeHref?: string }) {
   return (
     <aside className="hidden border-b border-sidebar-border bg-sidebar text-sidebar-foreground lg:fixed lg:inset-y-0 lg:left-0 lg:z-20 lg:block lg:w-64 lg:border-b-0 lg:border-r">
       <div className="flex h-18 items-center gap-3 px-5 lg:h-24 lg:px-7">
@@ -19,7 +19,7 @@ export function AppSidebar() {
               href={item.href}
               aria-current={item.active ? "page" : undefined}
               className={
-                item.active
+                item.href === activeHref
                   ? "flex h-11 min-w-0 shrink-0 items-center justify-center gap-3 rounded-md bg-sidebar-accent px-3 text-sm font-bold text-sidebar-active sm:justify-start"
                   : "flex h-11 min-w-0 shrink-0 items-center justify-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-muted transition hover:bg-surface-muted hover:text-sidebar-foreground sm:justify-start"
               }
