@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "knip": "knip",
-    "verify:supabase": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-supabase.ts"
+    "verify:supabase": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-supabase.ts",
+    "setup:test-users": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/test-users.ts setup",
+    "verify:test-users": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/test-users.ts verify"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
