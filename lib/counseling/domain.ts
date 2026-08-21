@@ -7,7 +7,7 @@ const APP_ROLES = [
   "author",
 ] as const;
 
-type AppRole = (typeof APP_ROLES)[number];
+export type AppRole = (typeof APP_ROLES)[number];
 const APP_ROLE_SET = new Set<string>(APP_ROLES);
 
 export const CASE_STATUSES = [

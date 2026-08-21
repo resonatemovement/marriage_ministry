@@ -14,15 +14,18 @@ import {
 import { cn } from "@/lib/utils";
 
 import { GlobalActions } from "@/components/shared/global-actions";
+import type { WorkspaceId } from "@/lib/workspaces";
 
-import { type NavigationItem, navigationItems } from "./navigation";
+import { type NavigationItem, workspaceNavigation } from "./navigation";
 import { ResonateBrand } from "./resonate-brand";
 
 function MobileNavigationList({
   items,
+  activeHref,
   nested = false,
 }: {
   items: readonly NavigationItem[];
+  activeHref: string;
   nested?: boolean;
 }) {
   return (
@@ -39,10 +42,10 @@ function MobileNavigationList({
             <SheetClose asChild>
               <a
                 href={item.href}
-                aria-current={item.active ? "page" : undefined}
+                aria-current={item.href === activeHref ? "page" : undefined}
                 className={cn(
                   "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition",
-                  item.active
+              item.href === activeHref
                     ? "bg-sidebar-accent font-bold text-sidebar-active"
                     : "text-sidebar-muted hover:bg-surface-muted hover:text-sidebar-foreground",
                 )}
@@ -52,7 +55,7 @@ function MobileNavigationList({
               </a>
             </SheetClose>
             {item.children?.length ? (
-              <MobileNavigationList items={item.children} nested />
+              <MobileNavigationList items={item.children} activeHref={activeHref} nested />
             ) : null}
           </li>
         );
@@ -61,7 +64,9 @@ function MobileNavigationList({
   );
 }
 
-export function MobileAppHeader({ activeHref = "#overview" }: { activeHref?: string }) {
+export function MobileAppHeader({ activeHref = "/", workspace = "admin" }: { activeHref?: string; workspace?: WorkspaceId }) {
+  const items = workspaceNavigation[workspace];
+
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-4 lg:hidden">
       <ResonateBrand />
@@ -90,7 +95,7 @@ export function MobileAppHeader({ activeHref = "#overview" }: { activeHref?: str
               </SheetDescription>
             </SheetHeader>
             <nav aria-label="Mobile primary" className="overflow-y-auto px-4 py-5">
-              <MobileNavigationList items={navigationItems.map((item) => ({ ...item, active: item.href === activeHref }))} />
+              <MobileNavigationList items={items} activeHref={activeHref} />
             </nav>
           </SheetContent>
         </Sheet>
