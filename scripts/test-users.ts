@@ -6,17 +6,27 @@ import type { Database } from "../types/database.generated.ts";
 const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 const TEST_CAMPUS = { name: "Test Campus", code: "DEV_TEST" };
 
-const testUsers = [
-  { key: "superAdmin", email: "TEST_SUPER_ADMIN_EMAIL", password: "TEST_SUPER_ADMIN_PASSWORD", firstName: "Test", lastName: "Super Admin", role: "super_admin" },
-  { key: "admin", email: "TEST_ADMIN_EMAIL", password: "TEST_ADMIN_PASSWORD", firstName: "Test", lastName: "Admin", role: "admin" },
-  { key: "coach", email: "TEST_COACH_EMAIL", password: "TEST_COACH_PASSWORD", firstName: "Test", lastName: "Coach", role: "coach" },
-  { key: "counselor", email: "TEST_COUNSELOR_EMAIL", password: "TEST_COUNSELOR_PASSWORD", firstName: "Test", lastName: "Counselor", role: "counselor" },
-  { key: "couple1", email: "TEST_COUPLE_1_EMAIL", password: "TEST_COUPLE_1_PASSWORD", firstName: "Test", lastName: "Couple One", role: "couple" },
-  { key: "couple2", email: "TEST_COUPLE_2_EMAIL", password: "TEST_COUPLE_2_PASSWORD", firstName: "Test", lastName: "Couple Two", role: "couple" },
-  { key: "author", email: "TEST_AUTHOR_EMAIL", password: "TEST_AUTHOR_PASSWORD", firstName: "Test", lastName: "Author", role: "author" },
-] as const satisfies ReadonlyArray<{ key: string; email: string; password: string; firstName: string; lastName: string; role: Database["public"]["Enums"]["app_role"] }>;
+type TestRole = Database["public"]["Enums"]["app_role"];
+type TestUser = {
+  key: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  roles: readonly TestRole[];
+};
 
-type TestUser = (typeof testUsers)[number];
+const testUsers: readonly TestUser[] = [
+  { key: "superAdmin", email: "TEST_SUPER_ADMIN_EMAIL", password: "TEST_SUPER_ADMIN_PASSWORD", firstName: "Test", lastName: "Super Admin", roles: ["super_admin"] },
+  { key: "admin", email: "TEST_ADMIN_EMAIL", password: "TEST_ADMIN_PASSWORD", firstName: "Test", lastName: "Admin", roles: ["admin"] },
+  { key: "coach", email: "TEST_COACH_EMAIL", password: "TEST_COACH_PASSWORD", firstName: "Test", lastName: "Coach", roles: ["coach"] },
+  { key: "counselor", email: "TEST_COUNSELOR_EMAIL", password: "TEST_COUNSELOR_PASSWORD", firstName: "Test", lastName: "Counselor", roles: ["counselor"] },
+  { key: "couple1", email: "TEST_COUPLE_1_EMAIL", password: "TEST_COUPLE_1_PASSWORD", firstName: "Test", lastName: "Couple One", roles: ["couple"] },
+  { key: "couple2", email: "TEST_COUPLE_2_EMAIL", password: "TEST_COUPLE_2_PASSWORD", firstName: "Test", lastName: "Couple Two", roles: ["couple"] },
+  { key: "author", email: "TEST_AUTHOR_EMAIL", password: "TEST_AUTHOR_PASSWORD", firstName: "Test", lastName: "Author", roles: ["author"] },
+  { key: "multiRole", email: "TEST_MULTIROLE_EMAIL", password: "TEST_MULTIROLE_PASSWORD", firstName: "Test", lastName: "Multi Role", roles: ["super_admin", "coach"] },
+] as const;
+
 type TestUserKey = TestUser["key"];
 type TestUserIds = Record<TestUserKey, string>;
 type FixtureIds = { campus: string; couple: string; coach: string; counselor: string; case: string };
@@ -95,10 +105,18 @@ async function ensureProfilesAndRoles(admin: ReturnType<typeof createAdminClient
   for (const user of users) {
     const { error: profileError } = await admin.from("profiles").upsert({ id: ids[user.key], campus_id: campusId, email: user.emailAddress, first_name: user.firstName, last_name: user.lastName, status: "active", deactivated_at: null }, { onConflict: "id" });
     failIfError(profileError, `Unable to ensure profile for ${user.key}`);
-    const { error: cleanupError } = await admin.from("profile_roles").delete().eq("profile_id", ids[user.key]).neq("role", user.role);
-    failIfError(cleanupError, `Unable to clear unexpected roles for ${user.key}`);
-    const { error: roleError } = await admin.from("profile_roles").upsert({ profile_id: ids[user.key], role: user.role, assigned_by: ids.superAdmin }, { onConflict: "profile_id,role" });
-    failIfError(roleError, `Unable to assign ${user.role} role for ${user.key}`);
+    const { data: existingRoles, error: readRolesError } = await admin.from("profile_roles").select("role").eq("profile_id", ids[user.key]);
+    failIfError(readRolesError, `Unable to read roles for ${user.key}`);
+    const expectedRoles = new Set<Database["public"]["Enums"]["app_role"]>(user.roles);
+    for (const existingRole of existingRoles ?? []) {
+      if (expectedRoles.has(existingRole.role)) continue;
+      const { error: cleanupError } = await admin.from("profile_roles").delete().eq("profile_id", ids[user.key]).eq("role", existingRole.role);
+      failIfError(cleanupError, `Unable to clear unexpected role for ${user.key}`);
+    }
+    for (const role of expectedRoles) {
+      const { error: roleError } = await admin.from("profile_roles").upsert({ profile_id: ids[user.key], role, assigned_by: ids.superAdmin }, { onConflict: "profile_id,role" });
+      failIfError(roleError, `Unable to assign ${role} role for ${user.key}`);
+    }
   }
 }
 
@@ -177,7 +195,7 @@ async function verifyRls(url: string, publishableKey: string, users: ReturnType<
     failIfError(signInError, `Unable to sign in ${user.key} for RLS verification`);
     const { count, error } = await client.from("profiles").select("id", { count: "exact", head: true });
     failIfError(error, `Unable to verify profile access for ${user.key}`);
-    if (user.role === "super_admin" || user.role === "admin") privilegedCounts.push(count ?? 0);
+    if (user.roles.includes("super_admin") || user.roles.includes("admin")) privilegedCounts.push(count ?? 0);
     else if ((count ?? 0) >= Math.max(...privilegedCounts)) throw new Error(`${user.key} unexpectedly has organization-wide People access`);
   }
 }
@@ -226,7 +244,10 @@ async function verify() {
   failIfError(roleError, "Unable to verify DEV test roles");
   for (const user of configuration.users) {
     const userRoles = (roles ?? []).filter((role) => role.profile_id === ids[user.key]);
-    if (userRoles.length !== 1 || userRoles[0].role !== user.role) throw new Error(`Unexpected role assignments for ${user.key}`);
+    const expectedRoles = new Set(user.roles);
+    if (userRoles.length !== expectedRoles.size || new Set(userRoles.map((role) => role.role)).size !== expectedRoles.size || userRoles.some((role) => !expectedRoles.has(role.role))) {
+      throw new Error(`Unexpected role assignments for ${user.key}`);
+    }
   }
   await readRequiredCampus(admin);
   const couple = await readRequiredGroup(admin, "couple", "DEV Test Couple");

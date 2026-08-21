@@ -8,10 +8,10 @@ import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
 import { WorkspaceShell } from "@/components/navigation/workspace-shell";
 import { dashboardMetrics } from "@/features/dashboard/data";
 import { WorkspacePlaceholder } from "@/features/workspace/workspace-placeholder";
-import { requireDefaultWorkspace } from "@/lib/auth/session";
+import { requireActiveWorkspace } from "@/lib/auth/session";
 
 export default async function WorkspaceRoute() {
-  const { identity, workspace } = await requireDefaultWorkspace("/workspace");
+  const { identity, workspace } = await requireActiveWorkspace("/workspace");
 
   if (workspace !== "admin") {
     return <WorkspacePlaceholder workspace={workspace} identity={identity} />;

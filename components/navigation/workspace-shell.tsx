@@ -23,9 +23,9 @@ export function WorkspaceShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar activeHref={activeHref} items={items} displayName={identity.displayName} workspaceLabel={getWorkspaceDefinition(workspace).label} />
+      <AppSidebar activeHref={activeHref} items={items} displayName={identity.displayName} workspaceLabel={getWorkspaceDefinition(workspace).label} workspaces={identity.workspaces} activeWorkspace={workspace} />
       <div className="lg:pl-64">
-        <MobileAppHeader activeHref={activeHref} workspace={workspace} displayName={identity.displayName} workspaceLabel={getWorkspaceDefinition(workspace).label} />
+        <MobileAppHeader activeHref={activeHref} workspace={workspace} displayName={identity.displayName} workspaceLabel={getWorkspaceDefinition(workspace).label} workspaces={identity.workspaces} activeWorkspace={workspace} />
         {children}
       </div>
     </div>

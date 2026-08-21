@@ -29,4 +29,12 @@ describe("workspace resolution", () => {
       id: "counselor",
     });
   });
+
+  it("defaults Super Admin to the first operational workspace", () => {
+    expect(defaultWorkspaceForRoles(["super_admin", "coach"])).toMatchObject({ id: "coach" });
+    expect(defaultWorkspaceForRoles(["super_admin", "counselor"])).toMatchObject({ id: "counselor" });
+    expect(defaultWorkspaceForRoles(["super_admin", "author"])).toMatchObject({ id: "author" });
+    expect(defaultWorkspaceForRoles(["super_admin", "couple"])).toMatchObject({ id: "couple" });
+    expect(defaultWorkspaceForRoles(["super_admin", "coach", "author"])).toMatchObject({ id: "coach" });
+  });
 });

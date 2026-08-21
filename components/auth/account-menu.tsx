@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, Settings } from "lucide-react";
+import { Check, ChevronDown, Settings } from "lucide-react";
+import { useTransition } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import {
@@ -12,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { switchWorkspace } from "@/lib/auth/actions";
+import { getWorkspaceDefinition, type WorkspaceId } from "@/lib/workspaces";
 
 function initials(displayName: string) {
   return displayName
@@ -25,12 +28,23 @@ function initials(displayName: string) {
 export function AccountMenu({
   displayName,
   workspaceLabel,
+  workspaces,
+  activeWorkspace,
   className,
 }: {
   displayName: string;
   workspaceLabel: string;
+  workspaces: readonly WorkspaceId[];
+  activeWorkspace: WorkspaceId;
   className?: string;
 }) {
+  const [isSwitching, startTransition] = useTransition();
+
+  function selectWorkspace(workspace: WorkspaceId) {
+    if (workspace === activeWorkspace) return;
+    startTransition(() => switchWorkspace(workspace));
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -54,6 +68,29 @@ export function AccountMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-56">
         <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
+        <DropdownMenuLabel className="pt-0">{workspaceLabel}</DropdownMenuLabel>
+        {workspaces.length > 1 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+            {workspaces.map((workspace) => {
+              const isActive = workspace === activeWorkspace;
+              return (
+                <DropdownMenuItem
+                  key={workspace}
+                  disabled={isSwitching}
+                  onSelect={() => selectWorkspace(workspace)}
+                >
+                  <Check
+                    className={cn("size-4", !isActive && "opacity-0")}
+                    aria-hidden="true"
+                  />
+                  {getWorkspaceDefinition(workspace).label}
+                </DropdownMenuItem>
+              );
+            })}
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>
           <Settings className="size-4" aria-hidden="true" />
