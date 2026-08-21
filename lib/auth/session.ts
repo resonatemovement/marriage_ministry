@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isAppRole, type AppRole } from "@/lib/counseling/domain";
 import {
   availableWorkspacesForRoles,
+  defaultWorkspaceForRoles,
   type WorkspaceId,
 } from "@/lib/workspaces";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -13,6 +14,7 @@ import {
   defaultWorkspaceDestination,
   loginDestination,
 } from "./authorization";
+import { getActiveWorkspace } from "./active-workspace";
 
 export interface AuthenticatedIdentity {
   displayName: string;
@@ -55,7 +57,17 @@ export async function requireDefaultWorkspace(path: string) {
   if (!identity) redirect(loginDestination(path));
   if (!identity.workspaces.length) redirect("/login?error=access");
 
-  return { identity, workspace: identity.workspaces[0]! };
+  const workspace = defaultWorkspaceForRoles(identity.roles)?.id;
+  if (!workspace) redirect("/login?error=access");
+
+  return { identity, workspace };
+}
+
+export async function requireActiveWorkspace(path: string) {
+  const { identity, workspace: defaultWorkspace } = await requireDefaultWorkspace(path);
+  const workspace = await getActiveWorkspace(identity.workspaces, defaultWorkspace);
+
+  return { identity, workspace: workspace! };
 }
 
 export async function requireWorkspace(workspace: WorkspaceId, path: string) {

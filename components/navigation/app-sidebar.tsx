@@ -1,9 +1,10 @@
 import { AccountMenu } from "@/components/auth/account-menu";
+import type { WorkspaceId } from "@/lib/workspaces";
 
 import { type NavigationItem, workspaceNavigation } from "./navigation";
 import { ResonateBrand } from "./resonate-brand";
 
-export function AppSidebar({ activeHref = "/", items = workspaceNavigation.admin, displayName, workspaceLabel }: { activeHref?: string; items?: readonly NavigationItem[]; displayName: string; workspaceLabel: string }) {
+export function AppSidebar({ activeHref = "/", items = workspaceNavigation.admin, displayName, workspaceLabel, workspaces, activeWorkspace }: { activeHref?: string; items?: readonly NavigationItem[]; displayName: string; workspaceLabel: string; workspaces: readonly WorkspaceId[]; activeWorkspace: WorkspaceId }) {
   return (
     <aside className="hidden border-b border-sidebar-border bg-sidebar text-sidebar-foreground lg:fixed lg:inset-y-0 lg:left-0 lg:z-20 lg:block lg:w-64 lg:border-b-0 lg:border-r">
       <div className="flex h-18 items-center gap-3 px-5 lg:h-24 lg:px-7">
@@ -33,7 +34,7 @@ export function AppSidebar({ activeHref = "/", items = workspaceNavigation.admin
       </nav>
 
       <div className="hidden border-t border-sidebar-border p-4 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
-        <AccountMenu displayName={displayName} workspaceLabel={workspaceLabel} />
+        <AccountMenu displayName={displayName} workspaceLabel={workspaceLabel} workspaces={workspaces} activeWorkspace={activeWorkspace} />
       </div>
     </aside>
   );

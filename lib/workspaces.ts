@@ -36,6 +36,12 @@ const workspaceByRole: Readonly<Record<AppRole, WorkspaceId>> = {
   author: "author",
 };
 
+const operationalWorkspaceOrder = ["coach", "counselor", "author", "couple"] as const;
+
+export function isWorkspaceId(value: string): value is WorkspaceId {
+  return WORKSPACE_IDS.includes(value as WorkspaceId);
+}
+
 export function getWorkspaceDefinition(workspace: WorkspaceId) {
   return workspaceDefinitions[workspace];
 }
@@ -48,5 +54,21 @@ export function availableWorkspacesForRoles(roles: readonly AppRole[]) {
 }
 
 export function defaultWorkspaceForRoles(roles: readonly AppRole[]) {
-  return availableWorkspacesForRoles(roles)[0];
+  const available = availableWorkspacesForRoles(roles);
+
+  if (roles.includes("admin")) {
+    return available.find((workspace) => workspace.id === "admin");
+  }
+
+  if (roles.includes("super_admin")) {
+    const operationalWorkspace = operationalWorkspaceOrder.find((workspaceId) =>
+      available.some((workspace) => workspace.id === workspaceId),
+    );
+
+    return operationalWorkspace
+      ? getWorkspaceDefinition(operationalWorkspace)
+      : available.find((workspace) => workspace.id === "admin");
+  }
+
+  return available[0];
 }
