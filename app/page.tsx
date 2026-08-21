@@ -5,16 +5,13 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { UpcomingPanel } from "@/components/dashboard/upcoming-panel";
 import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
-import { AppSidebar } from "@/components/navigation/app-sidebar";
-import { MobileAppHeader } from "@/components/navigation/mobile-app-header";
+import { WorkspaceShell } from "@/components/navigation/workspace-shell";
 import { dashboardMetrics } from "@/features/dashboard/data";
 
 export default function AdminDashboardPage() {
   return (
-    <div id="overview" className="min-h-screen bg-background">
-      <AppSidebar />
-      <div className="lg:pl-64">
-        <MobileAppHeader />
+    <WorkspaceShell workspace="admin" activeHref="/">
+      <div id="overview">
         <DashboardHeader />
         <main className="mx-auto max-w-[1500px] p-5 sm:p-8 lg:p-10">
           <section aria-label="Case summary" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -36,6 +33,6 @@ export default function AdminDashboardPage() {
           </div>
         </main>
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }

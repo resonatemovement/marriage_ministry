@@ -1,5 +1,4 @@
-import { AppSidebar } from "@/components/navigation/app-sidebar";
-import { MobileAppHeader } from "@/components/navigation/mobile-app-header";
+import { WorkspaceShell } from "@/components/navigation/workspace-shell";
 import { PeoplePage } from "@/features/people/people-page";
 import { getPeopleRecords } from "@/features/people/queries";
 import { peopleFilters, type PeopleFilter } from "@/features/people/types";
@@ -11,5 +10,5 @@ export default async function PeopleRoute({ searchParams }: { searchParams: Prom
   const filter = filterFrom(params.filter);
   const search = params.q ?? "";
   const result = await getPeopleRecords(filter, search);
-  return <div className="min-h-screen bg-background"><AppSidebar activeHref="/people"/><div className="lg:pl-64"><MobileAppHeader activeHref="/people"/><PeoplePage records={result.records} filter={filter} search={search} error={result.error}/></div></div>;
+  return <WorkspaceShell workspace="admin" activeHref="/people"><PeoplePage records={result.records} filter={filter} search={search} error={result.error}/></WorkspaceShell>;
 }
