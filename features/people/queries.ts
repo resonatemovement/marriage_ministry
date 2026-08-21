@@ -2,7 +2,8 @@ import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-import type { PeopleFilter, PeopleRecord, PeopleRecordType } from "./types";
+import { matchesPeopleFilter, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
+import { peopleGroupSelection, peopleProfileSelection } from "./selections";
 
 type QueryResult = { records: PeopleRecord[]; error?: "unauthorized" | "unavailable" };
 type GroupRow = Record<string, unknown>;
@@ -20,21 +21,14 @@ function roleNames(members: Record<string, unknown>[]) {
   return [...new Set(members.flatMap((member) => rows(member.profile_roles).map((role) => value(role, "role")).filter((role): role is string => Boolean(role))))];
 }
 
-function matchesFilter(record: PeopleRecord, filter: PeopleFilter) {
-  if (filter === "all") return true;
-  if (filter === "admins") return record.roles.some((role) => role === "admin" || role === "super_admin");
-  if (filter === "authors") return record.roles.includes("author");
-  return record.type === filter.slice(0, -1);
-}
-
 export async function getPeopleRecords(filter: PeopleFilter, search: string): Promise<QueryResult> {
   const supabase = await createServerSupabaseClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) return { records: [], error: "unauthorized" };
 
   const [groupsResult, profilesResult] = await Promise.all([
-    supabase.from("groups").select("id,name,group_type,updated_at,campus:campuses(name),group_members(ended_at,profile:profiles(id,first_name,last_name,email,profile_roles(role)),),counseling_cases(status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(name)))").in("group_type", ["couple", "coach_team", "counselor_team"]),
-    supabase.from("profiles").select("id,first_name,last_name,email,updated_at,campus:campuses(name),profile_roles(role),group_members(ended_at,group:groups(group_type))"),
+    supabase.from("groups").select(peopleGroupSelection).in("group_type", ["couple", "coach_team", "counselor_team"]),
+    supabase.from("profiles").select(peopleProfileSelection),
   ]);
   if (groupsResult.error || profilesResult.error) return { records: [], error: "unavailable" };
 
@@ -62,5 +56,5 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
     return { id: value(profile, "id")!, name, type, roles, campus: campus ? value(campus, "name") : null, counselingStatus: null, assignedTo: null, updatedAt: value(profile, "updated_at")!, searchText: [name, value(profile, "email"), campus ? value(campus, "name") : null].filter(Boolean).join(" ").toLowerCase() } satisfies PeopleRecord;
   }).filter((profile) => profile.roles.includes("admin") || profile.roles.includes("super_admin") || profile.roles.includes("author"));
   const normalizedSearch = search.trim().toLowerCase();
-  return { records: [...groups, ...profiles].filter((record) => matchesFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch))).sort((a, b) => a.name.localeCompare(b.name)) };
+  return { records: [...groups, ...profiles].filter((record) => matchesPeopleFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch))).sort((a, b) => a.name.localeCompare(b.name)) };
 }
