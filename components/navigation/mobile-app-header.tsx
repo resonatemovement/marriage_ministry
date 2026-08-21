@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { GlobalActions } from "@/components/shared/global-actions";
+import { AccountMenu } from "@/components/auth/account-menu";
 import type { WorkspaceId } from "@/lib/workspaces";
 
 import { type NavigationItem, workspaceNavigation } from "./navigation";
@@ -64,7 +65,7 @@ function MobileNavigationList({
   );
 }
 
-export function MobileAppHeader({ activeHref = "/", workspace = "admin" }: { activeHref?: string; workspace?: WorkspaceId }) {
+export function MobileAppHeader({ activeHref = "/", workspace = "admin", displayName, workspaceLabel }: { activeHref?: string; workspace?: WorkspaceId; displayName: string; workspaceLabel: string }) {
   const items = workspaceNavigation[workspace];
 
   return (
@@ -96,6 +97,9 @@ export function MobileAppHeader({ activeHref = "/", workspace = "admin" }: { act
             </SheetHeader>
             <nav aria-label="Mobile primary" className="overflow-y-auto px-4 py-5">
               <MobileNavigationList items={items} activeHref={activeHref} />
+              <div className="mt-6 border-t border-sidebar-border pt-4">
+                <AccountMenu className="mt-1" displayName={displayName} workspaceLabel={workspaceLabel} />
+              </div>
             </nav>
           </SheetContent>
         </Sheet>

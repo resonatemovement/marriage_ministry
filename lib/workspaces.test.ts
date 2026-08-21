@@ -9,6 +9,7 @@ describe("workspace resolution", () => {
   it("maps Admin and Super Admin roles to the Admin Workspace", () => {
     expect(availableWorkspacesForRoles(["admin"])).toMatchObject([{ id: "admin" }]);
     expect(availableWorkspacesForRoles(["super_admin"])).toMatchObject([{ id: "admin" }]);
+    expect(defaultWorkspaceForRoles(["super_admin"])).toMatchObject({ id: "admin", href: "/workspace" });
   });
 
   it("maps a Coach role to the Coach Workspace", () => {
@@ -23,6 +24,7 @@ describe("workspace resolution", () => {
   });
 
   it("uses the centralized fallback order for the default workspace", () => {
+    expect(defaultWorkspaceForRoles(["coach", "admin"])).toMatchObject({ id: "admin" });
     expect(defaultWorkspaceForRoles(["couple", "author", "counselor"])).toMatchObject({
       id: "counselor",
     });

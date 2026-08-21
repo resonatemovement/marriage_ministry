@@ -1,9 +1,9 @@
-import { Settings } from "lucide-react";
+import { AccountMenu } from "@/components/auth/account-menu";
 
 import { type NavigationItem, workspaceNavigation } from "./navigation";
 import { ResonateBrand } from "./resonate-brand";
 
-export function AppSidebar({ activeHref = "/", items = workspaceNavigation.admin }: { activeHref?: string; items?: readonly NavigationItem[] }) {
+export function AppSidebar({ activeHref = "/", items = workspaceNavigation.admin, displayName, workspaceLabel }: { activeHref?: string; items?: readonly NavigationItem[]; displayName: string; workspaceLabel: string }) {
   return (
     <aside className="hidden border-b border-sidebar-border bg-sidebar text-sidebar-foreground lg:fixed lg:inset-y-0 lg:left-0 lg:z-20 lg:block lg:w-64 lg:border-b-0 lg:border-r">
       <div className="flex h-18 items-center gap-3 px-5 lg:h-24 lg:px-7">
@@ -33,20 +33,7 @@ export function AppSidebar({ activeHref = "/", items = workspaceNavigation.admin
       </nav>
 
       <div className="hidden border-t border-sidebar-border p-4 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
-        <a
-          href="#settings"
-          className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
-        >
-          <Settings className="size-4" aria-hidden="true" />
-          Settings
-        </a>
-        <div className="mt-3 flex items-center gap-3 px-3 py-2">
-          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-primary text-xs font-bold text-white">AR</div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">Alex Rivera</p>
-            <p className="truncate text-xs text-sidebar-muted">Administrator</p>
-          </div>
-        </div>
+        <AccountMenu displayName={displayName} workspaceLabel={workspaceLabel} />
       </div>
     </aside>
   );

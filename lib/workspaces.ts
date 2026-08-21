@@ -10,6 +10,8 @@ export const WORKSPACE_IDS = [
 
 export type WorkspaceId = (typeof WORKSPACE_IDS)[number];
 
+export const WORKSPACE_HREF = "/workspace";
+
 interface WorkspaceDefinition {
   id: WorkspaceId;
   label: string;
@@ -18,11 +20,11 @@ interface WorkspaceDefinition {
 }
 
 const workspaceDefinitions: Readonly<Record<WorkspaceId, WorkspaceDefinition>> = {
-  admin: { id: "admin", label: "Admin Workspace", href: "/" },
-  coach: { id: "coach", label: "Coach Workspace", href: "/coach", placeholderMessage: "Your counseling dashboard will appear here." },
-  counselor: { id: "counselor", label: "Counselor Workspace", href: "/counselor", placeholderMessage: "Your counseling dashboard will appear here." },
-  author: { id: "author", label: "Author Workspace", href: "/author", placeholderMessage: "Your counseling content workspace will appear here." },
-  couple: { id: "couple", label: "Couple Workspace", href: "/couple", placeholderMessage: "Your counseling journey will appear here." },
+  admin: { id: "admin", label: "Admin Workspace", href: WORKSPACE_HREF },
+  coach: { id: "coach", label: "Coach Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling dashboard will appear here." },
+  counselor: { id: "counselor", label: "Counselor Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling dashboard will appear here." },
+  author: { id: "author", label: "Author Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling content workspace will appear here." },
+  couple: { id: "couple", label: "Couple Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling journey will appear here." },
 };
 
 const workspaceByRole: Readonly<Record<AppRole, WorkspaceId>> = {

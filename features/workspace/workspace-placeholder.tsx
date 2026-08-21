@@ -1,11 +1,18 @@
 import { WorkspaceShell } from "@/components/navigation/workspace-shell";
+import type { AuthenticatedIdentity } from "@/lib/auth/session";
 import { getWorkspaceDefinition, type WorkspaceId } from "@/lib/workspaces";
 
-export function WorkspacePlaceholder({ workspace }: { workspace: Exclude<WorkspaceId, "admin"> }) {
+export function WorkspacePlaceholder({
+  workspace,
+  identity,
+}: {
+  workspace: Exclude<WorkspaceId, "admin">;
+  identity: AuthenticatedIdentity;
+}) {
   const definition = getWorkspaceDefinition(workspace);
 
   return (
-    <WorkspaceShell workspace={workspace} activeHref={definition.href}>
+    <WorkspaceShell workspace={workspace} activeHref={definition.href} identity={identity}>
       <main className="mx-auto max-w-[1500px] p-5 sm:p-8 lg:p-10">
         <p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">
           {definition.label}

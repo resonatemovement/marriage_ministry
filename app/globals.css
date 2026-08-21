@@ -113,3 +113,15 @@ button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+[data-disabled] {
+  cursor: not-allowed;
+}
