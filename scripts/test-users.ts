@@ -20,7 +20,9 @@ const testUsers: readonly TestUser[] = [
   { key: "superAdmin", email: "TEST_SUPER_ADMIN_EMAIL", password: "TEST_SUPER_ADMIN_PASSWORD", firstName: "Test", lastName: "Super Admin", roles: ["super_admin"] },
   { key: "admin", email: "TEST_ADMIN_EMAIL", password: "TEST_ADMIN_PASSWORD", firstName: "Test", lastName: "Admin", roles: ["admin"] },
   { key: "coach", email: "TEST_COACH_EMAIL", password: "TEST_COACH_PASSWORD", firstName: "Test", lastName: "Coach", roles: ["coach"] },
+  { key: "coach2", email: "TEST_COACH_2_EMAIL", password: "TEST_COACH_2_PASSWORD", firstName: "Test", lastName: "Coach Two", roles: ["coach"] },
   { key: "counselor", email: "TEST_COUNSELOR_EMAIL", password: "TEST_COUNSELOR_PASSWORD", firstName: "Test", lastName: "Counselor", roles: ["counselor"] },
+  { key: "counselor2", email: "TEST_COUNSELOR_2_EMAIL", password: "TEST_COUNSELOR_2_PASSWORD", firstName: "Test", lastName: "Counselor Two", roles: ["counselor"] },
   { key: "couple1", email: "TEST_COUPLE_1_EMAIL", password: "TEST_COUPLE_1_PASSWORD", firstName: "Test", lastName: "Couple One", roles: ["couple"] },
   { key: "couple2", email: "TEST_COUPLE_2_EMAIL", password: "TEST_COUPLE_2_PASSWORD", firstName: "Test", lastName: "Couple Two", roles: ["couple"] },
   { key: "author", email: "TEST_AUTHOR_EMAIL", password: "TEST_AUTHOR_PASSWORD", firstName: "Test", lastName: "Author", roles: ["author"] },
@@ -180,7 +182,7 @@ async function setup() {
   const couple = await ensureGroup(admin, campus, "couple", "DEV Test Couple");
   const coach = await ensureGroup(admin, campus, "coach_team", "DEV Test Coach Team");
   const counselor = await ensureGroup(admin, campus, "counselor_team", "DEV Test Counselor Team");
-  await Promise.all([ensureMembership(admin, couple, ids.couple1), ensureMembership(admin, couple, ids.couple2), ensureMembership(admin, coach, ids.coach), ensureMembership(admin, counselor, ids.counselor)]);
+  await Promise.all([ensureMembership(admin, couple, ids.couple1), ensureMembership(admin, couple, ids.couple2), ensureMembership(admin, coach, ids.coach), ensureMembership(admin, coach, ids.coach2), ensureMembership(admin, counselor, ids.counselor), ensureMembership(admin, counselor, ids.counselor2)]);
   const caseId = await ensureCase(admin, { campus, couple, coach, counselor }, ids);
   const adminUser = configuration.users.find((user) => user.key === "admin")!;
   await ensureAssignment(admin, configuration.url, configuration.publishableKey, adminUser.emailAddress, adminUser.passwordValue, caseId, coach);
@@ -252,7 +254,7 @@ async function verify() {
   await readRequiredCampus(admin);
   const couple = await readRequiredGroup(admin, "couple", "DEV Test Couple");
   const coach = await readRequiredGroup(admin, "coach_team", "DEV Test Coach Team");
-  await Promise.all([verifyMemberships(admin, couple, [ids.couple1, ids.couple2]), verifyMemberships(admin, coach, [ids.coach]), verifyMemberships(admin, await readRequiredGroup(admin, "counselor_team", "DEV Test Counselor Team"), [ids.counselor])]);
+  await Promise.all([verifyMemberships(admin, couple, [ids.couple1, ids.couple2]), verifyMemberships(admin, coach, [ids.coach, ids.coach2]), verifyMemberships(admin, await readRequiredGroup(admin, "counselor_team", "DEV Test Counselor Team"), [ids.counselor, ids.counselor2])]);
   const { data: cases, error: caseError } = await admin.from("counseling_cases").select("id").eq("couple_group_id", couple);
   failIfError(caseError, "Unable to verify DEV test counseling case");
   const testCases = cases ?? [];
