@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-import { matchesPeopleFilter, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
+import { coupleDisplayName, matchesPeopleFilter, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
 
 type QueryResult = { records: PeopleRecord[]; error?: "unauthorized" | "unavailable" };
@@ -35,14 +35,19 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
   const groupedMemberIds = new Set<string>();
   const groups = (groupsResult.data as unknown as GroupRow[]).map((group) => {
     const members = rows(group.group_members).filter((member) => member.ended_at === null).map((member) => member.profile as Record<string, unknown>).filter(Boolean);
+    const invitations = rows(group.invitations).filter((invitation) => invitation.status === "pending");
     members.forEach((member) => { const id = value(member, "id"); if (id) groupedMemberIds.add(id); });
     const groupType = value(group, "group_type") as "couple" | "coach_team" | "counselor_team";
     const counselingCase = rows(group.counseling_cases)[0];
     const activeAssignments = rows(counselingCase?.case_assignments).filter((assignment) => assignment.ended_at === null);
     const assignedTo = activeAssignments.map((assignment) => value(assignment.assigned_group as Record<string, unknown>, "name")).filter(Boolean).join(", ") || null;
     const campus = group.campus as Record<string, unknown> | null;
+    const type = groupType === "coach_team" ? "coaches" : groupType === "counselor_team" ? "counselors" : "couples";
+    const name = type === "couples"
+      ? coupleDisplayName(value(group, "name"), members.map((member) => ({ firstName: value(member, "first_name"), lastName: value(member, "last_name"), email: value(member, "email") })), invitations.map((invitation) => ({ firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email") })))
+      : value(group, "name")!;
     return {
-      id: value(group, "id")!, name: value(group, "name")!, type: groupType === "coach_team" ? "coaches" : groupType === "counselor_team" ? "counselors" : "couples",
+      id: value(group, "id")!, name, type,
       roles: roleNames(members), campus: campus ? value(campus, "name") : null,
       counselingStatus: counselingCase ? value(counselingCase, "status") as PeopleRecord["counselingStatus"] : null,
       assignedTo, updatedAt: value(group, "updated_at")!, searchText: [value(group, "name"), ...members.flatMap((member) => [value(member, "first_name"), value(member, "last_name"), value(member, "email")])].filter(Boolean).join(" ").toLowerCase(),

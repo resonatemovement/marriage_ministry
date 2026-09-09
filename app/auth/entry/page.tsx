@@ -11,6 +11,9 @@ export default async function AuthEntryPage({
   const [identity, params] = await Promise.all([getAuthenticatedIdentity(), searchParams]);
 
   if (!identity) redirect("/login");
+  if (identity.accountStage === "password_required") redirect("/auth/create-password");
+  if (identity.accountStage === "onboarding") redirect("/onboarding");
+  if (identity.accountStage !== "active") redirect("/login?error=activation");
 
   const destination = postLoginDestination(identity.workspaces, params.next);
   redirect(destination ?? "/login?error=access");

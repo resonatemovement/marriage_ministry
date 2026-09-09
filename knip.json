@@ -4,7 +4,8 @@
     "app/**/*.{ts,tsx}",
     "lib/supabase/client.ts",
     "lib/supabase/server.ts",
-    "types/database.generated.ts"
+    "types/database.generated.ts",
+    "features/intake-request-form/submission-actions.ts"
   ],
   "project": ["**/*.{ts,tsx}", "!supabase/**"],
   "ignoreDependencies": ["tailwindcss"]

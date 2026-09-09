@@ -2,7 +2,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
+export const KEEP_ALIVE_CRON_PATH = "/api/cron/keep-alive";
+
+export function bypassesSessionProxy(pathname: string) {
+  return pathname === KEEP_ALIVE_CRON_PATH;
+}
+
 export async function proxy(request: NextRequest) {
+  if (bypassesSessionProxy(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createSupabaseServerClient({
