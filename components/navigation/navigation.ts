@@ -1,8 +1,9 @@
 import {
   BookOpenText,
+  ClipboardList,
   HeartHandshake,
   LayoutDashboard,
-  ShieldCheck,
+  Settings,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -21,7 +22,8 @@ export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly Navigati
     { label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard },
     { label: "Counseling Cases", href: "#workflow", icon: HeartHandshake },
     { label: "People & Teams", href: "/people", icon: Users },
-    { label: "Campuses", href: "#campuses", icon: ShieldCheck },
+    { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },
+    { label: "Settings", href: "/settings", icon: Settings },
     { label: "Content", href: "#content", icon: BookOpenText },
   ],
   coach: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }],

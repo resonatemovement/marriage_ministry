@@ -1,9 +1,11 @@
 import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 
 import {
   groupOperationalStatuses,
+  createPendingDetailMember,
   groupRecordType,
   createDetailMember,
   standaloneProfileRecordType,
@@ -12,6 +14,7 @@ import {
   type PeopleDetailMember,
   type ProfilePeopleDetail,
 } from "./detail-model";
+import { coupleDisplayName } from "./types";
 
 type Row = Record<string, unknown>;
 
@@ -24,7 +27,7 @@ function rows(value: unknown) {
   return Array.isArray(value) ? value as Row[] : [];
 }
 
-function asMember(profile: Row): PeopleDetailMember {
+async function asMember(profile: Row): Promise<PeopleDetailMember> {
   const status = value(profile, "status");
   const roles = rows(profile.profile_roles)
     .map((role) => value(role, "role"))
@@ -35,6 +38,8 @@ function asMember(profile: Row): PeopleDetailMember {
     firstName: value(profile, "first_name"),
     lastName: value(profile, "last_name"),
     email: value(profile, "email"),
+    phone: value(profile, "phone"),
+    photoUrl: await getProfilePhotoUrl(value(profile, "photo_path")),
     roles,
     status: status === "invited" || status === "deactivated" ? status : "active",
   });
@@ -45,12 +50,12 @@ export async function getPeopleDetail(recordId: string): Promise<PeopleDetail | 
   const [groupResult, profileResult] = await Promise.all([
     supabase
       .from("groups")
-      .select("id,name,group_type,updated_at,campus:campuses(name),group_members(ended_at,profile:profiles(id,first_name,last_name,email,status,profile_roles!profile_roles_profile_id_fkey(role)))")
+      .select("id,name,group_type,updated_at,campus:campuses(id,name),group_members(ended_at,profile:profiles(id,first_name,last_name,email,phone,photo_path,status,profile_roles!profile_roles_profile_id_fkey(role)))")
       .eq("id", recordId)
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("id,first_name,last_name,email,status,updated_at,campus:campuses(name),profile_roles!profile_roles_profile_id_fkey(role)")
+      .select("id,first_name,last_name,email,phone,photo_path,status,updated_at,campus:campuses(id,name),profile_roles!profile_roles_profile_id_fkey(role)")
       .eq("id", recordId)
       .maybeSingle(),
   ]);
@@ -66,7 +71,7 @@ export async function getPeopleDetail(recordId: string): Promise<PeopleDetail | 
   if (!profileResult.data) return null;
 
   const profile = profileResult.data as unknown as Row;
-  const member = asMember(profile);
+  const member = await asMember(profile);
   const type = standaloneProfileRecordType(member.roles);
   if (!type) return null;
   const campus = profile.campus as Row | null;
@@ -76,6 +81,7 @@ export async function getPeopleDetail(recordId: string): Promise<PeopleDetail | 
     id: value(profile, "id")!,
     type,
     name: member.name,
+    campusId: campus ? value(campus, "id") : null,
     campus: campus ? value(campus, "name") : null,
     updatedAt: value(profile, "updated_at")!,
     member,
@@ -87,9 +93,15 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
   if (!type) return null;
 
   const groupId = value(group, "id")!;
-  const members = rows(group.group_members)
+  const profileMembers = rows(group.group_members)
     .filter((membership) => membership.ended_at === null && membership.profile)
     .map((membership) => asMember(membership.profile as Row));
+  const resolvedProfileMembers = await Promise.all(profileMembers);
+  const invitationClient = supabase as unknown as { from(name: "invitations"): { select(columns: string): { eq(column: string, value: string): Promise<{ data: unknown; error: { message: string } | null }> } } };
+  const invitationResult = await invitationClient.from("invitations").select("id,first_name,last_name,email,status,last_delivery_succeeded_at,delivery_error_category").eq("group_id", groupId);
+  if (invitationResult.error) throw new Error("People detail data is unavailable");
+  const pendingMembers = rows(invitationResult.data).filter((invitation) => value(invitation, "status") === "pending").map((invitation) => createPendingDetailMember({ id: value(invitation, "id")!, firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), delivered: Boolean(value(invitation, "last_delivery_succeeded_at")), failed: Boolean(value(invitation, "delivery_error_category")) }));
+  const members = [...resolvedProfileMembers, ...pendingMembers];
   const [caseResult, assignmentResult, supervisionResult] = await Promise.all([
     type === "couples"
       ? supabase.from("counseling_cases").select("id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(name,group_type))").eq("couple_group_id", groupId).maybeSingle()
@@ -124,7 +136,10 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
     kind: "group",
     id: groupId,
     type,
-    name: value(group, "name")!,
+    name: type === "couples"
+      ? coupleDisplayName(value(group, "name"), resolvedProfileMembers.map((member) => ({ firstName: member.firstName, lastName: member.lastName, email: member.email })), pendingMembers.map((member) => ({ firstName: member.firstName, lastName: member.lastName, email: member.email })))
+      : value(group, "name")!,
+    campusId: campus ? value(campus, "id") : null,
     campus: campus ? value(campus, "name") : null,
     updatedAt: value(group, "updated_at")!,
     members,

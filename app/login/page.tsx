@@ -12,6 +12,8 @@ export default async function LoginRoute({
   const [identity, params] = await Promise.all([getAuthenticatedIdentity(), searchParams]);
   const destination = identity && defaultWorkspaceDestination(identity.workspaces);
 
+  if (identity?.accountStage === "password_required") redirect("/auth/create-password");
+  if (identity?.accountStage === "onboarding") redirect("/onboarding");
   if (destination) redirect(destination);
 
   return <LoginPage error={params.error} next={params.next} />;

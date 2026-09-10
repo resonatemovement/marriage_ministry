@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
-import { matchesPeopleFilter, normalizePeopleFilter, type PeopleRecord } from "./types";
+import { coupleDisplayName, groupedRoleNames, matchesPeopleFilter, normalizePeopleFilter, type PeopleRecord } from "./types";
 
 describe("People query selections", () => {
   it("uses the profile-role foreign key rather than an ambiguous embedded relationship", () => {
@@ -35,5 +35,52 @@ describe("People filters", () => {
   it("normalizes unsupported filter values to All", () => {
     expect(normalizePeopleFilter("teams")).toBe("all");
     expect(normalizePeopleFilter(undefined)).toBe("all");
+  });
+});
+
+describe("Couple display names", () => {
+  it("uses both pending invitation names", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [], [
+      { firstName: "John", lastName: "Walker", email: "john@example.com" },
+      { firstName: "Lindsey", lastName: "Walker", email: "lindsey@example.com" },
+    ])).toBe("John Walker & Lindsey Walker");
+  });
+
+  it("combines an onboarded profile with a pending invitation", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [
+      { firstName: "John", lastName: "Walker", email: "john@example.com" },
+    ], [
+      { firstName: "Lindsey", lastName: "Walker", email: "lindsey@example.com" },
+    ])).toBe("John Walker & Lindsey Walker");
+  });
+
+  it("prefers full profile names and avoids duplicate members", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [
+      { firstName: "John", lastName: "Walker", email: "john@example.com" },
+      { firstName: "Lindsey", lastName: "Walker", email: "lindsey@example.com" },
+    ], [{ firstName: "John", lastName: "Walker", email: "john@example.com" }])).toBe("John Walker & Lindsey Walker");
+  });
+
+  it("falls back when no usable names exist", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [], [])).toBe("Pending Couple invitation");
+    expect(coupleDisplayName("Walker Couple", [], [])).toBe("Walker Couple");
+  });
+});
+
+describe("Grouped People roles", () => {
+  it("uses pending invitation roles for a fully pending group", () => {
+    expect(groupedRoleNames([], [{ intended_role: "couple" }, { intended_role: "couple" }])).toEqual(["couple"]);
+  });
+
+  it("keeps established group roles", () => {
+    expect(groupedRoleNames([{ profile_roles: [{ role: "couple" }] }, { profile_roles: [{ role: "couple" }] }], [])).toEqual(["couple"]);
+  });
+
+  it("merges mixed sources and deduplicates roles", () => {
+    expect(groupedRoleNames([{ profile_roles: [{ role: "couple" }] }], [{ intended_role: "couple" }])).toEqual(["couple"]);
+  });
+
+  it.each([["coach"], ["counselor"]] as const)("supports pending %s teams", (role) => {
+    expect(groupedRoleNames([], [{ intended_role: role }, { intended_role: role }])).toEqual([role]);
   });
 });

@@ -94,7 +94,7 @@ export function AccountMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>
           <Settings className="size-4" aria-hidden="true" />
-          Settings
+          Profile Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <LogoutButton variant="menu-item" />

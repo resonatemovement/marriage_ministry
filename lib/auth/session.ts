@@ -20,6 +20,8 @@ export interface AuthenticatedIdentity {
   displayName: string;
   roles: AppRole[];
   workspaces: WorkspaceId[];
+  onboardingRequired: boolean;
+  accountStage: "invited" | "password_required" | "onboarding" | "active" | "unknown";
 }
 
 export async function getAuthenticatedIdentity(): Promise<AuthenticatedIdentity | null> {
@@ -38,8 +40,15 @@ export async function getAuthenticatedIdentity(): Promise<AuthenticatedIdentity 
     supabase.from("profile_roles").select("role").eq("profile_id", userId),
   ]);
 
-  if (!profile || profile.status !== "active") {
-    return { displayName: "Resonate member", roles: [], workspaces: [] };
+  const accountStage = profile?.status as AuthenticatedIdentity["accountStage"] | undefined;
+  if (!profile || accountStage !== "active") {
+    return {
+      displayName: "Resonate member",
+      roles: [],
+      workspaces: [],
+      onboardingRequired: accountStage === "onboarding",
+      accountStage: accountStage === "invited" || accountStage === "password_required" || accountStage === "onboarding" ? accountStage : "unknown",
+    };
   }
 
   const roles = [...new Set((roleRows ?? []).map((row) => row.role).filter(isAppRole))];
@@ -48,13 +57,16 @@ export async function getAuthenticatedIdentity(): Promise<AuthenticatedIdentity 
     || profile.email
     || "Resonate member";
 
-  return { displayName, roles, workspaces };
+  return { displayName, roles, workspaces, onboardingRequired: false, accountStage: "active" };
 }
 
 export async function requireDefaultWorkspace(path: string) {
   const identity = await getAuthenticatedIdentity();
 
   if (!identity) redirect(loginDestination(path));
+  if (identity.accountStage === "password_required") redirect("/auth/create-password");
+  if (identity.accountStage === "onboarding") redirect("/onboarding");
+  if (identity.accountStage !== "active") redirect("/login?error=activation");
   if (!identity.workspaces.length) redirect("/login?error=access");
 
   const workspace = defaultWorkspaceForRoles(identity.roles)?.id;

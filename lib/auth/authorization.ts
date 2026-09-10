@@ -3,6 +3,7 @@ import { WORKSPACE_HREF } from "../workspaces";
 
 const workspaceByPath: Readonly<Record<string, WorkspaceId>> = {
   "/people": "admin",
+  "/intake-requests": "admin",
 };
 
 export function workspaceForPath(path: string | undefined) {

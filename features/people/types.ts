@@ -20,6 +20,36 @@ export function matchesPeopleFilter(record: Pick<PeopleRecord, "type">, filter: 
   return filter === "all" || record.type === peopleFilterRecordType[filter];
 }
 
+type RoleSource = { profile_roles?: unknown };
+type InvitationRoleSource = { intended_role?: unknown };
+
+/** Merges established profile roles with authoritative roles on pending invitations. */
+export function groupedRoleNames(members: readonly RoleSource[], invitations: readonly InvitationRoleSource[]) {
+  return [...new Set([
+    ...members.flatMap((member) => Array.isArray(member.profile_roles) ? member.profile_roles : []).flatMap((role) => typeof role === "object" && role !== null && "role" in role && typeof role.role === "string" ? [role.role] : []),
+    ...invitations.flatMap((invitation) => typeof invitation.intended_role === "string" ? [invitation.intended_role] : []),
+  ])];
+}
+
+type PersonName = { firstName: string | null; lastName: string | null; email?: string | null };
+
+/** Resolves Couple rows from their individual profile/invitation names. */
+export function coupleDisplayName(groupName: string | null, profiles: readonly PersonName[], invitations: readonly PersonName[]) {
+  const seen = new Set<string>();
+  const names = [...profiles, ...invitations].flatMap((person) => {
+    const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim();
+    if (!name) return [];
+    const key = person.email?.trim().toLowerCase() || name.toLowerCase();
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [name];
+  });
+  if (names.length >= 2) return names.slice(0, 2).join(" & ");
+  if (names.length === 1) return names[0];
+  if (groupName && !/^pending couple invitation$/i.test(groupName.trim())) return groupName;
+  return groupName || "Pending Couple invitation";
+}
+
 export interface PeopleRecord {
   id: string;
   name: string;

@@ -17,8 +17,8 @@ const creatoDisplay = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Counseling Admin | Resonate Movement",
-  description: "Operational counseling administration for Resonate Movement.",
+  title: "Marriage Ministry | Resonate",
+  description: "Support for couples through every season of life.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
