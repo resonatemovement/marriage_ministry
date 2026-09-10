@@ -24,6 +24,7 @@
     "verify:supervision": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-supervision.ts",
     "verify:intake-requests": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-requests.ts",
     "verify:intake-invite-handoff": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-invite-handoff.ts",
+    "verify:intake-delete": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-delete.ts",
     "verify:intake-submission": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-submission.ts",
     "verify:intake-notifications": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-notifications.ts"
   },

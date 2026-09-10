@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONNECTION_LABEL, coupleDisplayName, formatIntakeDate, formatIntakePhone, intakeLabels, INTAKE_STATUS_LABEL, notProvided, REFERRAL_LABEL, SUPPORT_LABEL, yesNo } from "./model";
+import { CONNECTION_LABEL, coupleDisplayName, formatIntakeDate, formatIntakePhone, intakeLabels, INTAKE_STATUS_LABEL, isDeleteConfirmation, isIntakeDeleteEligible, notProvided, REFERRAL_LABEL, SUPPORT_LABEL, yesNo } from "./model";
 import { intakeRequestActions } from "./action-model";
 
 describe("Intake Request status model", () => {
@@ -24,5 +24,18 @@ describe("Intake Request status model", () => {
     expect(formatIntakePhone("")).toBe("Not provided");
     expect(formatIntakeDate(null)).toBe("Not provided");
     expect(intakeLabels([], CONNECTION_LABEL)).toBe("Not provided");
+  });
+  it("requires the exact uppercase destructive confirmation", () => {
+    expect(isDeleteConfirmation("DELETE")).toBe(true);
+    expect(isDeleteConfirmation("delete")).toBe(false);
+    expect(isDeleteConfirmation("Delete")).toBe(false);
+    expect(isDeleteConfirmation("DELETE ")).toBe(false);
+  });
+  it("allows only unlinked non-invited requests to be deleted", () => {
+    expect(isIntakeDeleteEligible("ready_for_review", null)).toBe(true);
+    expect(isIntakeDeleteEligible("under_review", null)).toBe(true);
+    expect(isIntakeDeleteEligible("closed", null)).toBe(true);
+    expect(isIntakeDeleteEligible("invited", null)).toBe(false);
+    expect(isIntakeDeleteEligible("under_review", "group-id")).toBe(false);
   });
 });

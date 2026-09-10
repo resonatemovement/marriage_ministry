@@ -18,6 +18,8 @@ export const CONNECTION_LABEL: Record<string, string> = { member: "Resonate Memb
 
 export function notProvided(value: string | null | undefined) { return value?.trim() || "Not provided"; }
 export function yesNo(value: boolean) { return value ? "Yes" : "No"; }
+export function isDeleteConfirmation(value: string) { return value === "DELETE"; }
+export function isIntakeDeleteEligible(status: IntakeRequestStatus, invitedGroupId: string | null) { return status !== "invited" && invitedGroupId === null; }
 export function intakeLabels(values: readonly string[], labels: Record<string, string>) { const resolved = values.flatMap((value) => labels[value] ? [labels[value]] : []); return resolved.length ? resolved.join(", ") : "Not provided"; }
 export function formatIntakePhone(value: string | null | undefined) { const digits = (value ?? "").replace(/\D/g, ""); const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits; return national.length === 10 ? `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}` : "Not provided"; }
 export function formatIntakeDate(value: string | null | undefined) { if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Not provided"; const [year, month, day] = value.split("-").map(Number); const date = new Date(Date.UTC(year, month - 1, day)); return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date) : "Not provided"; }
