@@ -57,7 +57,7 @@ async function main() {
     const activeDuplicate = await rpc(adminSignIn.data.session.access_token, "author", campusId, [{ email: adminEmail, first_name: "Existing", last_name: "User" }]);
     if (activeDuplicate.response.ok) throw new Error("Existing active user invitation was accepted");
 
-    for (const role of ["couple", "coach", "counselor"]) {
+    for (const role of ["coach", "counselor"]) {
       const result = await rpc(adminSignIn.data.session.access_token, role, campusId, [{ email: `${prefix}-${role}-1@example.test`, first_name: "First", last_name: role }, { email: `${prefix}-${role}-2@example.test`, first_name: "Second", last_name: role }]);
       if (!result.response.ok || result.payload?.invitation_ids?.length !== 2 || !result.payload.group_id) throw new Error(`Grouped ${role} invitation contract failed`);
       createdInvitations.push(...result.payload.invitation_ids!); createdGroups.push(result.payload.group_id);
@@ -67,7 +67,7 @@ async function main() {
       const group = await admin.from("groups").select("id,group_type").eq("id", result.payload.group_id).single();
       fail(group.error, `Unable to read grouped ${role} group`);
       if (!group.data) throw new Error(`Grouped ${role} group is missing`);
-      if (group.data.group_type !== (role === "couple" ? "couple" : `${role}_team`)) throw new Error(`Grouped ${role} type is incorrect`);
+      if (group.data.group_type !== role + "_team") throw new Error("Grouped " + role + " type is incorrect");
     }
 
     const audit = await admin.from("audit_events").select("id,actor_id,entity_id,event_type").in("entity_id", createdInvitations).eq("event_type", "invitation.created");
@@ -75,7 +75,9 @@ async function main() {
     if ((audit.data ?? []).length !== createdInvitations.length || audit.data?.some((event) => !event.actor_id || !createdInvitations.includes(event.entity_id))) throw new Error("Invitation audit events are incomplete");
     createdAudit.push(...(audit.data ?? []).map((event) => String(event.id)));
 
-    const duplicate = await rpc(adminSignIn.data.session.access_token, "couple", campusId, [{ email: `${prefix}-duplicate@example.test`, first_name: "Same", last_name: "Email" }, { email: ` ${prefix.toUpperCase()}-DUPLICATE@example.test `, first_name: "Same", last_name: "Email" }]);
+    const couple = await rpc(adminSignIn.data.session.access_token, "couple", campusId, [{ email: prefix + "-couple-1@example.test", first_name: "Couple", last_name: "One" }, { email: prefix + "-couple-2@example.test", first_name: "Couple", last_name: "Two" }]);
+    if (couple.response.ok) throw new Error("Generic Couple invitation creation was accepted");
+    const duplicate = await rpc(adminSignIn.data.session.access_token, "coach", campusId, [{ email: prefix + "-duplicate@example.test", first_name: "Same", last_name: "Email" }, { email: " " + prefix.toUpperCase() + "-duplicate@example.test ", first_name: "Same", last_name: "Email" }]);
     if (duplicate.response.ok) throw new Error("Duplicate grouped emails were accepted");
     const rollbackRows = await admin.from("invitations").select("id").ilike("email", `${prefix}-duplicate%`);
     fail(rollbackRows.error, "Unable to verify grouped rollback invitations");

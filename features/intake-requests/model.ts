@@ -5,13 +5,7 @@ export const INTAKE_STATUS_LABEL: Readonly<Record<IntakeRequestStatus, string>> 
   ready_for_review: "Ready for Review", under_review: "Under Review", ready_to_invite: "Ready to Invite", invited: "Invited", closed: "Closed",
 };
 
-const MANUAL_TRANSITIONS: Readonly<Record<IntakeRequestStatus, readonly IntakeRequestStatus[]>> = {
-  ready_for_review: ["under_review", "closed"], under_review: ["ready_to_invite", "closed"], ready_to_invite: ["under_review", "closed"], invited: [], closed: ["under_review"],
-};
-
 export function isIntakeRequestStatus(value: string): value is IntakeRequestStatus { return INTAKE_REQUEST_STATUSES.includes(value as IntakeRequestStatus); }
-export function manualNextIntakeStatuses(status: IntakeRequestStatus) { return MANUAL_TRANSITIONS[status]; }
-export function canManuallyTransitionIntakeRequest(from: IntakeRequestStatus, to: IntakeRequestStatus) { return MANUAL_TRANSITIONS[from].includes(to); }
 export function coupleDisplayName(people: readonly { personPosition: "requester" | "partner"; firstName: string; lastName: string }[]) {
   const name = (position: "requester" | "partner") => { const person = people.find((item) => item.personPosition === position); return person ? `${person.firstName} ${person.lastName}`.trim() : ""; };
   return [name("requester"), name("partner")].filter(Boolean).join(" & ") || "Couple request";
@@ -20,3 +14,10 @@ export function coupleDisplayName(people: readonly { personPosition: "requester"
 export const RELATIONSHIP_LABEL: Record<"pre_engaged" | "engaged" | "married", string> = { pre_engaged: "Pre-engaged", engaged: "Engaged", married: "Married" };
 export const SUPPORT_LABEL: Record<string, string> = { lay_counselor: "Resonate Marriage Lay Counselor", professional_referral: "Professional therapist referral" };
 export const REFERRAL_LABEL: Record<string, string> = { church_announcements: "Church announcements", mc: "Through MC", friend: "Referral from a friend", ministry_leader: "Referral from a ministry leader", website: "Website", social_media: "Social Media", other: "Other" };
+export const CONNECTION_LABEL: Record<string, string> = { member: "Resonate Member", regular_attendee: "Regular Resonate Church Attendee (3+ times a month)", mc: "Attend Resonate MC (Missional Community Small Group)", occasionally: "Attend church occasionally", not_attend: "Do not attend Resonate Church" };
+
+export function notProvided(value: string | null | undefined) { return value?.trim() || "Not provided"; }
+export function yesNo(value: boolean) { return value ? "Yes" : "No"; }
+export function intakeLabels(values: readonly string[], labels: Record<string, string>) { const resolved = values.flatMap((value) => labels[value] ? [labels[value]] : []); return resolved.length ? resolved.join(", ") : "Not provided"; }
+export function formatIntakePhone(value: string | null | undefined) { const digits = (value ?? "").replace(/\D/g, ""); const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits; return national.length === 10 ? `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}` : "Not provided"; }
+export function formatIntakeDate(value: string | null | undefined) { if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Not provided"; const [year, month, day] = value.split("-").map(Number); const date = new Date(Date.UTC(year, month - 1, day)); return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date) : "Not provided"; }

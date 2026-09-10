@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-import { coupleDisplayName, matchesPeopleFilter, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
+import { coupleDisplayName, groupedRoleNames, matchesPeopleFilter, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
 
 type QueryResult = { records: PeopleRecord[]; error?: "unauthorized" | "unavailable" };
@@ -15,10 +15,6 @@ function value(row: Record<string, unknown>, key: string) {
 
 function rows(value: unknown) {
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
-}
-
-function roleNames(members: Record<string, unknown>[]) {
-  return [...new Set(members.flatMap((member) => rows(member.profile_roles).map((role) => value(role, "role")).filter((role): role is string => Boolean(role))))];
 }
 
 export async function getPeopleRecords(filter: PeopleFilter, search: string): Promise<QueryResult> {
@@ -48,7 +44,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
       : value(group, "name")!;
     return {
       id: value(group, "id")!, name, type,
-      roles: roleNames(members), campus: campus ? value(campus, "name") : null,
+      roles: groupedRoleNames(members, invitations), campus: campus ? value(campus, "name") : null,
       counselingStatus: counselingCase ? value(counselingCase, "status") as PeopleRecord["counselingStatus"] : null,
       assignedTo, updatedAt: value(group, "updated_at")!, searchText: [value(group, "name"), ...members.flatMap((member) => [value(member, "first_name"), value(member, "last_name"), value(member, "email")])].filter(Boolean).join(" ").toLowerCase(),
     } satisfies PeopleRecord;

@@ -15,9 +15,9 @@ describe("Invite People validation", () => {
     expect(validateInvitation("author", "campus", [person("person@example.com")])).toEqual({});
   });
 
-  it("requires both grouped people and distinct normalized emails", () => {
-    expect(validateInvitation("couple", "campus", [person("person@example.com"), { firstName: "", lastName: "", email: "" }])).toMatchObject({ firstName1: expect.any(String), lastName1: expect.any(String), email1: expect.any(String) });
-    expect(validateInvitation("couple", "campus", [person("Person@example.com"), person(" person@example.com ")]).email1).toContain("different");
-    expect(validateInvitation("couple", "campus", [person("one@example.com"), { firstName: "Taylor", lastName: "Chen", email: "two@example.com" }])).toEqual({});
+  it("reserves Couple invitations for the Intake workflow and keeps teams grouped", () => {
+    expect(validateInvitation("couple", "campus", [person("one@example.com"), person("two@example.com")]).role).toContain("valid");
+    expect(validateInvitation("coach", "campus", [person("Person@example.com"), person(" person@example.com ")]).email1).toContain("different");
+    expect(validateInvitation("coach", "campus", [person("one@example.com"), { firstName: "Taylor", lastName: "Chen", email: "two@example.com" }])).toEqual({});
   });
 });

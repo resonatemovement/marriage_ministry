@@ -38,7 +38,7 @@ function deliveryError(category: InvitationDeliveryFailure) {
     : "The invitation remains pending, but delivery could not be completed.";
 }
 
-async function recordDelivery(client: DeliveryRpcClient, invitationId: string, result: Awaited<ReturnType<typeof createAuthIdentityAndSendActivation>>) {
+export async function recordInvitationDelivery(client: DeliveryRpcClient, invitationId: string, result: Awaited<ReturnType<typeof createAuthIdentityAndSendActivation>>) {
   if (result.authUserId) {
     const identity = await client.rpc("record_invitation_auth_identity", { target_invitation_id: invitationId, target_auth_user_id: result.authUserId });
     if (identity.error) return false;
@@ -101,7 +101,7 @@ export async function resendPeopleInvitation(invitationId: string): Promise<{ su
   }
 
   const result = await createAuthIdentityAndSendActivation(invitation.email);
-  const recorded = await recordDelivery(client, invitation.id, result);
+  const recorded = await recordInvitationDelivery(client, invitation.id, result);
   if (!recorded || !result.success) return { error: deliveryError(result.success ? "provider_unavailable" : result.category) };
   const resend = await client.rpc("record_invitation_resend", { target_invitation_id: invitation.id });
   if (resend.error) return { error: "The activation email was sent, but its delivery record could not be updated." };
@@ -113,7 +113,7 @@ export async function createPeopleInvitations(formData: FormData): Promise<Resul
   const identity = await requireWorkspace("admin", "/people");
   const role = String(formData.get("role") ?? "");
   const campusId = String(formData.get("campusId") ?? "").trim();
-  const grouped = ["couple", "coach", "counselor"].includes(role);
+  const grouped = ["coach", "counselor"].includes(role);
   const invitees = Array.from({ length: grouped ? 2 : 1 }, (_, index) => ({
     first_name: String(formData.get(`firstName${index}`) ?? "").trim(), last_name: String(formData.get(`lastName${index}`) ?? "").trim(), email: String(formData.get(`email${index}`) ?? "").trim().toLowerCase(),
   }));
@@ -130,7 +130,7 @@ export async function createPeopleInvitations(formData: FormData): Promise<Resul
   }
   const outcomes = await Promise.all(data.invitation_ids.map(async (invitationId, index) => {
     const result = await createAuthIdentityAndSendActivation(invitees[index]!.email);
-    return (await recordDelivery(client, invitationId, result)) && result.success;
+    return (await recordInvitationDelivery(client, invitationId, result)) && result.success;
   }));
   revalidatePath("/people");
   const delivered = outcomes.filter(Boolean).length;

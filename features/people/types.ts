@@ -20,6 +20,17 @@ export function matchesPeopleFilter(record: Pick<PeopleRecord, "type">, filter: 
   return filter === "all" || record.type === peopleFilterRecordType[filter];
 }
 
+type RoleSource = { profile_roles?: unknown };
+type InvitationRoleSource = { intended_role?: unknown };
+
+/** Merges established profile roles with authoritative roles on pending invitations. */
+export function groupedRoleNames(members: readonly RoleSource[], invitations: readonly InvitationRoleSource[]) {
+  return [...new Set([
+    ...members.flatMap((member) => Array.isArray(member.profile_roles) ? member.profile_roles : []).flatMap((role) => typeof role === "object" && role !== null && "role" in role && typeof role.role === "string" ? [role.role] : []),
+    ...invitations.flatMap((invitation) => typeof invitation.intended_role === "string" ? [invitation.intended_role] : []),
+  ])];
+}
+
 type PersonName = { firstName: string | null; lastName: string | null; email?: string | null };
 
 /** Resolves Couple rows from their individual profile/invitation names. */

@@ -3,6 +3,7 @@ import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import { isIntakeRequestStatus, type IntakeRequestStatus } from "./model";
+import { intakeDetailSelection } from "./selections";
 import type { IntakePerson, IntakeRequestDetail, IntakeRequestSummary, IntakeStatusHistory } from "./types";
 
 type RawClient = { from: (relation: string) => { select: (columns: string) => unknown } };
@@ -30,8 +31,8 @@ export async function getIntakeRequestQueue({ search, status: requestedStatus }:
 
 export async function getIntakeRequestDetail(id: string) {
   const supabase = await createServerSupabaseClient(); const client = supabase as unknown as RawClient;
-  const result = await query(client, "intake_requests", "id,status,relationship_status,wedding_date,campus_other,currently_working_with_counselor,requested_support,goals,questions,referral_source,referral_source_other,submitted_at,campuses(name),intake_request_people(id,person_position,first_name,last_name,email,phone,city,resonate_connections),intake_request_status_history(id,from_status,to_status,changed_at,profiles(first_name,last_name))").eq("id", id).maybeSingle();
+  const result = await query(client, "intake_requests", intakeDetailSelection).eq("id", id).maybeSingle();
   if (result.error || !result.data) return null;
-  const row = object(result.data); const base = summary(row); const history: IntakeStatusHistory[] = rows(row.intake_request_status_history).map((item) => { const changedBy = object(item.profiles); return { id: Number(item.id), fromStatus: item.from_status ? status(item.from_status) : null, toStatus: status(item.to_status), changedAt: string(item.changed_at), changedByName: [string(changedBy.first_name), string(changedBy.last_name)].filter(Boolean).join(" ") || null }; }).sort((a, b) => b.changedAt.localeCompare(a.changedAt));
+  const row = object(result.data); const base = summary(row); const history: IntakeStatusHistory[] = rows(row.intake_request_status_history).map((item) => { const changedBy = object(item.profiles); return { id: Number(item.id), fromStatus: item.from_status ? status(item.from_status) : null, toStatus: status(item.to_status), changedAt: string(item.changed_at), changedByName: [string(changedBy.first_name), string(changedBy.last_name)].filter(Boolean).join(" ") || null, note: string(item.note) || null, reasonCode: string(item.reason_code) || null, reasonDetail: string(item.reason_detail) || null }; }).sort((a, b) => b.changedAt.localeCompare(a.changedAt));
   return { ...base, weddingDate: string(row.wedding_date) || null, campusOther: string(row.campus_other) || null, currentlyWorkingWithCounselor: row.currently_working_with_counselor === true, goals: string(row.goals), questions: string(row.questions) || null, referralSource: string(row.referral_source), referralSourceOther: string(row.referral_source_other) || null, history } satisfies IntakeRequestDetail;
 }

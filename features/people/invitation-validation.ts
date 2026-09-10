@@ -1,8 +1,8 @@
 export type InvitationPerson = { firstName: string; lastName: string; email: string };
 type InvitationFieldErrors = Record<string, string>;
 
-const inviteRoles = ["admin", "super_admin", "author", "couple", "coach", "counselor"];
-const groupedRoles = ["couple", "coach", "counselor"];
+const inviteRoles = ["admin", "super_admin", "author", "coach", "counselor"];
+const groupedRoles = ["coach", "counselor"];
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isGroupedInvitationRole(role: string) { return groupedRoles.includes(role); }
