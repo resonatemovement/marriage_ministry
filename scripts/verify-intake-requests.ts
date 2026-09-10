@@ -26,6 +26,7 @@ async function main() {
     if (coachRead.error || (coachRead.data as unknown[]).length !== 0) throw new Error("Unauthorized Coach could read Intake Requests");
     const adminClient = createClient(url, publishableKey, { global: { headers: { Authorization: `Bearer ${admin.data.session.access_token}` } } });
     const valid = await adminClient.rpc("update_intake_request_status" as never, { target_request_id: requestId, next_status: "under_review" } as never); fail(valid.error, "Valid Intake Request transition failed");
+    const rollback = await adminClient.rpc("update_intake_request_status" as never, { target_request_id: requestId, next_status: "ready_for_review" } as never); if (!rollback.error) throw new Error("Under Review incorrectly returned to Ready for Review");
     const invited = await adminClient.rpc("update_intake_request_status" as never, { target_request_id: requestId, next_status: "invited" } as never); if (!invited.error) throw new Error("Manual transition to Invited succeeded");
     const readyToInvite = await adminClient.rpc("update_intake_request_status" as never, { target_request_id: requestId, next_status: "ready_to_invite" } as never); fail(readyToInvite.error, "Valid Ready to Invite transition failed");
     const invalid = await adminClient.rpc("update_intake_request_status" as never, { target_request_id: requestId, next_status: "ready_for_review" } as never); if (!invalid.error) throw new Error("Invalid Intake Request transition succeeded");

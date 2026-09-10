@@ -5,6 +5,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 import { getSupabaseEnvironment } from "@/lib/supabase/env";
+import { dispatchIntakeSubmittedNotifications } from "@/features/notifications/intake-submitted";
 
 import type { IntakeDraft } from "./validation";
 import {
@@ -43,6 +44,7 @@ export async function submitPublicIntakeRequest(draft: IntakeDraft): Promise<Pub
 
     const result = await client.rpc("create_intake_request", toCreateIntakeRequestRpcArgs(validation.value));
     if (result.error || !result.data) return { error: publicSubmissionError(new Error(result.error?.message)) };
+    await dispatchIntakeSubmittedNotifications(result.data);
     return { success: true };
   } catch (error) {
     return { error: publicSubmissionError(error) };

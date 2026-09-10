@@ -6,7 +6,7 @@ export const INTAKE_STATUS_LABEL: Readonly<Record<IntakeRequestStatus, string>> 
 };
 
 const MANUAL_TRANSITIONS: Readonly<Record<IntakeRequestStatus, readonly IntakeRequestStatus[]>> = {
-  ready_for_review: ["under_review", "closed"], under_review: ["ready_for_review", "ready_to_invite", "closed"], ready_to_invite: ["under_review", "closed"], invited: [], closed: ["under_review"],
+  ready_for_review: ["under_review", "closed"], under_review: ["ready_to_invite", "closed"], ready_to_invite: ["under_review", "closed"], invited: [], closed: ["under_review"],
 };
 
 export function isIntakeRequestStatus(value: string): value is IntakeRequestStatus { return INTAKE_REQUEST_STATUSES.includes(value as IntakeRequestStatus); }

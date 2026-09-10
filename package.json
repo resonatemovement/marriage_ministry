@@ -23,7 +23,8 @@
     "verify:account-activation": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-account-activation.ts",
     "verify:supervision": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-supervision.ts",
     "verify:intake-requests": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-requests.ts",
-    "verify:intake-submission": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-submission.ts"
+    "verify:intake-submission": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-submission.ts",
+    "verify:intake-notifications": "node --experimental-strip-types --experimental-default-type=module --env-file=.env.local scripts/verify-intake-notifications.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -37,6 +38,7 @@
     "react": "^19.1.0",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.1.0",
+    "resend": "^6.26.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.3.1"
   },
