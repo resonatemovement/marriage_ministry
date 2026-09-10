@@ -7,6 +7,7 @@ const prefix = `verify-acceptance-${Date.now()}`;
 
 type Invitee = { email: string; first_name: string; last_name: string };
 type CreatedInvitation = { invitation_ids: string[]; group_id: string | null };
+type IntakeInvitation = CreatedInvitation & { created: boolean };
 
 function required(name: string) {
   const value = process.env[name];
@@ -50,6 +51,39 @@ async function createInvitation(
   fail(error, "Unable to create acceptance verification invitation");
   if (!data) throw new Error("Acceptance verification invitation response is missing");
   return data;
+}
+
+async function createCoupleInvitation(
+  admin: ReturnType<typeof client>,
+  adminSession: ReturnType<typeof client>,
+  campusId: string,
+  invitees: [Invitee, Invitee],
+  requestIds: string[],
+) {
+  const createdRequest = await admin
+    .from("intake_requests" as never)
+    .insert({ campus_id: campusId, relationship_status: "married", currently_working_with_counselor: false, requested_support: ["lay_counselor"], goals: "Verify grouped invitation acceptance", referral_source: "website" } as never)
+    .select("id,status")
+    .single();
+  fail(createdRequest.error, "Unable to create acceptance verification Intake Request");
+  const request = createdRequest.data as unknown as { id?: string; status?: string } | null;
+  if (!request?.id || request.status !== "ready_for_review") throw new Error("Acceptance verification Intake Request did not start ready for review");
+  requestIds.push(request.id);
+  const people = await admin.from("intake_request_people" as never).insert([
+    { intake_request_id: request.id, person_position: "requester", first_name: invitees[0].first_name, last_name: invitees[0].last_name, email: invitees[0].email, phone: "555-0101", city: "Test City", resonate_connections: ["Resonate Member"] },
+    { intake_request_id: request.id, person_position: "partner", first_name: invitees[1].first_name, last_name: invitees[1].last_name, email: invitees[1].email, phone: "555-0102", city: "Test City", resonate_connections: ["Attend church occasionally"] },
+  ] as never);
+  fail(people.error, "Unable to create acceptance verification Intake Request people");
+  const intakeClient = adminSession as unknown as {
+    rpc(name: "take_intake_request_action", args: { target_request_id: string; target_action: string; target_reason_code: null; target_reason_detail: null }): Promise<{ error: { message: string } | null }>;
+    rpc(name: "invite_intake_request", args: { target_request_id: string }): Promise<{ data: IntakeInvitation | null; error: { message: string } | null }>;
+  };
+  const review = await intakeClient.rpc("take_intake_request_action", { target_request_id: request.id, target_action: "start_review", target_reason_code: null, target_reason_detail: null });
+  fail(review.error, "Unable to start acceptance verification Intake Request review");
+  const invitation = await intakeClient.rpc("invite_intake_request", { target_request_id: request.id });
+  fail(invitation.error, "Unable to invite acceptance verification Couple");
+  if (!invitation.data?.created || !invitation.data.group_id || invitation.data.invitation_ids.length !== 2) throw new Error("Acceptance verification Couple invitation is incomplete");
+  return invitation.data;
 }
 
 async function recordDelivery(
@@ -113,6 +147,7 @@ async function main() {
   const createdUsers: string[] = [];
   const invitations: string[] = [];
   const groups: string[] = [];
+  const intakeRequests: string[] = [];
   try {
     const password = `Verify-${crypto.randomUUID()}!`;
     const standaloneEmail = `${prefix}-author@example.test`;
@@ -156,10 +191,10 @@ async function main() {
 
     const firstEmail = `${prefix}-couple-1@example.test`;
     const secondEmail = `${prefix}-couple-2@example.test`;
-    const grouped = await createInvitation(adminSession, "couple", campus.id, [
+    const grouped = await createCoupleInvitation(admin, adminSession, campus.id, [
       { email: firstEmail, first_name: "First", last_name: "Partner" },
       { email: secondEmail, first_name: "Second", last_name: "Partner" },
-    ]);
+    ], intakeRequests);
     invitations.push(...grouped.invitation_ids);
     if (!grouped.group_id) throw new Error("Grouped acceptance invitation did not create a group");
     groups.push(grouped.group_id);
@@ -294,9 +329,16 @@ async function main() {
 
     console.log("DEV invitation acceptance lifecycle verified.");
   } finally {
+    if (invitations.length) await admin.from("audit_events").delete().in("entity_id", invitations);
+    if (intakeRequests.length) await admin.from("audit_events").delete().in("entity_id", intakeRequests);
+    if (groups.length) await admin.from("group_members").delete().in("group_id", groups);
     if (invitations.length) await admin.from("invitations").delete().in("id", invitations);
+    if (intakeRequests.length) await admin.from("intake_request_status_history" as never).delete().in("intake_request_id", intakeRequests);
+    if (intakeRequests.length) await admin.from("intake_request_people" as never).delete().in("intake_request_id", intakeRequests);
+    if (intakeRequests.length) await admin.from("intake_requests" as never).delete().in("id", intakeRequests);
     if (groups.length) await admin.from("groups").delete().in("id", groups);
     if (createdUsers.length) {
+      await admin.from("profile_roles").delete().in("profile_id", createdUsers);
       await admin.from("profiles").delete().in("id", createdUsers);
       for (const userId of createdUsers) await admin.auth.admin.deleteUser(userId);
     }

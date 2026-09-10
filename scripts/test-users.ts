@@ -9,10 +9,10 @@ const TEST_CAMPUS = { name: "Test Campus", code: "DEV_TEST" };
 type TestRole = Database["public"]["Enums"]["app_role"];
 type PendingInvitationClient = {
   from(name: "invitations"): {
-    select(columns: string): {
+    select(columns: "id,auth_user_id"): {
       eq(column: "group_id", value: string): {
         eq(column: "status", value: "pending"): {
-          eq(column: "intended_role", value: TestRole): Promise<{ data: { id: string }[] | null; error: { message: string } | null }>;
+          eq(column: "intended_role", value: TestRole): Promise<{ data: { id: string; auth_user_id: string | null }[] | null; error: { message: string } | null }>;
         };
       };
     };
@@ -252,16 +252,18 @@ async function verifyTeamShapes(admin: ReturnType<typeof createAdminClient>, gro
   for (const group of groups ?? []) {
     const { data: memberships, error: membershipsError } = await admin.from("group_members").select("profile_id").eq("group_id", group.id).is("ended_at", null);
     failIfError(membershipsError, `Unable to verify members for ${group.name}`);
-    if ((memberships ?? []).length === 0) {
-      const { data: pendingInvitations, error: invitationsError } = await (admin as unknown as PendingInvitationClient).from("invitations").select("id").eq("group_id", group.id).eq("status", "pending").eq("intended_role", requiredRole);
-      failIfError(invitationsError, `Unable to verify pending invitations for ${group.name}`);
-      if ((pendingInvitations ?? []).length === 2) continue;
+    const establishedMembers = memberships ?? [];
+    const { data: pendingInvitations, error: invitationsError } = await (admin as unknown as PendingInvitationClient).from("invitations").select("id,auth_user_id").eq("group_id", group.id).eq("status", "pending").eq("intended_role", requiredRole);
+    failIfError(invitationsError, `Unable to verify pending invitations for ${group.name}`);
+    const pendingMembers = pendingInvitations ?? [];
+    const profileIds = establishedMembers.map((membership) => membership.profile_id);
+    if (establishedMembers.length + pendingMembers.length !== 2 || pendingMembers.some((invitation) => invitation.auth_user_id !== null && profileIds.includes(invitation.auth_user_id))) {
+      throw new Error(`${group.name} must resolve to exactly 2 distinct established or pending members`);
     }
-    if ((memberships ?? []).length !== 2) throw new Error(`${group.name} must contain exactly 2 active members`);
-    const profileIds = memberships!.map((membership) => membership.profile_id);
+    if (establishedMembers.length === 0) continue;
     const { data: roles, error: rolesError } = await admin.from("profile_roles").select("profile_id, role").in("profile_id", profileIds).eq("role", requiredRole);
     failIfError(rolesError, `Unable to verify ${requiredRole} roles for ${group.name}`);
-    if (new Set((roles ?? []).map((role) => role.profile_id)).size !== 2) throw new Error(`${group.name} must contain two active members with the ${requiredRole} role`);
+    if (new Set((roles ?? []).map((role) => role.profile_id)).size !== establishedMembers.length) throw new Error(`${group.name} must contain ${establishedMembers.length} active members with the ${requiredRole} role`);
   }
 }
 

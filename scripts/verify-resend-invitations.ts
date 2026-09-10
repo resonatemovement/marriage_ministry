@@ -45,7 +45,7 @@ async function main() {
   try {
     const created = await rpc.rpc("create_invitations", {
       payload: {
-        role: "couple",
+        role: "coach",
         campus_id: campusResult.data.id,
         invitees: [
           { email: `${prefix}-one@example.test`, first_name: "First", last_name: "Resend" },
