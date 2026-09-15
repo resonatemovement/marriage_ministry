@@ -91,3 +91,11 @@ export async function requireWorkspace(workspace: WorkspaceId, path: string) {
 
   return identity;
 }
+
+export async function requireOneOfWorkspaces(workspaces: readonly WorkspaceId[], path: string) {
+  const { identity } = await requireDefaultWorkspace(path);
+  if (!workspaces.some((workspace) => identity.workspaces.includes(workspace))) {
+    redirect(defaultWorkspaceDestination(identity.workspaces)!);
+  }
+  return identity;
+}

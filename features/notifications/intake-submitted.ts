@@ -6,12 +6,13 @@ import { getSupabaseEnvironment } from "@/lib/supabase/env";
 
 import { recordDeliveryFailure, sendDeliveryAttempt } from "./delivery";
 import { createResendEmailProvider } from "./provider";
-import { eligibleAdminRecipients, type AdminRecipientProfile } from "./recipients";
+import { eligibleIntakeRecipients, type IntakeRecipientProfile } from "./recipients";
 import { notificationTemplateDefaults, renderAdminIntakeSubmittedEmail, renderCoupleIntakeSubmittedEmail } from "./templates";
 import type { DeliveryStore } from "./types";
 
 type IntakeRow = {
   id: string;
+  campus_id: string | null;
   relationship_status: string;
   requested_support: string[];
   submitted_at: string;
@@ -65,19 +66,19 @@ export async function dispatchIntakeSubmittedNotifications(intakeRequestId: stri
   try {
     const client = createServiceClient();
     const [{ data: intakeData, error: intakeError }, { data: roleData, error: roleError }] = await Promise.all([
-      client.from("intake_requests" as never).select("id,relationship_status,requested_support,submitted_at,campus_other,campus:campuses(name),people:intake_request_people(person_position,first_name,last_name,email)").eq("id", intakeRequestId).maybeSingle(),
-      client.from("profile_roles").select("profile_id,role").in("role", ["admin", "super_admin"]),
+      client.from("intake_requests" as never).select("id,campus_id,relationship_status,requested_support,submitted_at,campus_other,campus:campuses(name),people:intake_request_people(person_position,first_name,last_name,email)").eq("id", intakeRequestId).maybeSingle(),
+      client.from("profile_roles").select("profile_id,role").in("role", ["admin", "super_admin", "campus_lead"]),
     ]);
     if (intakeError || roleError || !intakeData) throw new Error(intakeError?.message ?? roleError?.message ?? "Submitted Intake Request is unavailable.");
     const roles = (roleData ?? []) as RoleRow[];
     const profileIds = [...new Set(roles.map((role) => role.profile_id))];
     const { data: profileData, error: profileError } = profileIds.length
-      ? await client.from("profiles").select("id,email,status").in("id", profileIds).eq("status", "active")
+      ? await client.from("profiles" as never).select("id,email,status,campus_lead_assignments(campus_id,ended_at)").in("id", profileIds).eq("status", "active")
       : { data: [], error: null };
     if (profileError) throw new Error(profileError.message);
     const rolesByProfile = new Map<string, { role: string }[]>();
     for (const role of roles) rolesByProfile.set(role.profile_id, [...(rolesByProfile.get(role.profile_id) ?? []), { role: role.role }]);
-    const eligibleProfiles = (profileData ?? []).map((profile) => ({ ...profile, profile_roles: rolesByProfile.get(profile.id) ?? [] })) as AdminRecipientProfile[];
+    const eligibleProfiles = ((profileData ?? []) as unknown as Array<{ id: string; email: string | null; status: string; campus_lead_assignments: { campus_id: string; ended_at: string | null }[] | null }>).map((profile) => ({ ...profile, profile_roles: rolesByProfile.get(profile.id) ?? [] })) as IntakeRecipientProfile[];
 
     const intake = intakeData as unknown as IntakeRow;
     const people = intake.people ?? [];
@@ -97,11 +98,11 @@ export async function dispatchIntakeSubmittedNotifications(intakeRequestId: stri
     const appUrl = process.env.APP_URL;
     if (appUrl) {
       const reviewUrl = new URL(`/intake-requests/${intake.id}`, appUrl).toString();
-      for (const admin of eligibleAdminRecipients(eligibleProfiles)) {
+      for (const admin of eligibleIntakeRecipients(eligibleProfiles, intake.campus_id)) {
         attempts.push(safeDelivery(() => sendDeliveryAttempt({ eventType: "intake.submitted", relatedEntityType: "intake_request", relatedEntityId: intake.id, templateKey: "intake_submitted_admin_email", channel: notificationTemplateDefaults.intake_submitted_admin_email.channel, recipientProfileId: admin.profileId, recipientEmail: admin.email, message: renderAdminIntakeSubmittedEmail({ coupleName, relationshipStatus: relationshipLabels[intake.relationship_status] ?? intake.relationship_status, campusName: intake.campus?.name ?? intake.campus_other ?? "Not provided", submittedDate, requestedSupport, reviewUrl }, admin.email) }, store, provider)));
       }
     } else {
-      for (const admin of eligibleAdminRecipients(eligibleProfiles)) {
+      for (const admin of eligibleIntakeRecipients(eligibleProfiles, intake.campus_id)) {
         attempts.push(safeDelivery(() => recordDeliveryFailure({ eventType: "intake.submitted", relatedEntityType: "intake_request", relatedEntityId: intake.id, templateKey: "intake_submitted_admin_email", channel: notificationTemplateDefaults.intake_submitted_admin_email.channel, recipientProfileId: admin.profileId, recipientEmail: admin.email }, store, "configuration", "Admin intake notification requires APP_URL.")));
       }
     }

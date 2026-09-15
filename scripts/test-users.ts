@@ -7,6 +7,7 @@ const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 const TEST_CAMPUS = { name: "Test Campus", code: "DEV_TEST" };
 
 type TestRole = Database["public"]["Enums"]["app_role"];
+type FixtureRole = TestRole | "campus_lead";
 type PendingInvitationClient = {
   from(name: "invitations"): {
     select(columns: "id,auth_user_id"): {
@@ -24,7 +25,7 @@ type TestUser = {
   password: string;
   firstName: string;
   lastName: string;
-  roles: readonly TestRole[];
+  roles: readonly FixtureRole[];
 };
 
 const testUsers: readonly TestUser[] = [
@@ -39,11 +40,13 @@ const testUsers: readonly TestUser[] = [
   { key: "couple2", email: "TEST_COUPLE_2_EMAIL", password: "TEST_COUPLE_2_PASSWORD", firstName: "Test", lastName: "Couple Two", roles: ["couple"] },
   { key: "author", email: "TEST_AUTHOR_EMAIL", password: "TEST_AUTHOR_PASSWORD", firstName: "Test", lastName: "Author", roles: ["author"] },
   { key: "multiRole", email: "TEST_MULTIROLE_EMAIL", password: "TEST_MULTIROLE_PASSWORD", firstName: "Test", lastName: "Multi Role", roles: ["super_admin", "coach"] },
+  { key: "campusLead", email: "TEST_CAMPUS_LEAD_EMAIL", password: "TEST_CAMPUS_LEAD_PASSWORD", firstName: "Test", lastName: "Campus Lead", roles: ["campus_lead"] },
+  { key: "campusLead2", email: "TEST_CAMPUS_LEAD_2_EMAIL", password: "TEST_CAMPUS_LEAD_2_PASSWORD", firstName: "Test", lastName: "Campus Lead Two", roles: ["campus_lead"] },
 ] as const;
 
 type TestUserKey = TestUser["key"];
 type TestUserIds = Record<TestUserKey, string>;
-type FixtureIds = { campus: string; couple: string; coach: string; coach2: string; counselor: string; case: string };
+type FixtureIds = { campus: string; couple: string; coach: string; coach2: string; counselor: string; campusLead: string; case: string };
 
 function requireEnvironmentVariable(name: string) {
   const value = process.env[name];
@@ -96,6 +99,8 @@ async function ensureAuthUsers(admin: ReturnType<typeof createAdminClient>, user
       if (!data.user) throw new Error(`Unable to create Auth user for ${user.key}`);
       authUser = data.user;
     }
+    const { error: passwordError } = await admin.auth.admin.updateUserById(authUser.id, { password: user.passwordValue, email_confirm: true });
+    failIfError(passwordError, `Unable to set the DEV test password for ${user.key}`);
     ids[user.key] = authUser.id;
   }
 
@@ -121,26 +126,53 @@ async function ensureProfilesAndRoles(admin: ReturnType<typeof createAdminClient
     failIfError(profileError, `Unable to ensure profile for ${user.key}`);
     const { data: existingRoles, error: readRolesError } = await admin.from("profile_roles").select("role").eq("profile_id", ids[user.key]);
     failIfError(readRolesError, `Unable to read roles for ${user.key}`);
-    const expectedRoles = new Set<Database["public"]["Enums"]["app_role"]>(user.roles);
+    const expectedRoles = new Set<FixtureRole>(user.roles);
     for (const existingRole of existingRoles ?? []) {
       if (expectedRoles.has(existingRole.role)) continue;
       const { error: cleanupError } = await admin.from("profile_roles").delete().eq("profile_id", ids[user.key]).eq("role", existingRole.role);
       failIfError(cleanupError, `Unable to clear unexpected role for ${user.key}`);
     }
     for (const role of expectedRoles) {
-      const { error: roleError } = await admin.from("profile_roles").upsert({ profile_id: ids[user.key], role, assigned_by: ids.superAdmin }, { onConflict: "profile_id,role" });
+      const { error: roleError } = await admin.from("profile_roles" as never).upsert({ profile_id: ids[user.key], role, assigned_by: ids.superAdmin } as never, { onConflict: "profile_id,role" });
       failIfError(roleError, `Unable to assign ${role} role for ${user.key}`);
     }
   }
 }
 
-async function ensureGroup(admin: ReturnType<typeof createAdminClient>, campusId: string, groupType: Database["public"]["Enums"]["group_type"], name: string) {
-  const { data, error } = await admin.from("groups").select("id").eq("group_type", groupType).eq("name", name);
+async function ensureCompletedTestCoupleOnboarding(admin: ReturnType<typeof createAdminClient>, ids: TestUserIds) {
+  const profiles = admin as unknown as { from: (table: "profiles") => { update(values: Record<string, unknown>): { in(column: string, values: string[]): Promise<{ error: { message: string } | null }> } } };
+  const { error } = await profiles.from("profiles").update({ status: "active", onboarding_completed_at: "2026-01-01T00:00:00.000Z" }).in("id", [ids.couple1, ids.couple2]);
+  failIfError(error, "Unable to ensure completed onboarding for the DEV test Couple");
+}
+
+async function ensureCampusLeadAssignments(admin: ReturnType<typeof createAdminClient>, users: ReturnType<typeof getConfiguration>["users"], ids: TestUserIds, campusId: string) {
+  for (const user of users.filter((candidate) => candidate.roles.includes("campus_lead"))) {
+    const assignments = await admin.from("campus_lead_assignments" as never).select("id,campus_id").eq("profile_id", ids[user.key]).is("ended_at", null);
+    failIfError(assignments.error, `Unable to read Campus Lead scope for ${user.key}`);
+    const activeAssignments = (assignments.data ?? []) as unknown as Array<{ id: string; campus_id: string }>;
+    for (const assignment of activeAssignments.filter((assignment) => assignment.campus_id !== campusId)) {
+      const { error } = await admin.from("campus_lead_assignments" as never).update({ ended_at: new Date().toISOString() } as never).eq("id", assignment.id);
+      failIfError(error, `Unable to end unexpected Campus Lead scope for ${user.key}`);
+    }
+    if (activeAssignments.filter((assignment) => assignment.campus_id === campusId).length === 1) continue;
+    if (activeAssignments.filter((assignment) => assignment.campus_id === campusId).length > 1) throw new Error(`Duplicate active Campus Lead scopes found for ${user.key}`);
+    const { error: removeRoleError } = await admin.from("profile_roles").delete().eq("profile_id", ids[user.key]).eq("role", "campus_lead" as TestRole);
+    failIfError(removeRoleError, `Unable to repair Campus Lead role for ${user.key}`);
+    const { error: restoreRoleError } = await admin.from("profile_roles" as never).insert({ profile_id: ids[user.key], role: "campus_lead", assigned_by: ids.superAdmin } as never);
+    failIfError(restoreRoleError, `Unable to repair Campus Lead scope for ${user.key}`);
+  }
+}
+
+type FixtureGroupType = Database["public"]["Enums"]["group_type"] | "campus_lead_team";
+
+async function ensureGroup(admin: ReturnType<typeof createAdminClient>, campusId: string, groupType: FixtureGroupType, name: string) {
+  const generatedGroupType = groupType as Database["public"]["Enums"]["group_type"];
+  const { data, error } = await admin.from("groups").select("id").eq("group_type", generatedGroupType).eq("name", name);
   failIfError(error, `Unable to read ${name}`);
   const groups = data ?? [];
   if (groups.length > 1) throw new Error(`Duplicate ${name} groups found`);
   if (groups[0]) return groups[0].id;
-  const { data: group, error: insertError } = await admin.from("groups").insert({ campus_id: campusId, group_type: groupType, name }).select("id").single();
+  const { data: group, error: insertError } = await admin.from("groups").insert({ campus_id: campusId, group_type: generatedGroupType, name }).select("id").single();
   failIfError(insertError, `Unable to create ${name}`);
   if (!group) throw new Error(`Unable to create ${name}`);
   return group.id;
@@ -197,12 +229,15 @@ async function setup() {
   const ids = await ensureAuthUsers(admin, configuration.users);
   const campus = await ensureCampus(admin);
   await ensureProfilesAndRoles(admin, configuration.users, ids, campus);
+  await ensureCompletedTestCoupleOnboarding(admin, ids);
+  await ensureCampusLeadAssignments(admin, configuration.users, ids, campus);
   const couple = await ensureGroup(admin, campus, "couple", "DEV Test Couple");
   const coach = await ensureGroup(admin, campus, "coach_team", "DEV Test Coach Team");
   const coach2 = await ensureGroup(admin, campus, "coach_team", "DEV Test Coach Team Two");
   const counselor = await ensureGroup(admin, campus, "counselor_team", "DEV Test Counselor Team");
-  await Promise.all([ensureMemberships(admin, couple, [ids.couple1, ids.couple2]), ensureMemberships(admin, coach, [ids.coach, ids.coach2]), ensureMemberships(admin, coach2, [ids.multiRole, ids.coach3]), ensureMemberships(admin, counselor, [ids.counselor, ids.counselor2])]);
-  const caseId = await ensureCase(admin, { campus, couple, coach, coach2, counselor }, ids);
+  const campusLead = await ensureGroup(admin, campus, "campus_lead_team", "DEV Test Campus Lead Team");
+  await Promise.all([ensureMemberships(admin, couple, [ids.couple1, ids.couple2]), ensureMemberships(admin, coach, [ids.coach, ids.coach2]), ensureMemberships(admin, coach2, [ids.multiRole, ids.coach3]), ensureMemberships(admin, counselor, [ids.counselor, ids.counselor2]), ensureMemberships(admin, campusLead, [ids.campusLead, ids.campusLead2])]);
+  const caseId = await ensureCase(admin, { campus, couple, coach, coach2, counselor, campusLead }, ids);
   const adminUser = configuration.users.find((user) => user.key === "admin")!;
   await ensureAssignment(admin, configuration.url, configuration.publishableKey, adminUser.emailAddress, adminUser.passwordValue, caseId, coach);
   console.log("DEV test-user setup completed.");
@@ -229,8 +264,8 @@ async function readRequiredCampus(admin: ReturnType<typeof createAdminClient>) {
   return campuses[0].id;
 }
 
-async function readRequiredGroup(admin: ReturnType<typeof createAdminClient>, groupType: Database["public"]["Enums"]["group_type"], name: string) {
-  const { data, error } = await admin.from("groups").select("id").eq("group_type", groupType).eq("name", name);
+async function readRequiredGroup(admin: ReturnType<typeof createAdminClient>, groupType: FixtureGroupType, name: string) {
+  const { data, error } = await admin.from("groups").select("id").eq("group_type", groupType as Database["public"]["Enums"]["group_type"]).eq("name", name);
   failIfError(error, `Unable to verify ${name}`);
   const groups = data ?? [];
   if (groups.length !== 1) throw new Error(`${name} is missing or duplicated`);
@@ -246,14 +281,14 @@ async function verifyMemberships(admin: ReturnType<typeof createAdminClient>, gr
   }
 }
 
-async function verifyTeamShapes(admin: ReturnType<typeof createAdminClient>, groupType: Database["public"]["Enums"]["group_type"], requiredRole: TestRole) {
-  const { data: groups, error: groupsError } = await admin.from("groups").select("id, name").eq("group_type", groupType).eq("active", true);
+async function verifyTeamShapes(admin: ReturnType<typeof createAdminClient>, groupType: FixtureGroupType, requiredRole: FixtureRole) {
+  const { data: groups, error: groupsError } = await admin.from("groups").select("id, name").eq("group_type", groupType as Database["public"]["Enums"]["group_type"]).eq("active", true);
   failIfError(groupsError, `Unable to verify active ${groupType} teams`);
   for (const group of groups ?? []) {
     const { data: memberships, error: membershipsError } = await admin.from("group_members").select("profile_id").eq("group_id", group.id).is("ended_at", null);
     failIfError(membershipsError, `Unable to verify members for ${group.name}`);
     const establishedMembers = memberships ?? [];
-    const { data: pendingInvitations, error: invitationsError } = await (admin as unknown as PendingInvitationClient).from("invitations").select("id,auth_user_id").eq("group_id", group.id).eq("status", "pending").eq("intended_role", requiredRole);
+    const { data: pendingInvitations, error: invitationsError } = await (admin as unknown as PendingInvitationClient).from("invitations").select("id,auth_user_id").eq("group_id", group.id).eq("status", "pending").eq("intended_role", requiredRole as TestRole);
     failIfError(invitationsError, `Unable to verify pending invitations for ${group.name}`);
     const pendingMembers = pendingInvitations ?? [];
     const profileIds = establishedMembers.map((membership) => membership.profile_id);
@@ -261,7 +296,7 @@ async function verifyTeamShapes(admin: ReturnType<typeof createAdminClient>, gro
       throw new Error(`${group.name} must resolve to exactly 2 distinct established or pending members`);
     }
     if (establishedMembers.length === 0) continue;
-    const { data: roles, error: rolesError } = await admin.from("profile_roles").select("profile_id, role").in("profile_id", profileIds).eq("role", requiredRole);
+    const { data: roles, error: rolesError } = await admin.from("profile_roles").select("profile_id, role").in("profile_id", profileIds).eq("role", requiredRole as TestRole);
     failIfError(rolesError, `Unable to verify ${requiredRole} roles for ${group.name}`);
     if (new Set((roles ?? []).map((role) => role.profile_id)).size !== establishedMembers.length) throw new Error(`${group.name} must contain ${establishedMembers.length} active members with the ${requiredRole} role`);
   }
@@ -299,17 +334,29 @@ async function verify() {
   failIfError(roleError, "Unable to verify DEV test roles");
   for (const user of configuration.users) {
     const userRoles = (roles ?? []).filter((role) => role.profile_id === ids[user.key]);
-    const expectedRoles = new Set(user.roles);
+    const expectedRoles = new Set<FixtureRole>(user.roles);
     if (userRoles.length !== expectedRoles.size || new Set(userRoles.map((role) => role.role)).size !== expectedRoles.size || userRoles.some((role) => !expectedRoles.has(role.role))) {
       throw new Error(`Unexpected role assignments for ${user.key}`);
     }
   }
   await readRequiredCampus(admin);
   const couple = await readRequiredGroup(admin, "couple", "DEV Test Couple");
+  const profileReader = admin as unknown as { from: (table: "profiles") => { select(columns: string): { in(column: string, values: string[]): Promise<{ data: Array<{ id: string; status: string; onboarding_completed_at: string | null }> | null; error: { message: string } | null }> } } };
+  const { data: coupleProfiles, error: coupleProfilesError } = await profileReader.from("profiles").select("id,status,onboarding_completed_at").in("id", [ids.couple1, ids.couple2]);
+  failIfError(coupleProfilesError, "Unable to verify completed onboarding for the DEV test Couple");
+  if ((coupleProfiles ?? []).length !== 2 || (coupleProfiles ?? []).some((profile) => profile.status !== "active" || !profile.onboarding_completed_at)) throw new Error("DEV test Couple members must have active profiles with completed onboarding");
   const coach = await readRequiredGroup(admin, "coach_team", "DEV Test Coach Team");
   const coach2 = await readRequiredGroup(admin, "coach_team", "DEV Test Coach Team Two");
-  await Promise.all([verifyMemberships(admin, couple, [ids.couple1, ids.couple2]), verifyMemberships(admin, coach, [ids.coach, ids.coach2]), verifyMemberships(admin, coach2, [ids.multiRole, ids.coach3]), verifyMemberships(admin, await readRequiredGroup(admin, "counselor_team", "DEV Test Counselor Team"), [ids.counselor, ids.counselor2])]);
-  await Promise.all([verifyTeamShapes(admin, "couple", "couple"), verifyTeamShapes(admin, "coach_team", "coach"), verifyTeamShapes(admin, "counselor_team", "counselor"), verifyCoachMembershipUniqueness(admin)]);
+  const campusLead = await readRequiredGroup(admin, "campus_lead_team", "DEV Test Campus Lead Team");
+  await Promise.all([verifyMemberships(admin, couple, [ids.couple1, ids.couple2]), verifyMemberships(admin, coach, [ids.coach, ids.coach2]), verifyMemberships(admin, coach2, [ids.multiRole, ids.coach3]), verifyMemberships(admin, await readRequiredGroup(admin, "counselor_team", "DEV Test Counselor Team"), [ids.counselor, ids.counselor2]), verifyMemberships(admin, campusLead, [ids.campusLead, ids.campusLead2])]);
+  const campus = await readRequiredCampus(admin);
+  for (const user of configuration.users.filter((candidate) => candidate.roles.includes("campus_lead"))) {
+    const scope = await admin.from("campus_lead_assignments" as never).select("campus_id").eq("profile_id", ids[user.key]).is("ended_at", null);
+    failIfError(scope.error, `Unable to verify Campus Lead scope for ${user.key}`);
+    const activeScopes = (scope.data ?? []) as unknown as Array<{ campus_id: string }>;
+    if (activeScopes.length !== 1 || activeScopes[0]?.campus_id !== campus) throw new Error(`${user.key} must have exactly one active Campus Lead scope for the DEV test campus`);
+  }
+  await Promise.all([verifyTeamShapes(admin, "couple", "couple"), verifyTeamShapes(admin, "coach_team", "coach"), verifyTeamShapes(admin, "counselor_team", "counselor"), verifyTeamShapes(admin, "campus_lead_team", "campus_lead"), verifyCoachMembershipUniqueness(admin)]);
   const { data: cases, error: caseError } = await admin.from("counseling_cases").select("id").eq("couple_group_id", couple);
   failIfError(caseError, "Unable to verify DEV test counseling case");
   const testCases = cases ?? [];

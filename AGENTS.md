@@ -21,17 +21,22 @@
 
 ## Auth, Roles, and Workspaces
 
-- Roles are independent and profiles may have multiple roles: `super_admin`, `admin`, `coach`, `counselor`, `couple`, and `author`.
+- Roles are independent and profiles may have multiple roles: `super_admin`, `admin`, `campus_lead`, `coach`, `counselor`, `couple`, and `author`.
+- Campus Lead authority is explicitly campus-scoped; it never implies Coach authority.
+- Campus Lead-to-Couple ownership targets the Campus Lead operational team, never an individual profile or a Coach/Counselor team.
 - Super Admin is elevated capability, not a separate operational workspace. Explicit Admin remains Admin-first.
 - Do not casually change multi-role workspace behavior. Active workspace is UX state only and never grants permission.
 - Server authorization and Supabase RLS remain authoritative.
 
 ## Group and Team Invariants
 
-- A Couple, Coach team, and Counselor team each represent exactly two individual users; each person has a separate Auth identity, profile, and invitation.
+- A Couple, Coach team, Counselor team, and Campus Lead team each represent exactly two individual users; each person has a separate Auth identity, profile, invitation, and login.
 - A person must not belong to multiple active groups of the same operational type.
+- Both Campus Lead team members have the `campus_lead` role, share one distinct Campus Lead team, and receive the same applicable campus scope. A Campus Lead team is distinct from Coach and Counselor teams.
 - Group display names derive from member names and are not the permanent identity source of truth.
 - Assignment and supervision history must be preserved.
+- Operational roles remain distinct from Couple care assignments. A Couple has one active Counselor-of-record (`case_assignments.assignment_type = counselor`), fulfilled by an eligible Counselor, Coach, or Campus Lead team without changing that team's operational role.
+- Reassigning the Counselor-of-record ends the previous active assignment and preserves history. Future operational-role changes must not rewrite historical Couple-care records.
 
 ## Invitation Rules
 
@@ -58,6 +63,7 @@
 
 - Add focused regression tests for changed behavior. Normal checks are TypeScript, ESLint, Vitest, and `git diff --check`.
 - Run Knip and the production build when relevant. Run Supabase/DEV verification scripts when backend behavior changes, and perform browser/manual verification when tooling is available.
+- Automated verifiers that create temporary persisted records must track and clean their own records; temporary verifier fixtures must not remain visible in normal DEV data. Persistent `DEV Test` fixtures are separate and must never be deleted.
 - Do not install heavy testing or browser tooling for a small task without explicit approval.
 
 Current verification commands:

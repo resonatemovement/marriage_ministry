@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { sendDeliveryAttempt } from "./delivery";
 import { mapResendFailure } from "./provider-errors";
-import { eligibleAdminRecipients } from "./recipients";
+import { eligibleAdminRecipients, eligibleIntakeRecipients } from "./recipients";
 import { renderAdminIntakeSubmittedEmail, renderCoupleIntakeSubmittedEmail } from "./templates";
 import type { DeliveryStore, EmailProvider } from "./types";
 
@@ -22,6 +22,20 @@ describe("intake notifications", () => {
       { id: "three", email: "inactive@example.test", status: "deactivated", profile_roles: [{ role: "admin" }] },
       { id: "four", email: "coach@example.test", status: "active", profile_roles: [{ role: "coach" }] },
     ])).toEqual([{ profileId: "one", email: "admin@example.test" }]);
+  });
+
+  it("adds only active Campus Leads assigned to the Intake campus and deduplicates multi-role recipients", () => {
+    expect(eligibleIntakeRecipients([
+      { id: "admin", email: "admin@example.test", status: "active", profile_roles: [{ role: "admin" }], campus_lead_assignments: null },
+      { id: "lead-a", email: "lead@example.test", status: "active", profile_roles: [{ role: "campus_lead" }], campus_lead_assignments: [{ campus_id: "campus-a", ended_at: null }] },
+      { id: "lead-b", email: "other@example.test", status: "active", profile_roles: [{ role: "campus_lead" }], campus_lead_assignments: [{ campus_id: "campus-b", ended_at: null }] },
+      { id: "ended", email: "ended@example.test", status: "active", profile_roles: [{ role: "campus_lead" }], campus_lead_assignments: [{ campus_id: "campus-a", ended_at: "2026-01-01" }] },
+      { id: "inactive", email: "inactive@example.test", status: "deactivated", profile_roles: [{ role: "campus_lead" }], campus_lead_assignments: [{ campus_id: "campus-a", ended_at: null }] },
+      { id: "multi", email: " ADMIN@example.test ", status: "active", profile_roles: [{ role: "super_admin" }, { role: "campus_lead" }], campus_lead_assignments: [{ campus_id: "campus-a", ended_at: null }] },
+    ], "campus-a")).toEqual([
+      { profileId: "admin", email: "admin@example.test" },
+      { profileId: "lead-a", email: "lead@example.test" },
+    ]);
   });
 
   it("renders non-sensitive Admin content and escaped template variables", () => {

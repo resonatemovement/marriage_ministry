@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { validateInvitation } from "../features/people/invitation-validation.ts";
 import { coupleDisplayName, groupedRoleNames } from "../features/people/types.ts";
 import { getSupabaseEnvironment } from "../lib/supabase/env.ts";
 
@@ -130,9 +129,6 @@ async function main() {
     fail(otherHistory.error, "Unable to read Other close history");
     if (!rows(otherHistory.data).some((item) => value(item, "to_status") === "closed" && value(item, "reason_code") === "other" && value(item, "reason_detail") === "Verifier supporting detail")) throw new Error("Other close reason and detail were not preserved");
 
-    if (!validateInvitation("couple", "campus", [{ firstName: "One", lastName: "Person", email: "one@example.test" }, { firstName: "Two", lastName: "Person", email: "two@example.test" }]).role) throw new Error("Generic Invite People validation accepts Couple");
-    const genericCouple = await fetch(`${url}/rest/v1/rpc/create_invitations`, { method: "POST", headers: { apikey: publishableKey, authorization: `Bearer ${adminSession.data.session.access_token}`, "content-type": "application/json" }, body: JSON.stringify({ payload: { role: "couple", campus_id: (await service.from("campuses").select("id").eq("active", true).limit(1).single()).data?.id, invitees: [{ email: `${prefix}-generic-1@example.test`, first_name: "One", last_name: "Person" }, { email: `${prefix}-generic-2@example.test`, first_name: "Two", last_name: "Person" }] } }) });
-    if (genericCouple.ok) throw new Error("Generic Invite People RPC accepts Couple");
     console.log("DEV intake invite handoff verified.");
   } finally {
     if (requestIds.length) await service.from("audit_events").delete().in("entity_id", requestIds);

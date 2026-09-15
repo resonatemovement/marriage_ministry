@@ -2,12 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   canManageAssignments,
+  canActAsCoach,
   canTransitionCase,
+  counselingStatusLabel,
   isAppRole,
   statusAfterAssignment,
 } from "./domain";
 
 describe("counseling case rules", () => {
+  it.each([["matched", "Matched"], ["active", "In Progress"], ["pending_final", "Final Review"], ["finished", "Completed"], ["referred", "Referred"], ["inactive", "Inactive"]] as const)("presents %s as %s", (status, label) => {
+    expect(counselingStatusLabel(status, true, true)).toBe(label);
+  });
+
+  it("presents an otherwise-ready unassigned couple as awaiting assignment", () => {
+    expect(counselingStatusLabel(null, false, true)).toBe("Awaiting Counselor Assignment");
+  });
+
   it("requires an active assignment to enter matched", () => {
     expect(canTransitionCase("interviewed", "matched", false)).toBe(false);
     expect(canTransitionCase("interviewed", "matched", true)).toBe(true);
@@ -33,6 +43,12 @@ describe("assignment permissions", () => {
   it("recognizes only supported roles", () => {
     expect(isAppRole("super_admin")).toBe(true);
     expect(isAppRole("author")).toBe(true);
+    expect(isAppRole("campus_lead")).toBe(true);
     expect(isAppRole("administrator")).toBe(false);
+  });
+
+  it("does not treat Campus Lead as a Coach role", () => {
+    expect(canActAsCoach(["campus_lead"])).toBe(false);
+    expect(canActAsCoach(["coach"])).toBe(true);
   });
 });

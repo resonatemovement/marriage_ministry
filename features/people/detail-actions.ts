@@ -2,18 +2,37 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireOneOfWorkspaces, requireWorkspace } from "@/lib/auth/session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+import { isAssignmentReadyCouple } from "./detail-actions-model";
 
 type ActionResult = { error: string } | { success: true };
 type AssignmentType = "counselor" | "coach";
-type ManagedGroupType = "couple" | "coach_team" | "counselor_team";
+type ManagedGroupType = "couple" | "coach_team" | "counselor_team" | "campus_lead_team";
+
+interface EnsureCaseRpcClient {
+  rpc(functionName: "ensure_and_assign_counseling_case", args: { target_couple_group_id: string; target_group_id: string | null; target_profile_id: string | null; target_assignment_type: "campus_lead" | AssignmentType; reassignment_reason?: string }): Promise<{ data: string | null; error: { message: string } | null }>;
+}
+
+interface UnassignCaseRpcClient {
+  rpc(functionName: "unassign_counseling_case", args: { target_couple_group_id: string; unassignment_reason?: string }): Promise<{ data: boolean | null; error: { message: string } | null }>;
+}
+
+async function ensureAndAssign(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, coupleGroupId: string, groupId: string | null, profileId: string | null, assignmentType: "campus_lead" | AssignmentType, reason?: string) {
+  return (supabase as unknown as EnsureCaseRpcClient).rpc("ensure_and_assign_counseling_case", { target_couple_group_id: coupleGroupId, target_group_id: groupId, target_profile_id: profileId, target_assignment_type: assignmentType, reassignment_reason: reason });
+}
 
 interface SupervisionRpcClient {
   rpc(
     functionName: "assign_counselor_coach_supervision",
     args: { target_counselor_group_id: string; target_coach_group_id: string },
   ): Promise<{ data: string | null; error: { message: string } | null }>;
+}
+interface CampusLeadCoachRpcClient { rpc(functionName: "assign_campus_lead_coach", args: { target_campus_lead_group_id: string; target_coach_group_id: string }): Promise<{ data: string | null; error: { message: string } | null }>; }
+interface OperationalUnassignRpcClient {
+  rpc(functionName: "unassign_campus_lead_coach", args: { target_campus_lead_group_id: string; target_coach_group_id: string }): Promise<{ data: boolean | null; error: { message: string } | null }>;
+  rpc(functionName: "unassign_counselor_coach_supervision", args: { target_counselor_group_id: string }): Promise<{ data: boolean | null; error: { message: string } | null }>;
 }
 
 function formValue(formData: FormData, field: string) {
@@ -35,7 +54,7 @@ async function authorize(recordId: string) {
 }
 
 async function activeTeam(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, groupId: string, groupType: ManagedGroupType) {
-  const { data, error } = await supabase.from("groups").select("id").eq("id", groupId).eq("group_type", groupType).eq("active", true).maybeSingle();
+  const { data, error } = await supabase.from("groups").select("id").eq("id", groupId).eq("group_type", groupType as "couple").eq("active", true).maybeSingle();
   if (error || !data) return null;
   return data;
 }
@@ -56,7 +75,7 @@ export async function updatePeopleDetail(formData: FormData): Promise<ActionResu
   const groupResult = await supabase.from("groups").select("id,campus_id,group_type").eq("id", recordId).maybeSingle();
   if (groupResult.error) return safeMutationError();
   if (groupResult.data) {
-    if (!(["couple", "coach_team", "counselor_team"] as const).includes(groupResult.data.group_type)) return invalid("This record cannot be edited here.");
+    if (!(["couple", "coach_team", "counselor_team", "campus_lead_team"] as const).includes(groupResult.data.group_type as ManagedGroupType)) return invalid("This record cannot be edited here.");
     if (campusId !== groupResult.data.campus_id && !await activeCampus(supabase, campusId)) return invalid("Choose an active campus.");
     const { error } = await supabase.from("groups").update({ name, campus_id: campusId || null }).eq("id", recordId);
     if (error) return safeMutationError();
@@ -85,25 +104,10 @@ export async function assignCounselor(formData: FormData): Promise<ActionResult>
 
   const supabase = await authorize(recordId);
   if (!await activeTeam(supabase, recordId, "couple") || !await activeTeam(supabase, counselorGroupId, "counselor_team")) {
-    return invalid("Choose an active Counselor team.");
+    return invalid("Choose a Counselor team.");
   }
 
-  const { data: counselingCase, error: caseError } = await supabase
-    .from("counseling_cases")
-    .select("id,case_assignments(ended_at,assignment_type,assigned_group_id)")
-    .eq("couple_group_id", recordId)
-    .maybeSingle();
-  if (caseError) return safeMutationError();
-  if (!counselingCase) return invalid("This Couple does not have a counseling case yet.");
-
-  const currentAssignment = (counselingCase.case_assignments ?? []).find((assignment) => assignment.ended_at === null && assignment.assignment_type === "counselor");
-  if (currentAssignment?.assigned_group_id === counselorGroupId) return { success: true };
-
-  const { error } = await supabase.rpc("assign_counseling_case", {
-    target_case_id: counselingCase.id,
-    target_group_id: counselorGroupId,
-    target_assignment_type: "counselor" as AssignmentType,
-  });
+  const { error } = await ensureAndAssign(supabase, recordId, counselorGroupId, null, "counselor");
   if (error) return safeMutationError();
 
   revalidatePath(`/people/${recordId}`);
@@ -113,29 +117,128 @@ export async function assignCounselor(formData: FormData): Promise<ActionResult>
 
 export async function assignCoupleTeam(formData: FormData): Promise<ActionResult> {
   const recordId = formValue(formData, "recordId");
-  const targetGroupId = formValue(formData, "targetGroupId");
-  if (!recordId || !targetGroupId) return invalid("Choose a team.");
+  const targetValue = formValue(formData, "targetGroupId");
+  if (!recordId || !targetValue) return invalid("Choose an eligible person or team.");
+  const [targetKind, targetId] = targetValue.split(":", 2);
+  if (!targetId || targetKind !== "group") return invalid("Choose an eligible team.");
 
   const supabase = await authorize(recordId);
   if (!await activeTeam(supabase, recordId, "couple")) return invalid("Choose an active Couple.");
-  const { data: target, error: targetError } = await supabase.from("groups").select("id,group_type").eq("id", targetGroupId).eq("active", true).in("group_type", ["coach_team", "counselor_team"]).maybeSingle();
-  if (targetError || !target) return invalid("Choose an active Coach or Counselor team.");
-
-  const { data: counselingCase, error: caseError } = await supabase.from("counseling_cases").select("id,case_assignments(ended_at,assigned_group_id)").eq("couple_group_id", recordId).maybeSingle();
-  if (caseError) return safeMutationError();
-  if (!counselingCase) return invalid("This Couple does not have a counseling case yet.");
-  const currentAssignment = (counselingCase.case_assignments ?? []).find((assignment) => assignment.ended_at === null);
-  if (currentAssignment?.assigned_group_id === targetGroupId) return { success: true };
-
-  const { error } = await supabase.rpc("assign_counseling_case", {
-    target_case_id: counselingCase.id,
-    target_group_id: targetGroupId,
-    target_assignment_type: target.group_type === "coach_team" ? "coach" : "counselor",
-  });
+  const { data: target, error: targetError } = await supabase.from("groups").select("id,group_type").eq("id", targetId).eq("active", true).in("group_type", ["campus_lead_team" as "couple", "coach_team", "counselor_team"]).maybeSingle();
+  if (targetError || !target) return invalid("Choose an active care team.");
+  const { error } = await ensureAndAssign(supabase, recordId, targetId, null, "counselor");
   if (error) return safeMutationError();
   revalidatePath(`/people/${recordId}`);
   revalidatePath("/people");
   return { success: true };
+}
+
+export async function unassignCounselorOfRecord(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId") || formValue(formData, "recordId");
+  if (!coupleGroupId) return invalid("Choose an active Couple.");
+
+  const supabase = await authorize(coupleGroupId);
+  if (!await activeTeam(supabase, coupleGroupId, "couple")) return invalid("Choose an active Couple.");
+  const { error } = await (supabase as unknown as UnassignCaseRpcClient).rpc("unassign_counseling_case", {
+    target_couple_group_id: coupleGroupId,
+  });
+  if (error) return safeMutationError();
+
+  revalidatePath(`/people/${coupleGroupId}`);
+  revalidatePath("/people");
+  return { success: true };
+}
+
+export async function assignCoupleToCounselorOfRecord(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const teamGroupId = formValue(formData, "teamGroupId");
+  if (!coupleGroupId || !teamGroupId) return invalid("Choose a Couple.");
+  const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${teamGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", teamGroupId).eq("active", true).in("group_type", ["counselor_team", "coach_team", "campus_lead_team" as "counselor_team"]).maybeSingle();
+  if (!target) return invalid("Choose an eligible counseling team.");
+  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, (invitations ?? []).map((invitation) => invitation.status)) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const { error } = await ensureAndAssign(supabase, coupleGroupId, teamGroupId, null, "counselor");
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${teamGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };
+}
+
+export async function assignCoupleToCoachTeam(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const coachGroupId = formValue(formData, "coachGroupId");
+  if (!coupleGroupId || !coachGroupId) return invalid("Choose a Couple.");
+  const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${coachGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", coachGroupId).eq("group_type", "coach_team").eq("active", true).maybeSingle();
+  if (!target) return invalid("Choose a Coach team.");
+  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+  const invitationStatuses = (invitations ?? []).map((invitation) => invitation.status);
+  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, invitationStatuses) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const { error } = await ensureAndAssign(supabase, coupleGroupId, coachGroupId, null, "coach");
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${coachGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };
+}
+
+export async function assignCoupleToCounselorTeam(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const counselorGroupId = formValue(formData, "counselorGroupId");
+  if (!coupleGroupId || !counselorGroupId) return invalid("Choose a Couple.");
+  const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${counselorGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", counselorGroupId).eq("group_type", "counselor_team").eq("active", true).maybeSingle();
+  if (!target) return invalid("Choose a Counselor team.");
+  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+  const invitationStatuses = (invitations ?? []).map((invitation) => invitation.status);
+  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, invitationStatuses) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const { error } = await ensureAndAssign(supabase, coupleGroupId, counselorGroupId, null, "counselor");
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${counselorGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };
+}
+
+export async function assignCoupleToCampusLeadTeam(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const campusLeadGroupId = formValue(formData, "campusLeadGroupId");
+  if (!coupleGroupId || !campusLeadGroupId) return invalid("Choose a Couple.");
+  const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${campusLeadGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", campusLeadGroupId).eq("group_type", "campus_lead_team" as "couple").eq("active", true).maybeSingle();
+  if (!target) return invalid("Choose a Campus Lead team.");
+  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+  const invitationStatuses = (invitations ?? []).map((invitation) => invitation.status);
+  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, invitationStatuses) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const { error } = await ensureAndAssign(supabase, coupleGroupId, campusLeadGroupId, null, "campus_lead");
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };
+}
+
+export async function assignCoupleAsCampusLead(formData: FormData): Promise<ActionResult> {
+  const recordId = formValue(formData, "recordId");
+  const targetValue = formValue(formData, "targetGroupId");
+  const targetGroupId = targetValue.startsWith("group:") ? targetValue.slice("group:".length) : "";
+  if (!recordId) return invalid("Choose an active Couple.");
+  await requireOneOfWorkspaces(["campus_lead"], `/people/${recordId}`);
+  const supabase = await createServerSupabaseClient();
+  if (targetGroupId) {
+    const { data: target } = await supabase.from("groups").select("group_type").eq("id", targetGroupId).maybeSingle();
+    const targetGroupType = target?.group_type as string | undefined;
+    if (!target || (targetGroupType !== "campus_lead_team" && targetGroupType !== "coach_team" && targetGroupType !== "counselor_team")) return invalid("Choose an available assignment target.");
+    const assignmentType = targetGroupType === "campus_lead_team" ? "campus_lead" : targetGroupType === "coach_team" ? "coach" : "counselor";
+    const { error } = await ensureAndAssign(supabase, recordId, targetGroupId, null, assignmentType);
+    if (error) return safeMutationError();
+  } else {
+    const { error } = await ensureAndAssign(supabase, recordId, null, null, "campus_lead");
+    if (error) return safeMutationError();
+  }
+  revalidatePath(`/people/${recordId}`); revalidatePath("/people"); return { success: true };
 }
 
 export async function assignCoach(formData: FormData): Promise<ActionResult> {
@@ -144,8 +247,16 @@ export async function assignCoach(formData: FormData): Promise<ActionResult> {
   if (!recordId || !coachGroupId) return invalid("Choose a Coach team.");
 
   const supabase = await authorize(recordId);
-  if (!await activeTeam(supabase, recordId, "counselor_team") || !await activeTeam(supabase, coachGroupId, "coach_team")) {
-    return invalid("Choose an active Coach team.");
+  const [recordResult, targetResult] = await Promise.all([
+    supabase.from("groups").select("id,group_type,active,campus_id").eq("id", recordId).maybeSingle(),
+    supabase.from("groups").select("id,group_type,active,campus_id").eq("id", coachGroupId).maybeSingle(),
+  ]);
+  const record = recordResult.data;
+  const target = targetResult.data;
+  const recordValid = !recordResult.error && record?.group_type === "counselor_team" && record.active;
+  const targetValid = !targetResult.error && target?.group_type === "coach_team" && target.active;
+  if (!recordValid || !targetValid) {
+    return invalid("Choose a Coach team.");
   }
 
   // The current CLI omits this DEV RPC from generated types; keep the narrow cast at its sole call site.
@@ -158,5 +269,62 @@ export async function assignCoach(formData: FormData): Promise<ActionResult> {
 
   revalidatePath(`/people/${recordId}`);
   revalidatePath("/people");
+  return { success: true };
+}
+
+export async function assignCoachToCampusLead(formData: FormData): Promise<ActionResult> {
+  const campusLeadGroupId = formValue(formData, "recordId");
+  const coachGroupId = formValue(formData, "targetGroupId");
+  if (!campusLeadGroupId || !coachGroupId) return invalid("Choose a Coach team.");
+  await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${campusLeadGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  if (!await activeTeam(supabase, campusLeadGroupId, "campus_lead_team") || !await activeTeam(supabase, coachGroupId, "coach_team")) return invalid("Choose a Coach team.");
+  const { error } = await (supabase as unknown as CampusLeadCoachRpcClient).rpc("assign_campus_lead_coach", { target_campus_lead_group_id: campusLeadGroupId, target_coach_group_id: coachGroupId });
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath(`/people/${coachGroupId}`); revalidatePath("/people"); return { success: true };
+}
+
+export async function unassignCoachFromCampusLead(formData: FormData): Promise<ActionResult> {
+  const campusLeadGroupId = formValue(formData, "campusLeadGroupId");
+  const coachGroupId = formValue(formData, "coachGroupId");
+  if (!campusLeadGroupId || !coachGroupId) return invalid("Choose an assigned Coach team.");
+  const supabase = await authorize(campusLeadGroupId);
+  const { error } = await (supabase as unknown as OperationalUnassignRpcClient).rpc("unassign_campus_lead_coach", { target_campus_lead_group_id: campusLeadGroupId, target_coach_group_id: coachGroupId });
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath(`/people/${coachGroupId}`); revalidatePath("/people");
+  return { success: true };
+}
+
+export async function assignCounselorToCoach(formData: FormData): Promise<ActionResult> {
+  const coachGroupId = formValue(formData, "recordId");
+  const counselorGroupId = formValue(formData, "targetGroupId");
+  if (!coachGroupId || !counselorGroupId) return invalid("Choose a Counselor team.");
+
+  const supabase = await authorize(coachGroupId);
+  if (!await activeTeam(supabase, coachGroupId, "coach_team") || !await activeTeam(supabase, counselorGroupId, "counselor_team")) {
+    return invalid("Choose a Counselor team.");
+  }
+
+  const supervisionClient = supabase as unknown as SupervisionRpcClient;
+  const { error } = await supervisionClient.rpc("assign_counselor_coach_supervision", {
+    target_counselor_group_id: counselorGroupId,
+    target_coach_group_id: coachGroupId,
+  });
+  if (error) return safeMutationError();
+
+  revalidatePath(`/people/${coachGroupId}`);
+  revalidatePath(`/people/${counselorGroupId}`);
+  revalidatePath("/people");
+  return { success: true };
+}
+
+export async function unassignCounselorFromCoach(formData: FormData): Promise<ActionResult> {
+  const coachGroupId = formValue(formData, "coachGroupId");
+  const counselorGroupId = formValue(formData, "counselorGroupId");
+  if (!coachGroupId || !counselorGroupId) return invalid("Choose an assigned Counselor team.");
+  const supabase = await authorize(coachGroupId);
+  const { error } = await (supabase as unknown as OperationalUnassignRpcClient).rpc("unassign_counselor_coach_supervision", { target_counselor_group_id: counselorGroupId });
+  if (error) return safeMutationError();
+  revalidatePath(`/people/${coachGroupId}`); revalidatePath(`/people/${counselorGroupId}`); revalidatePath("/people");
   return { success: true };
 }

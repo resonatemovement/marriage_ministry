@@ -30,8 +30,8 @@ async function main() {
     const second = await rpc.rpc("create_profile_photo_handoff", {}); if (second.error || !second.data) throw new Error("Unable to create replacement handoff");
     const { data: firstRecord } = await admin.from("profile_photo_handoffs").select("completed_at").eq("token_hash", hash(first.data.token)).single();
     if (!firstRecord?.completed_at) throw new Error("Previous handoff was not invalidated");
-    const path = `profiles/${ids[0]}/avatar.webp`;
-    const { error: uploadError } = await admin.storage.from("profile-photos").upload(path, new Blob(["RIFF"], { type: "image/webp" }), { contentType: "image/webp", upsert: true }); if (uploadError) throw new Error(uploadError.message);
+    const path = `profiles/${ids[0]}/avatar.avif`;
+    const { error: uploadError } = await admin.storage.from("profile-photos").upload(path, new Blob(["AVIF"], { type: "image/avif" }), { contentType: "image/avif", upsert: true }); if (uploadError) throw new Error(uploadError.message);
     const complete = await (admin as unknown as { rpc(name: "complete_profile_photo_handoff", args: { target_token_hash: string }): Promise<{ error: { message: string } | null }> }).rpc("complete_profile_photo_handoff", { target_token_hash: hash(second.data.token) });
     if (complete.error) throw new Error(complete.error.message);
     const { data: profileA } = await admin.from("profiles").select("photo_path").eq("id", ids[0]).single(); const { data: profileB } = await admin.from("profiles").select("photo_path").eq("id", ids[1]).single();
@@ -41,7 +41,7 @@ async function main() {
     const expired = await (admin as unknown as { rpc(name: "complete_profile_photo_handoff", args: { target_token_hash: string }): Promise<{ error: { message: string } | null }> }).rpc("complete_profile_photo_handoff", { target_token_hash: hash(expiredToken) }); if (!expired.error) throw new Error("Expired handoff was accepted");
     console.log("DEV profile-photo handoff contract verified.");
   } finally {
-    for (const id of ids) { await admin.storage.from("profile-photos").remove([`profiles/${id}/avatar.webp`]); await admin.from("profiles").delete().eq("id", id); await admin.auth.admin.deleteUser(id); }
+    for (const id of ids) { await admin.storage.from("profile-photos").remove([`profiles/${id}/avatar.avif`]); await admin.from("profiles").delete().eq("id", id); await admin.auth.admin.deleteUser(id); }
   }
 }
 await main();

@@ -59,6 +59,18 @@ export async function createAuthIdentityAndSendActivation(email: string): Promis
   return { success: true, authUserId: created.data.user.id };
 }
 
+export async function sendActivationForExistingAuthIdentity(email: string): Promise<{ success: true } | { success: false; category: InvitationDeliveryFailure }> {
+  let redirectTo: string;
+  try {
+    redirectTo = activationRedirectUrl();
+  } catch {
+    return { success: false, category: "redirect_configuration" };
+  }
+  const { url, publishableKey } = getSupabaseEnvironment();
+  const delivery = await createClient(url, publishableKey, { auth: { autoRefreshToken: false, persistSession: false } }).auth.resetPasswordForEmail(email, { redirectTo });
+  return delivery.error ? { success: false, category: deliveryCategory(delivery.error.message) } : { success: true };
+}
+
 export async function deleteAuthIdentity(authUserId: string) {
   const { url } = getSupabaseEnvironment();
   const admin = createClient(url, requiredSecretKey(), { auth: { autoRefreshToken: false, persistSession: false } });

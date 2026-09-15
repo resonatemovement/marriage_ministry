@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { establishPassword } from "./create-password-actions";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+
+import { enterOnboardingAfterPassword } from "./create-password-actions";
+import { passwordError } from "./password-validation";
 
 export function CreatePasswordForm() {
   const router = useRouter();
@@ -14,9 +17,16 @@ export function CreatePasswordForm() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPending(true);
     setError("");
-    const result = await establishPassword(password, confirmation);
+    const validation = passwordError(password, confirmation);
+    if (validation) return setError(validation);
+    setPending(true);
+    const { error: passwordUpdateError } = await createBrowserSupabaseClient().auth.updateUser({ password });
+    if (passwordUpdateError) {
+      setPending(false);
+      return setError("We could not save your password. Please try again.");
+    }
+    const result = await enterOnboardingAfterPassword();
     setPending(false);
     if (!result.success) return setError(result.error);
     router.replace("/onboarding");

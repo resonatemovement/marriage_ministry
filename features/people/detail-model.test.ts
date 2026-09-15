@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createDetailMember, createPendingDetailMember, groupOperationalStatuses, groupRecordType, standaloneProfileRecordType } from "./detail-model";
+import { accountAccessState, createDetailMember, createPendingDetailMember, groupOperationalStatuses, groupRecordType, operationalStatusLabel, standaloneProfileRecordType } from "./detail-model";
 
 const activeMember = createDetailMember({
   id: "active-member",
@@ -13,9 +13,48 @@ const activeMember = createDetailMember({
 
 describe("People detail member presentation", () => {
   it("carries persisted contact and photo data for completed members", () => {
-    const member = createDetailMember({ id: "active", firstName: "Jordan", lastName: "Smith", email: "jordan@example.com", phone: "+15551234567", photoUrl: "https://signed.example/avatar.webp", roles: ["author"], status: "active" });
+    const member = createDetailMember({ id: "active", firstName: "Jordan", lastName: "Smith", email: "jordan@example.com", phone: "+15551234567", photoUrl: "https://signed.example/avatar.webp", roles: ["author"], status: "active", onboardingCompletedAt: "2026-01-01T00:00:00.000Z" });
     expect(member.phone).toBe("+15551234567");
     expect(member.photoUrl).toBe("https://signed.example/avatar.webp");
+  });
+
+  it("does not claim onboarding is complete without the persisted completion timestamp", () => {
+    const member = createDetailMember({ id: "active", firstName: "Jordan", lastName: "Smith", email: "jordan@example.com", roles: ["couple"], status: "active" });
+    expect(member.onboardingComplete).toBe(false);
+    expect(member.onboardingStatus).toBe("Onboarding Incomplete");
+  });
+
+  it("keeps an active profile with a stale completion timestamp recoverable when its photo is missing", () => {
+    const member = createDetailMember({
+      id: "active-missing-photo",
+      firstName: "Jordan",
+      lastName: "Smith",
+      email: "jordan@example.com",
+      phone: "+15551234567",
+      campusId: "campus",
+      roles: ["couple"],
+      status: "active",
+      onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(member.onboardingComplete).toBe(false);
+    expect(member.onboardingMissing).toEqual(["profile photo"]);
+  });
+
+  it("derives account access independently from onboarding completeness", () => {
+    expect(accountAccessState("password_required")).toBe("setup_incomplete");
+    expect(accountAccessState("onboarding")).toBe("active_account");
+    const setupIncomplete = createDetailMember({ id: "setup", firstName: "Jordan", lastName: "Smith", email: "jordan@example.com", phone: "+15551234567", campusId: "campus", roles: ["couple"], status: "password_required" });
+    const activeOnboarding = createDetailMember({ id: "active", firstName: "Taylor", lastName: "Smith", email: "taylor@example.com", phone: "+15551234568", campusId: "campus", roles: ["couple"], status: "onboarding" });
+    expect(setupIncomplete).toMatchObject({ accountAccessState: "setup_incomplete", onboardingComplete: false, onboardingStatus: "Onboarding Not Started" });
+    expect(activeOnboarding).toMatchObject({ accountAccessState: "active_account", onboardingComplete: false, onboardingStatus: "Onboarding Incomplete" });
+  });
+
+  it("keeps Couple partners independently addressable by account state", () => {
+    const active = createDetailMember({ id: "partner-one", firstName: "One", lastName: "Partner", email: "one@example.com", roles: ["couple"], status: "onboarding", invitationId: "invite-one" });
+    const setup = createDetailMember({ id: "partner-two", firstName: "Two", lastName: "Partner", email: "two@example.com", roles: ["couple"], status: "password_required", invitationId: "invite-two" });
+    expect(active.accountAccessState).toBe("active_account");
+    expect(setup).toMatchObject({ accountAccessState: "setup_incomplete", invitationId: "invite-two" });
   });
 
   it("keeps missing contact and photo values neutral", () => {
@@ -41,6 +80,9 @@ describe("People detail member presentation", () => {
 });
 
 describe("People detail operational statuses", () => {
+  it("uses Active as the shared ready-state presentation label", () => {
+    expect(operationalStatusLabel([])).toBe("Active");
+  });
   it("keeps couple readiness and counselor assignment separate", () => {
     const invitedPartner = createDetailMember({
       id: "invited-partner",
@@ -93,7 +135,11 @@ describe("People detail record resolution", () => {
     expect(groupRecordType("couple")).toBe("couples");
     expect(groupRecordType("coach_team")).toBe("coaches");
     expect(groupRecordType("counselor_team")).toBe("counselors");
+    expect(groupRecordType("campus_lead_team")).toBe("campus_leads");
     expect(standaloneProfileRecordType(["super_admin", "coach"])).toBe("admins");
     expect(standaloneProfileRecordType(["author"])).toBe("authors");
+    expect(standaloneProfileRecordType(["campus_lead"])).toBeNull();
+    expect(standaloneProfileRecordType(["campus_lead", "author"])).toBe("authors");
+    expect(standaloneProfileRecordType(["unrelated"])).toBeNull();
   });
 });
