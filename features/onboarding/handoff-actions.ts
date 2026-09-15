@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabaseEnvironment } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { handoffMessage, type PhotoHandoffState } from "./handoff-state";
+import { storeProfilePhoto } from "./profile-photo-server";
 
 type Handoff = { id: string; profile_id: string; expires_at: string; completed_at: string | null };
 function hash(token: string) { return createHash("sha256").update(token).digest("hex"); }
@@ -20,11 +21,11 @@ async function completePhoneUpload(token: string) {
   return error ? { success: false as const, error: "We could not save the photo. Please try again." } : { success: true as const };
 }
 export async function uploadPhonePhoto(token: string, image: Blob) {
-  if (image.type !== "image/webp" || image.size === 0 || image.size > 5 * 1024 * 1024) return { success: false as const, error: "The photo could not be uploaded. Please choose another image." };
+  if (image.size === 0) return { success: false as const, error: "Choose a profile photo before uploading." };
   const handoff = await valid(token);
   if (!handoff) return { success: false as const, error: handoffMessage(await state(token)) };
-  const { error } = await admin().storage.from("profile-photos").upload(`profiles/${handoff.profile_id}/avatar.webp`, image, { contentType: "image/webp", upsert: true });
-  if (error) return { success: false as const, error: "The photo could not be uploaded. Please try again." };
+  const stored = await storeProfilePhoto(handoff.profile_id, image);
+  if (!stored.success) return { success: false as const, error: stored.error };
   return completePhoneUpload(token);
 }
 export async function photoHandoffStatus(token: string) { return { state: await state(token) }; }

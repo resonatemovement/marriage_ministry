@@ -9,9 +9,10 @@ import {
   authIdentityMatchesInvitation,
   createAuthIdentityAndSendActivation,
   deleteAuthIdentity,
+  sendActivationForExistingAuthIdentity,
   type InvitationDeliveryFailure,
 } from "./invitation-delivery";
-import { validateInvitation } from "./invitation-validation";
+import { invitationPayloadFromForm, validateInvitation } from "./invitation-validation";
 
 type Result = { success: true; names: string[]; delivery: "complete" | "partial" } | { error: string };
 type DeliveryRpcClient = {
@@ -19,6 +20,7 @@ type DeliveryRpcClient = {
   rpc(name: "record_invitation_auth_reset", args: { target_invitation_id: string }): Promise<{ error: { message: string } | null }>;
   rpc(name: "record_invitation_delivery", args: { target_invitation_id: string; target_auth_user_id: string | null; succeeded: boolean; failure_category: string | null }): Promise<{ error: { message: string } | null }>;
   rpc(name: "record_invitation_resend", args: { target_invitation_id: string }): Promise<{ error: { message: string } | null }>;
+  rpc(name: "record_invitation_setup_resend", args: { target_invitation_id: string }): Promise<{ error: { message: string } | null }>;
 };
 type InvitationRpcClient = DeliveryRpcClient & {
   rpc(name: "create_invitations", args: { payload: Record<string, unknown> }): Promise<{ data: { invitation_ids: string[]; group_id: string | null } | null; error: { message: string } | null }>;
@@ -109,16 +111,27 @@ export async function resendPeopleInvitation(invitationId: string): Promise<{ su
   return { success: true, name: `${invitation.first_name} ${invitation.last_name}`.trim() || invitation.email };
 }
 
+export async function resendAccountSetup(invitationId: string): Promise<{ success: true; name: string } | { error: string }> {
+  await requireWorkspace("admin", "/people");
+  const client = (await createServerSupabaseClient()) as unknown as ResendClient;
+  const { data: invitation, error } = await client.from("invitations").select("id,email,first_name,last_name,status,group_id,campus_id,intended_role,auth_user_id").eq("id", invitationId).maybeSingle();
+  if (error || !invitation || invitation.status !== "accepted" || !invitation.auth_user_id) return { error: "Account setup is not available for this member." };
+  const { data: profile, error: profileError } = await client.from("profiles").select("status,onboarding_completed_at,phone,photo_path,email,campus_id").eq("id", invitation.auth_user_id).maybeSingle();
+  if (profileError || !profile || profile.status !== "password_required" || profile.email?.toLowerCase() !== invitation.email) return { error: "This member has already established an account or requires password recovery." };
+  if (!await authIdentityMatchesInvitation(invitation.auth_user_id, invitation.email)) return { error: "The invitation identity does not match this member. Contact support." };
+  const delivery = await sendActivationForExistingAuthIdentity(invitation.email);
+  if (!delivery.success) return { error: deliveryError(delivery.category) };
+  const resend = await client.rpc("record_invitation_setup_resend", { target_invitation_id: invitation.id });
+  if (resend.error) return { error: "The setup email was sent, but its delivery record could not be updated." };
+  revalidatePath("/people");
+  return { success: true, name: `${invitation.first_name} ${invitation.last_name}`.trim() || invitation.email };
+}
+
 export async function createPeopleInvitations(formData: FormData): Promise<Result> {
   const identity = await requireWorkspace("admin", "/people");
-  const role = String(formData.get("role") ?? "");
-  const campusId = String(formData.get("campusId") ?? "").trim();
-  const grouped = ["coach", "counselor"].includes(role);
-  const invitees = Array.from({ length: grouped ? 2 : 1 }, (_, index) => ({
-    first_name: String(formData.get(`firstName${index}`) ?? "").trim(), last_name: String(formData.get(`lastName${index}`) ?? "").trim(), email: String(formData.get(`email${index}`) ?? "").trim().toLowerCase(),
-  }));
+  const { role, campusId, invitees } = invitationPayloadFromForm(formData);
   if (role === "super_admin" && !identity.roles.includes("super_admin")) return { error: "Only a Super Admin may invite another Super Admin." };
-  const validation = validateInvitation(role, campusId, invitees.map((item) => ({ firstName: item.first_name, lastName: item.last_name, email: item.email })));
+  const validation = validateInvitation(role, campusId, invitees.map((item) => ({ firstName: item.first_name, lastName: item.last_name, email: item.email, phone: item.phone })));
   if (Object.keys(validation).length) return { error: Object.values(validation)[0]! };
   const client = (await createServerSupabaseClient()) as unknown as InvitationRpcClient;
   const { data, error } = await client.rpc("create_invitations", { payload: { role, campus_id: campusId, invitees } });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
-import { coupleDisplayName, groupedRoleNames, matchesPeopleFilter, normalizePeopleFilter, type PeopleRecord } from "./types";
+import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesPeopleFilter, normalizePeopleFilter, type PeopleRecord } from "./types";
 
 describe("People query selections", () => {
   it("uses the profile-role foreign key rather than an ambiguous embedded relationship", () => {
@@ -14,18 +14,20 @@ describe("People query selections", () => {
 
 describe("People filters", () => {
   const records: PeopleRecord[] = [
-    { id: "couple", name: "Couple", type: "couples", roles: [], campus: null, counselingStatus: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "couple" },
-    { id: "coach", name: "Coach", type: "coaches", roles: [], campus: null, counselingStatus: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "coach" },
-    { id: "counselor", name: "Counselor", type: "counselors", roles: [], campus: null, counselingStatus: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "counselor" },
-    { id: "admin", name: "Admin", type: "admins", roles: ["admin"], campus: null, counselingStatus: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "admin" },
-    { id: "author", name: "Author", type: "authors", roles: ["author"], campus: null, counselingStatus: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "author" },
+    { id: "couple", name: "Couple", type: "couples", roles: [], campus: null, status: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "couple" },
+    { id: "coach", name: "Coach", type: "coaches", roles: [], campus: null, status: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "coach" },
+    { id: "counselor", name: "Counselor", type: "counselors", roles: [], campus: null, status: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "counselor" },
+    { id: "campus-lead", name: "Campus Lead Team", type: "campus_leads", roles: ["campus_lead"], campus: null, status: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "campus lead" },
+    { id: "admin", name: "Admin", type: "admins", roles: ["admin"], campus: null, status: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "admin" },
+    { id: "author", name: "Author", type: "authors", roles: ["author"], campus: null, status: null, assignedTo: null, updatedAt: "2026-01-01", searchText: "author" },
   ];
 
   it.each([
-    ["all", ["couple", "coach", "counselor", "admin", "author"]],
+    ["all", ["couple", "coach", "counselor", "campus-lead", "admin", "author"]],
     ["couples", ["couple"]],
     ["coaches", ["coach"]],
     ["counselors", ["counselor"]],
+    ["campus_leads", ["campus-lead"]],
     ["admins", ["admin"]],
     ["authors", ["author"]],
   ] as const)("filters %s by canonical record type", (filter, expectedIds) => {
@@ -64,6 +66,15 @@ describe("Couple display names", () => {
   it("falls back when no usable names exist", () => {
     expect(coupleDisplayName("Pending Couple invitation", [], [])).toBe("Pending Couple invitation");
     expect(coupleDisplayName("Walker Couple", [], [])).toBe("Walker Couple");
+  });
+
+  it("keeps canonical members primary over an Intake fallback", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [{ firstName: "Current", lastName: "Partner", email: "current@example.test" }], [], "Jacob Mitchel & Janice Price")).toBe("Current Partner");
+  });
+
+  it("uses submitted Intake names only when member names are unavailable", () => {
+    const intakeName = intakeCoupleDisplayName([{ firstName: "Janice", lastName: "Price", position: "partner" }, { firstName: "Jacob", lastName: "Mitchel", position: "requester" }]);
+    expect(coupleDisplayName("Pending Couple invitation", [], [], intakeName)).toBe("Jacob Mitchel & Janice Price");
   });
 });
 

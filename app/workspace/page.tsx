@@ -8,11 +8,15 @@ import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
 import { WorkspaceShell } from "@/components/navigation/workspace-shell";
 import { dashboardMetrics } from "@/features/dashboard/data";
 import { WorkspacePlaceholder } from "@/features/workspace/workspace-placeholder";
+import { CampusLeadDashboard } from "@/features/campus-lead/dashboard";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 
 export default async function WorkspaceRoute() {
   const { identity, workspace } = await requireActiveWorkspace("/workspace");
 
+  if (workspace === "campus_lead") {
+    return <WorkspaceShell workspace="campus_lead" activeHref="/workspace" identity={identity}><CampusLeadDashboard /></WorkspaceShell>;
+  }
   if (workspace !== "admin") {
     return <WorkspacePlaceholder workspace={workspace} identity={identity} />;
   }

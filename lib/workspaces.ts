@@ -2,6 +2,7 @@ import type { AppRole } from "@/lib/counseling/domain";
 
 export const WORKSPACE_IDS = [
   "admin",
+  "campus_lead",
   "coach",
   "counselor",
   "author",
@@ -21,6 +22,7 @@ interface WorkspaceDefinition {
 
 const workspaceDefinitions: Readonly<Record<WorkspaceId, WorkspaceDefinition>> = {
   admin: { id: "admin", label: "Admin Workspace", href: WORKSPACE_HREF },
+  campus_lead: { id: "campus_lead", label: "Campus Lead Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your campus overview will appear here." },
   coach: { id: "coach", label: "Coach Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling dashboard will appear here." },
   counselor: { id: "counselor", label: "Counselor Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling dashboard will appear here." },
   author: { id: "author", label: "Author Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling content workspace will appear here." },
@@ -30,13 +32,14 @@ const workspaceDefinitions: Readonly<Record<WorkspaceId, WorkspaceDefinition>> =
 const workspaceByRole: Readonly<Record<AppRole, WorkspaceId>> = {
   super_admin: "admin",
   admin: "admin",
+  campus_lead: "campus_lead",
   coach: "coach",
   counselor: "counselor",
   couple: "couple",
   author: "author",
 };
 
-const operationalWorkspaceOrder = ["coach", "counselor", "author", "couple"] as const;
+const operationalWorkspaceOrder = ["campus_lead", "coach", "counselor", "author", "couple"] as const;
 
 export function isWorkspaceId(value: string): value is WorkspaceId {
   return WORKSPACE_IDS.includes(value as WorkspaceId);

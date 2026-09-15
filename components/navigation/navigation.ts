@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Settings,
   Users,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,10 +25,17 @@ export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly Navigati
     { label: "People & Teams", href: "/people", icon: Users },
     { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },
     { label: "Settings", href: "/settings", icon: Settings },
+    { label: "My Profile", href: "/profile", icon: UserRound },
     { label: "Content", href: "#content", icon: BookOpenText },
   ],
-  coach: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }],
-  counselor: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }],
-  author: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }],
-  couple: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }],
+  campus_lead: [
+    { label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard },
+    { label: "People & Teams", href: "/people", icon: Users },
+    { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },
+    { label: "My Profile", href: "/profile", icon: UserRound },
+  ],
+  coach: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
+  counselor: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
+  author: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
+  couple: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
 };

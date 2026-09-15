@@ -287,7 +287,8 @@ async function main() {
     await recordDelivery(adminSession, mismatch.invitation_ids[0]!, wrongUser);
     const wrongStateBefore = await accountState(admin, wrongUser);
     const mismatchResult = await accept(await signIn(url, publishableKey, `${prefix}-wrong@example.test`, password));
-    if (!mismatchResult.error?.message.toLowerCase().includes("email does not match")) throw new Error("Identity-mismatched invitation was not rejected by the acceptance RPC");
+    const mismatchMessage = mismatchResult.error?.message.toLowerCase() ?? "";
+    if (!mismatchResult.error || !["email does not match", "invitation is invalid", "invitation belongs to another account"].some((message) => mismatchMessage.includes(message))) throw new Error("Identity-mismatched invitation was not rejected by the acceptance RPC");
     if (await accountState(admin, wrongUser) !== wrongStateBefore) throw new Error("Identity-mismatched acceptance modified the wrong account");
     await assertPendingWithoutAcceptanceAudit(admin, mismatch.invitation_ids[0]!, "Identity-mismatched");
 

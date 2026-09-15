@@ -7,6 +7,7 @@ import { completeOnboarding, saveOnboardingProfile } from "./actions";
 import { ProfilePhotoField } from "./profile-photo-field";
 import { PhotoHandoff } from "./photo-handoff";
 import { formatPhoneInput } from "./phone";
+import { PhoneInput } from "./phone-input";
 import { validateOnboarding } from "./validation";
 
 type Props = { firstName: string; lastName: string; phone: string; email: string; campus: string; profileId: string; hasPhoto: boolean; photoUrl: string | null };
@@ -20,7 +21,7 @@ export function OnboardingForm({ firstName, lastName, phone, email, campus, prof
   const [photo, setPhoto] = useState({ saved: hasPhoto, url: photoUrl });
 
   function update(field: keyof typeof fields, value: string) {
-    setFields((current) => ({ ...current, [field]: field === "phone" ? formatPhoneInput(value) : value }));
+    setFields((current) => ({ ...current, [field]: value }));
     setSaved(false); setError("");
   }
 
@@ -56,7 +57,7 @@ export function OnboardingForm({ firstName, lastName, phone, email, campus, prof
       <label className="text-sm font-medium text-text-primary">Last name<input value={fields.lastName} onChange={(event) => update("lastName", event.target.value)} onBlur={persistDraft} className={fieldClass} /></label>
     </div>
     <label className="block text-sm font-medium text-text-primary">Email<input value={email} readOnly className={`${fieldClass} cursor-not-allowed bg-surface-muted text-text-muted`} /></label>
-    <label className="block text-sm font-medium text-text-primary">Phone number<input value={fields.phone} onChange={(event) => update("phone", event.target.value)} onBlur={persistDraft} inputMode="tel" autoComplete="tel" className={fieldClass} /></label>
+    <label className="block text-sm font-medium text-text-primary">Phone number<PhoneInput value={fields.phone} onChange={(value) => update("phone", value)} onBlur={persistDraft} name="phone" className={fieldClass} /></label>
     <label className="block text-sm font-medium text-text-primary">Campus<input value={campus} readOnly className={`${fieldClass} cursor-not-allowed bg-surface-muted text-text-muted`} /></label>
     <ProfilePhotoField profileId={profileId} hasPhoto={photo.saved} photoUrl={photo.url} onSaved={(url) => { setPhoto({ saved: true, url }); router.refresh(); }} />
     <PhotoHandoff profileId={profileId} onCompleted={(url) => { setPhoto({ saved: true, url }); router.refresh(); }} />

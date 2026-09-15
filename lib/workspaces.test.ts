@@ -16,6 +16,12 @@ describe("workspace resolution", () => {
     expect(availableWorkspacesForRoles(["coach"])).toMatchObject([{ id: "coach" }]);
   });
 
+  it("maps Campus Lead to only the Campus Lead Workspace", () => {
+    expect(availableWorkspacesForRoles(["campus_lead"])).toMatchObject([{ id: "campus_lead", label: "Campus Lead Workspace" }]);
+    expect(defaultWorkspaceForRoles(["campus_lead"])).toMatchObject({ id: "campus_lead" });
+    expect(defaultWorkspaceForRoles(["campus_lead", "admin"])).toMatchObject({ id: "admin" });
+  });
+
   it("supports multiple roles without duplicate workspaces", () => {
     expect(availableWorkspacesForRoles(["coach", "admin", "admin"])).toMatchObject([
       { id: "admin" },

@@ -1,4 +1,4 @@
-type OnboardingFields = {
+export type OnboardingFields = {
   firstName: string;
   lastName: string;
   phone: string;
@@ -19,3 +19,5 @@ export function validateOnboarding(fields: OnboardingFields): OnboardingErrors {
 
   return errors;
 }
+
+export { getOnboardingRequirements } from "./requirements";

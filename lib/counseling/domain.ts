@@ -1,6 +1,7 @@
 const APP_ROLES = [
   "super_admin",
   "admin",
+  "campus_lead",
   "coach",
   "counselor",
   "couple",
@@ -23,6 +24,12 @@ export const CASE_STATUSES = [
 ] as const;
 
 export type CaseStatus = (typeof CASE_STATUSES)[number];
+
+export function counselingStatusLabel(status: CaseStatus | string | null, hasActiveCounselor: boolean, otherwiseReady: boolean) {
+  if (!hasActiveCounselor && otherwiseReady) return "Awaiting Counselor Assignment";
+  if (!status) return null;
+  return ({ requested: "Requested", assessment: "Assessment", interviewed: "Interviewed", matched: "Matched", active: "In Progress", pending_final: "Final Review", finished: "Completed", referred: "Referred", inactive: "Inactive" } as Record<string, string>)[status] ?? status;
+}
 
 const ADMIN_ROLES = new Set<AppRole>(["super_admin", "admin"]);
 const MATCHABLE_STATUSES = new Set<CaseStatus>([
@@ -66,4 +73,8 @@ export function statusAfterAssignment(status: CaseStatus): CaseStatus {
 
 export function canManageAssignments(roles: readonly AppRole[]) {
   return hasAdministrativeAccess(roles);
+}
+
+export function canActAsCoach(roles: readonly AppRole[]) {
+  return roles.includes("coach");
 }
