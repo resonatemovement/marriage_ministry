@@ -6,6 +6,30 @@ export const INTAKE_STATUS_LABEL: Readonly<Record<IntakeRequestStatus, string>> 
 };
 
 export function isIntakeRequestStatus(value: string): value is IntakeRequestStatus { return INTAKE_REQUEST_STATUSES.includes(value as IntakeRequestStatus); }
+export type IntakeRequestView = "open" | "added" | "all";
+export function isIntakeRequestView(value: string): value is IntakeRequestView { return value === "open" || value === "added" || value === "all"; }
+const FILTERABLE_INTAKE_STATUSES = ["ready_for_review", "under_review", "invited", "closed"] as const;
+export function intakeStatusesForView(view: IntakeRequestView) {
+  if (view === "open") return FILTERABLE_INTAKE_STATUSES.slice(0, 2);
+  if (view === "added") return FILTERABLE_INTAKE_STATUSES.slice(2, 3);
+  return FILTERABLE_INTAKE_STATUSES;
+}
+export function isIntakeStatusAvailableInView(status: string, view: IntakeRequestView) {
+  return intakeStatusesForView(view).some((value) => value === status);
+}
+export function isIntakeStatusFilterVisible(view: IntakeRequestView) { return intakeStatusesForView(view).length > 1; }
+export function intakeViewHref(view: IntakeRequestView, search?: string, status?: string) {
+  const params = new URLSearchParams();
+  if (search) params.set("q", search);
+  if (status && isIntakeStatusAvailableInView(status, view)) params.set("status", status);
+  params.set("view", view);
+  return `/intake-requests?${params}`;
+}
+export function belongsToIntakeRequestView(request: { status: IntakeRequestStatus; hasInvitedCouple: boolean }, view: IntakeRequestView) {
+  if (view === "added") return request.status === "invited" || request.hasInvitedCouple;
+  if (view === "open") return !request.hasInvitedCouple && (request.status === "ready_for_review" || request.status === "under_review");
+  return true;
+}
 export function coupleDisplayName(people: readonly { personPosition: "requester" | "partner"; firstName: string; lastName: string }[]) {
   const name = (position: "requester" | "partner") => { const person = people.find((item) => item.personPosition === position); return person ? `${person.firstName} ${person.lastName}`.trim() : ""; };
   return [name("requester"), name("partner")].filter(Boolean).join(" & ") || "Couple request";
