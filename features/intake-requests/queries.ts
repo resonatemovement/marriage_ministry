@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-import { isIntakeDeleteEligible, isIntakeRequestStatus, type IntakeRequestStatus } from "./model";
+import { belongsToIntakeRequestView, isIntakeDeleteEligible, isIntakeRequestStatus, isIntakeRequestView, type IntakeRequestStatus, type IntakeRequestView } from "./model";
 import { intakeDetailSelection } from "./selections";
 import type { IntakePerson, IntakeRequestDetail, IntakeRequestSummary, IntakeStatusHistory } from "./types";
 
@@ -17,15 +17,16 @@ function strings(value: unknown) { return Array.isArray(value) ? value.filter((i
 function string(value: unknown) { return typeof value === "string" ? value : ""; }
 function status(value: unknown): IntakeRequestStatus { return isIntakeRequestStatus(string(value)) ? string(value) as IntakeRequestStatus : "ready_for_review"; }
 function person(value: unknown): IntakePerson { const row = object(value); return { id: string(row.id), personPosition: row.person_position === "partner" ? "partner" : "requester", firstName: string(row.first_name), lastName: string(row.last_name), email: string(row.email), phone: string(row.phone), city: string(row.city), resonateConnections: strings(row.resonate_connections) }; }
-function summary(value: unknown): IntakeRequestSummary { const row = object(value); const campus = object(row.campuses); return { id: string(row.id), status: status(row.status), relationshipStatus: row.relationship_status === "engaged" || row.relationship_status === "married" ? row.relationship_status : "pre_engaged", campusName: string(campus.name) || null, requestedSupport: strings(row.requested_support), submittedAt: string(row.submitted_at), people: rows(row.intake_request_people).map(person) }; }
+function summary(value: unknown): IntakeRequestSummary { const row = object(value); const campus = object(row.campuses); return { id: string(row.id), status: status(row.status), hasInvitedCouple: Boolean(row.invited_group_id), relationshipStatus: row.relationship_status === "engaged" || row.relationship_status === "married" ? row.relationship_status : "pre_engaged", campusName: string(campus.name) || null, requestedSupport: strings(row.requested_support), submittedAt: string(row.submitted_at), people: rows(row.intake_request_people).map(person) }; }
 
-export async function getIntakeRequestQueue({ search, status: requestedStatus }: { search?: string; status?: string } = {}) {
+export async function getIntakeRequestQueue({ search, status: requestedStatus, view: requestedView }: { search?: string; status?: string; view?: string } = {}) {
+  const view: IntakeRequestView = isIntakeRequestView(requestedView ?? "") ? requestedView as IntakeRequestView : "open";
   const supabase = await createServerSupabaseClient(); const client = supabase as unknown as RawClient;
-  let request = query(client, "intake_requests", "id,status,relationship_status,requested_support,submitted_at,campuses(name),intake_request_people(id,person_position,first_name,last_name,email,phone,city,resonate_connections)").order("submitted_at", { ascending: false });
+  let request = query(client, "intake_requests", "id,status,invited_group_id,relationship_status,requested_support,submitted_at,campuses(name),intake_request_people(id,person_position,first_name,last_name,email,phone,city,resonate_connections)").order("submitted_at", { ascending: false });
   if (requestedStatus && isIntakeRequestStatus(requestedStatus)) request = request.eq("status", requestedStatus);
   const result = await request as unknown as QueryResult;
   if (result.error) return { requests: [] as IntakeRequestSummary[], error: "Unable to load Intake Requests." };
-  const requests = rows(result.data).map(summary).filter((item) => !search || item.people.some((candidate) => `${candidate.firstName} ${candidate.lastName} ${candidate.email}`.toLowerCase().includes(search.toLowerCase())));
+  const requests = rows(result.data).map(summary).filter((item) => belongsToIntakeRequestView(item, view) && (!search || item.people.some((candidate) => `${candidate.firstName} ${candidate.lastName} ${candidate.email}`.toLowerCase().includes(search.toLowerCase()))));
   return { requests, error: null };
 }
 
