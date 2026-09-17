@@ -24,6 +24,6 @@ describe("Counselor assigned couples", () => {
     expect(markup).toContain("Jordan &amp; Casey");
     expect(markup).toContain("Fremont · matched");
     expect(markup).toContain("No eligible couples available to assign.");
-    expect(markup).toContain("Unassign");
+    expect(markup).toContain("More actions for Jordan &amp; Casey");
   });
 });

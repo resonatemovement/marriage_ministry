@@ -114,6 +114,12 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+button:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  filter: brightness(0.94);
+}
+
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]),
 a[href] {

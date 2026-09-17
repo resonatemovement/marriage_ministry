@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseEnvironment } from "../lib/supabase/env.ts";
+import { cleanupCampusLeadCounselorVerifierArtifacts } from "./campus-lead-counselor-verifier-cleanup.ts";
 
 const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 const PREFIXES = ["verify-campus-lead-", "verify-campus-lead-coach-campus-", "verify-cross-campus-counseling-"] as const;
@@ -16,6 +17,7 @@ async function main() {
   const { url } = getSupabaseEnvironment();
   if (new URL(url).hostname !== `${DEV_PROJECT_REF}.supabase.co`) throw new Error("Verifier artifact cleanup refused outside approved DEV.");
   const service = createClient(url, required("SUPABASE_SECRET_KEY"), { auth: { autoRefreshToken: false, persistSession: false } });
+  console.log("verify-campus-lead-counselor- targets:", await cleanupCampusLeadCounselorVerifierArtifacts(service));
   const relationshipCleanup = await (service as unknown as { rpc(name: "cleanup_verifier_relationship_artifacts"): Promise<{ data: Record<string, number> | null; error: { message: string } | null }> }).rpc("cleanup_verifier_relationship_artifacts");
   fail(relationshipCleanup.error, "Clean verifier-owned protected relationships");
   console.log("Protected relationship cleanup:", relationshipCleanup.data ?? {});

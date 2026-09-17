@@ -16,6 +16,7 @@
 
 - Use existing shadcn primitives for standardized controls. Do not introduce native `<select>` controls where shadcn Select exists.
 - Preserve the current Resonate visual system and avoid unrelated redesign during functional work.
+- Button/action controls should avoid decorative outlines or rings; keyboard focus must remain visible through a non-outline state. This does not broadly change form-field focus styling.
 - Accessible labels, focus states, keyboard behavior, and field-level error states are required.
 - Numeric fields must follow project-wide numeric input conventions when introduced. Use AVIF by default for application image assets unless compatibility requires another format.
 

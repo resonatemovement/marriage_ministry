@@ -2,7 +2,7 @@ import type { PeopleDetail } from "./detail-model";
 import { getOnboardingRequirements } from "@/features/onboarding/requirements";
 
 export type TeamType = "coach" | "counselor" | "campus_lead";
-export type PeopleDetailAction = "edit" | "assign-team" | "reassign-team" | "unassign-team" | "assign-coach" | "reassign-coach" | "assign-counselor" | "assign-campus-lead-coach";
+export type PeopleDetailAction = "edit" | "assign-team" | "reassign-team" | "unassign-team" | "assign-coach" | "reassign-coach" | "assign-counselor" | "assign-campus-lead" | "assign-campus-lead-coach" | "assign-campus-lead-counselor";
 
 export interface TeamOption {
   id: string;
@@ -29,10 +29,14 @@ export interface PeopleDetailActionContext {
   coachTeams: TeamOption[];
   eligibleCounselingTeams: TeamOption[];
   campusLeadCoachTeams: TeamOption[];
+  campusLeadCounselorTeams: TeamOption[];
+  counselorCampusLeadTeams: TeamOption[];
   currentCounselorTeam: TeamOption | null;
   currentCoachTeam: TeamOption | null;
   currentCounselorTeams: TeamOption[];
   currentCampusLeadCoaches: TeamOption[];
+  currentCampusLeadCounselors: TeamOption[];
+  currentCampusLeadTeam: TeamOption | null;
   currentCoupleTeam: TeamOption | null;
   currentCoupleAssignmentType: TeamType | null;
   coupleCampusId: string | null;
@@ -74,10 +78,15 @@ export function availablePeopleDetailActions(detail: PeopleDetail, context: Peop
   if (context.mode === "campus_lead") return detail.kind === "group" && detail.type === "couples" && context.coupleAssignmentReady ? [context.currentCoupleTeam ? "reassign-team" : "assign-team"] : [];
   if (detail.kind === "profile") return ["edit"];
   if (detail.type === "coaches") return ["edit", "assign-counselor"];
-  if (detail.type === "campus_leads") return ["edit", "assign-campus-lead-coach"];
+  if (detail.type === "campus_leads") return ["edit", "assign-campus-lead-coach", "assign-campus-lead-counselor"];
   if (detail.members.some((member) => member.pending)) return ["edit"];
   if (detail.type === "couples") return ["edit", ...(context.coupleAssignmentReady ? [context.currentCoupleTeam ? "reassign-team" as const : "assign-team" as const] : [])];
-  return ["edit", context.currentCoachTeam ? "reassign-coach" : "assign-coach"];
+  if (detail.type === "counselors") return ["edit", context.currentCoachTeam ? "reassign-coach" : "assign-coach", ...(context.currentCampusLeadTeam ? [] : ["assign-campus-lead" as const])];
+  return ["edit", "assign-coach"];
+}
+
+export function filterPeopleDetailActions(actions: PeopleDetailAction[], allowedActions?: PeopleDetailAction[]) {
+  return allowedActions ? actions.filter((action) => allowedActions.includes(action)) : actions;
 }
 
 export function actionLabel(action: PeopleDetailAction) {
@@ -89,7 +98,9 @@ export function actionLabel(action: PeopleDetailAction) {
     "assign-coach": "Assign Coach",
     "reassign-coach": "Reassign Coach",
     "assign-counselor": "Assign Counselor",
+    "assign-campus-lead": "Assign Campus Lead",
     "assign-campus-lead-coach": "Assign Coach",
+    "assign-campus-lead-counselor": "Assign Counselor",
   }[action];
 }
 
@@ -111,8 +122,14 @@ export function counselingTeamsEmptyMessage() {
   return "No eligible counseling teams are currently available.";
 }
 
-export function eligibleCampusLeadCoachTeams(coachTeams: TeamOption[], campusId: string | null) {
-  return coachTeams.filter((team) => team.active !== false && team.campusId === campusId);
+export function eligibleCampusLeadCoachTeams(coachTeams: TeamOption[], campusId: string | null, assignedCoachIds: readonly string[] = []) {
+  return coachTeams.filter((team) => team.active !== false && team.campusId === campusId && !assignedCoachIds.includes(team.id));
+}
+export function eligibleCampusLeadCounselorTeams(counselorTeams: TeamOption[], campusId: string | null, assignedCounselorIds: readonly string[]) {
+  return counselorTeams.filter((team) => team.active !== false && team.campusId === campusId && !assignedCounselorIds.includes(team.id));
+}
+export function eligibleCounselorCampusLeadTeams(campusLeadTeams: TeamOption[], campusId: string | null) {
+  return campusLeadTeams.filter((team) => team.active !== false && team.campusId === campusId);
 }
 
 export function campusLeadCoachEmptyMessage(campus: string | null) {
@@ -122,6 +139,10 @@ export function campusLeadCoachEmptyMessage(campus: string | null) {
 export function campusLeadCoachAssignmentUnavailable(coachTeams: TeamOption[]) {
   return coachTeams.length === 0;
 }
+export function campusLeadCounselorEmptyMessage(campus: string | null) { return `No eligible counselors are available at the ${campus ?? "assigned"} campus.`; }
+export function campusLeadCounselorAssignmentUnavailable(counselorTeams: TeamOption[]) { return counselorTeams.length === 0; }
+export function counselorCampusLeadEmptyMessage(campus: string | null) { return `No eligible Campus Lead teams are available at the ${campus ?? "assigned"} campus.`; }
+export function counselorCampusLeadAssignmentUnavailable(campusLeadTeams: TeamOption[]) { return campusLeadTeams.length === 0; }
 
 export function teamOptionLabel(team: TeamOption, includeType = false) {
   const type = team.type === "coach" ? "Coach" : team.type === "counselor" ? "Counselor" : "Campus Lead";
