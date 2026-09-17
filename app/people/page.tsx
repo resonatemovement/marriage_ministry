@@ -5,6 +5,7 @@ import { normalizePeopleFilter } from "@/features/people/types";
 import { requireOneOfWorkspaces } from "@/lib/auth/session";
 import { getCampusList } from "@/features/settings/campus-queries";
 import { InvitePeopleForm } from "@/features/people/invite-people-form";
+import { peopleListHref } from "@/features/people/breadcrumbs";
 
 export default async function PeopleRoute({ searchParams }: { searchParams: Promise<{ filter?: string; q?: string }> }) {
   const params = await searchParams;
@@ -14,5 +15,5 @@ export default async function PeopleRoute({ searchParams }: { searchParams: Prom
   const result = await getPeopleRecords(filter, search);
   const isAdmin = identity.workspaces.includes("admin");
   const campuses = isAdmin ? (await getCampusList()).filter((campus) => campus.active) : [];
-  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeoplePage records={result.records} filter={filter} search={search} error={result.error} inviteAction={isAdmin ? <InvitePeopleForm campuses={campuses} isSuperAdmin={identity.roles.includes("super_admin")}/> : undefined} /></WorkspaceShell>;
+  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeoplePage records={result.records} filter={filter} search={search} returnTo={peopleListHref(params.filter ?? "", params.q ?? "")} error={result.error} inviteAction={isAdmin ? <InvitePeopleForm campuses={campuses} isSuperAdmin={identity.roles.includes("super_admin")}/> : undefined} /></WorkspaceShell>;
 }
