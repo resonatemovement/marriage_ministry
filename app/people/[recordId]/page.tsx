@@ -5,11 +5,11 @@ import { PeopleDetailPage } from "@/features/people/people-detail-page";
 import { getPeopleDetailActionContext } from "@/features/people/detail-action-queries";
 import { getPeopleDetail } from "@/features/people/detail-queries";
 import { requireOneOfWorkspaces } from "@/lib/auth/session";
-import { buildPeopleBreadcrumbs, parsePeopleTrail } from "@/features/people/breadcrumbs";
+import { buildPeopleBreadcrumbs, parsePeopleTrail, validatePeopleReturnTo } from "@/features/people/breadcrumbs";
 
-export default async function PeopleDetailRoute({ params, searchParams }: { params: Promise<{ recordId: string }>; searchParams: Promise<{ trail?: string }> }) {
+export default async function PeopleDetailRoute({ params, searchParams }: { params: Promise<{ recordId: string }>; searchParams: Promise<{ trail?: string; returnTo?: string }> }) {
   const { recordId } = await params;
-  const { trail: rawTrail } = await searchParams;
+  const { trail: rawTrail, returnTo } = await searchParams;
   const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${recordId}`);
   const detail = await getPeopleDetail(recordId);
   if (!detail) notFound();
@@ -18,5 +18,5 @@ export default async function PeopleDetailRoute({ params, searchParams }: { para
   const isAdmin = identity.workspaces.includes("admin");
   const context = isAdmin ? await getPeopleDetailActionContext(detail) : identity.workspaces.includes("campus_lead") ? await getPeopleDetailActionContext(detail, "campus_lead") : null;
 
-  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeopleDetailPage detail={detail} context={context} breadcrumbs={buildPeopleBreadcrumbs(detail, parents, trail)} trail={[...trail, recordId]} isSuperAdmin={identity.roles.includes("super_admin")} /></WorkspaceShell>;
+  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeopleDetailPage detail={detail} context={context} breadcrumbs={buildPeopleBreadcrumbs(detail, parents, trail, validatePeopleReturnTo(returnTo))} trail={[...trail, recordId]} isSuperAdmin={identity.roles.includes("super_admin")} /></WorkspaceShell>;
 }

@@ -4,6 +4,24 @@ import type { PeopleDetail } from "./detail-model";
 
 export type PeopleBreadcrumb = { label: string; href?: string };
 
+export function peopleListHref(filter: string, search: string) {
+  const params = new URLSearchParams();
+  if (filter) params.set("filter", filter);
+  if (search) params.set("q", search);
+  const query = params.toString();
+  return `/people${query ? `?${query}` : ""}`;
+}
+
+export function validatePeopleReturnTo(value: string | undefined) {
+  if (!value || value.includes("#")) return "/people";
+  try {
+    const url = new URL(value, "http://localhost");
+    return url.origin === "http://localhost" && url.pathname === "/people" ? `${url.pathname}${url.search}` : "/people";
+  } catch {
+    return "/people";
+  }
+}
+
 export function parsePeopleTrail(value: string | undefined, recordId: string) {
   const ids = (value ?? "").split(",").filter((id) => /^[0-9a-f-]{36}$/i.test(id));
   const unique = ids.filter((id, index) => ids.indexOf(id) === index);
@@ -15,8 +33,12 @@ export function peopleDetailHref(recordId: string, trail: string[]) {
   return `/people/${recordId}?trail=${encodeURIComponent(next.join(","))}`;
 }
 
-export function buildPeopleBreadcrumbs(detail: PeopleDetail, parents: PeopleDetail[], trail: string[]) {
-  const items: PeopleBreadcrumb[] = [{ label: "People & Teams", href: "/people" }];
+export function peopleListDetailHref(recordId: string, returnTo: string) {
+  return `/people/${recordId}?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+export function buildPeopleBreadcrumbs(detail: PeopleDetail, parents: PeopleDetail[], trail: string[], returnTo?: string) {
+  const items: PeopleBreadcrumb[] = [{ label: "People & Teams", href: validatePeopleReturnTo(returnTo) }];
   parents.forEach((parent, index) => items.push({ label: parent.name, href: peopleDetailHref(parent.id, trail.slice(0, index)) }));
   items.push({ label: detail.name });
   return items;
