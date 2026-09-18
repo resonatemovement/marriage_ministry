@@ -20,6 +20,8 @@ import { PeopleBreadcrumbs, peopleDetailHref, type PeopleBreadcrumb } from "./br
 import { AdminOnboardingRecovery } from "@/features/onboarding/admin-recovery";
 import { PersonLifecycle } from "./person-lifecycle";
 import { TeamLifecycle } from "./team-lifecycle";
+import { OperationalHierarchyDialog } from "./operational-hierarchy";
+import type { OperationalHierarchy } from "./operational-hierarchy-model";
 
 const typeLabels = {
   couples: "Couple",
@@ -56,9 +58,9 @@ function SummaryPanel({ label, value }: { label: string; value: string }) {
 }
 
 
-function DetailHeader({ detail, context }: { detail: PeopleDetail; context: PeopleDetailActionContext | null }) {
+function DetailHeader({ detail, context, hierarchy = null }: { detail: PeopleDetail; context: PeopleDetailActionContext | null; hierarchy?: OperationalHierarchy | null }) {
   const primaryStatus = detail.kind === "group" ? detail.operationalStatuses[0] : null;
-  return <div className="flex flex-col gap-4 border-b border-border/70 px-5 py-6 sm:px-7 sm:py-7"><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-start gap-4"><div className="grid size-12 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-active"><UsersRound className="size-6" aria-hidden="true" /></div><div className="min-w-0"><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">{typeLabels[detail.type]}</p><h1 className="font-heading mt-1 break-words text-2xl font-bold text-text-primary sm:text-3xl">{detail.name}</h1><p className="mt-2 text-sm text-text-muted">{detail.campus ?? "Campus not assigned"} · Updated {dateLabel(detail.updatedAt)}</p></div></div>{primaryStatus ? <Badge className={`w-fit shrink-0 px-3 py-1.5 text-sm ${statusTone(primaryStatus)}`}>{primaryStatus.label}</Badge> : null}</div>{context ? <PeopleDetailActions detail={detail} context={context} onlyEdit /> : null}</div>;
+  return <div className="flex flex-col gap-4 border-b border-border/70 px-5 py-6 sm:px-7 sm:py-7"><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-start gap-4"><div className="grid size-12 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-active"><UsersRound className="size-6" aria-hidden="true" /></div><div className="min-w-0"><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">{typeLabels[detail.type]}</p><h1 className="font-heading mt-1 break-words text-2xl font-bold text-text-primary sm:text-3xl">{detail.name}</h1><p className="mt-2 text-sm text-text-muted">{detail.campus ?? "Campus not assigned"} · Updated {dateLabel(detail.updatedAt)}</p></div></div>{primaryStatus ? <Badge className={`w-fit shrink-0 px-3 py-1.5 text-sm ${statusTone(primaryStatus)}`}>{primaryStatus.label}</Badge> : null}</div><div className="flex flex-wrap gap-2">{context ? <PeopleDetailActions detail={detail} context={context} onlyEdit /> : null}{hierarchy && detail.kind === "group" ? <OperationalHierarchyDialog hierarchy={hierarchy} currentId={detail.id} /> : null}</div></div>;
 }
 
 function ReadinessStrip({ detail }: { detail: Extract<PeopleDetail, { kind: "group" }> }) {
@@ -84,6 +86,7 @@ function ProfileDetail({ detail, context, isSuperAdmin }: { detail: Extract<Peop
   return <Card className="overflow-hidden"><DetailHeader detail={detail} context={context} /><div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_280px]"><div><MemberCard member={detail.member} canRecover={context?.mode === "admin"} recoveryCampuses={context?.campuses ?? []} />{context?.mode === "admin" ? <PersonLifecycle profileId={detail.id} active={detail.member.accountAccessState !== "deactivated"} isSuperAdmin={isSuperAdmin} /> : null}</div><aside className="space-y-4"><SummaryPanel label="Profile Type" value={typeLabels[detail.type]} /><SummaryPanel label="Campus" value={detail.campus ?? "Campus not assigned"} /><SummaryPanel label="Last Updated" value={dateLabel(detail.updatedAt)} /></aside></div></Card>;
 }
 
-export function PeopleDetailPage({ detail, context, breadcrumbs, trail, isSuperAdmin = false }: { detail: PeopleDetail; context: PeopleDetailActionContext | null; breadcrumbs: PeopleBreadcrumb[]; trail: string[]; isSuperAdmin?: boolean }) {
-  return <main className="mx-auto max-w-6xl min-w-0 p-4 sm:p-6 lg:p-8"><PeopleBreadcrumbs items={breadcrumbs} />{detail.kind === "group" ? <GroupDetail detail={detail} context={context} trail={trail} isSuperAdmin={isSuperAdmin} /> : <ProfileDetail detail={detail} context={context} isSuperAdmin={isSuperAdmin} />}</main>;
+export function PeopleDetailPage({ detail, context, hierarchy = null, breadcrumbs, trail, isSuperAdmin = false }: { detail: PeopleDetail; context: PeopleDetailActionContext | null; hierarchy?: OperationalHierarchy | null; breadcrumbs: PeopleBreadcrumb[]; trail: string[]; isSuperAdmin?: boolean }) {
+  const canViewHierarchy = hierarchy && detail.kind === "group" && ["campus_leads", "coaches", "counselors"].includes(detail.type);
+  return <main className="mx-auto max-w-6xl min-w-0 p-4 sm:p-6 lg:p-8"><PeopleBreadcrumbs items={breadcrumbs} />{canViewHierarchy ? <div className="mb-4 flex justify-end"><OperationalHierarchyDialog hierarchy={hierarchy} currentId={detail.id} /></div> : null}{detail.kind === "group" ? <GroupDetail detail={detail} context={context} trail={trail} isSuperAdmin={isSuperAdmin} /> : <ProfileDetail detail={detail} context={context} isSuperAdmin={isSuperAdmin} />}</main>;
 }
