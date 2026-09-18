@@ -30,11 +30,9 @@ interface SupervisionRpcClient {
   ): Promise<{ data: string | null; error: { message: string } | null }>;
 }
 interface CampusLeadCoachRpcClient { rpc(functionName: "assign_campus_lead_coach", args: { target_campus_lead_group_id: string; target_coach_group_id: string }): Promise<{ data: string | null; error: { message: string } | null }>; }
-interface CampusLeadCounselorRpcClient { rpc(functionName: "assign_campus_lead_counselor", args: { target_campus_lead_group_id: string; target_counselor_group_id: string }): Promise<{ data: string | null; error: { message: string } | null }>; }
 interface OperationalUnassignRpcClient {
   rpc(functionName: "unassign_campus_lead_coach", args: { target_campus_lead_group_id: string; target_coach_group_id: string }): Promise<{ data: boolean | null; error: { message: string } | null }>;
   rpc(functionName: "unassign_counselor_coach_supervision", args: { target_counselor_group_id: string }): Promise<{ data: boolean | null; error: { message: string } | null }>;
-  rpc(functionName: "unassign_campus_lead_counselor", args: { target_campus_lead_group_id: string; target_counselor_group_id: string }): Promise<{ data: boolean | null; error: { message: string } | null }>;
 }
 
 function formValue(formData: FormData, field: string) {
@@ -305,38 +303,6 @@ export async function unassignCoachFromCampusLead(formData: FormData): Promise<A
   if (error) return safeMutationError();
   revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath(`/people/${coachGroupId}`); revalidatePath("/people");
   return { success: true };
-}
-
-export async function assignCounselorToCampusLead(formData: FormData): Promise<ActionResult> {
-  const campusLeadGroupId = formValue(formData, "recordId");
-  const counselorGroupId = formValue(formData, "targetGroupId");
-  if (!campusLeadGroupId || !counselorGroupId) return invalid("Choose a Counselor team.");
-  const supabase = await authorize(campusLeadGroupId);
-  if (!await activeTeam(supabase, campusLeadGroupId, "campus_lead_team") || !await activeTeam(supabase, counselorGroupId, "counselor_team")) return invalid("Choose a Counselor team.");
-  const { error } = await (supabase as unknown as CampusLeadCounselorRpcClient).rpc("assign_campus_lead_counselor", { target_campus_lead_group_id: campusLeadGroupId, target_counselor_group_id: counselorGroupId });
-  if (error) return safeMutationError();
-  revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath(`/people/${counselorGroupId}`); revalidatePath("/people"); return { success: true };
-}
-
-export async function assignCampusLeadToCounselor(formData: FormData): Promise<ActionResult> {
-  const counselorGroupId = formValue(formData, "recordId");
-  const campusLeadGroupId = formValue(formData, "targetGroupId");
-  if (!counselorGroupId || !campusLeadGroupId) return invalid("Choose a Campus Lead team.");
-  const supabase = await authorize(counselorGroupId);
-  if (!await activeTeam(supabase, counselorGroupId, "counselor_team") || !await activeTeam(supabase, campusLeadGroupId, "campus_lead_team")) return invalid("Choose a Campus Lead team.");
-  const { error } = await (supabase as unknown as CampusLeadCounselorRpcClient).rpc("assign_campus_lead_counselor", { target_campus_lead_group_id: campusLeadGroupId, target_counselor_group_id: counselorGroupId });
-  if (error) return safeMutationError();
-  revalidatePath(`/people/${counselorGroupId}`); revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath("/people"); return { success: true };
-}
-
-export async function unassignCounselorFromCampusLead(formData: FormData): Promise<ActionResult> {
-  const campusLeadGroupId = formValue(formData, "campusLeadGroupId");
-  const counselorGroupId = formValue(formData, "counselorGroupId");
-  if (!campusLeadGroupId || !counselorGroupId) return invalid("Choose an assigned Counselor team.");
-  const supabase = await authorize(campusLeadGroupId);
-  const { error } = await (supabase as unknown as OperationalUnassignRpcClient).rpc("unassign_campus_lead_counselor", { target_campus_lead_group_id: campusLeadGroupId, target_counselor_group_id: counselorGroupId });
-  if (error) return safeMutationError();
-  revalidatePath(`/people/${campusLeadGroupId}`); revalidatePath(`/people/${counselorGroupId}`); revalidatePath("/people"); return { success: true };
 }
 
 export async function assignCounselorToCoach(formData: FormData): Promise<ActionResult> {

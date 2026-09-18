@@ -33,7 +33,6 @@
     "verify:intake-submission": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-submission.ts",
     "verify:intake-notifications": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-notifications.ts",
     "verify:campus-lead": "node --experimental-strip-types --env-file=.env.local scripts/verify-campus-lead.ts",
-    "verify:campus-lead-counselor": "node --experimental-strip-types --env-file=.env.local scripts/verify-campus-lead-counselor.ts",
     "verify:campus-lead-coach-campus": "node --experimental-strip-types --env-file=.env.local scripts/verify-campus-lead-coach-campus.ts",
     "verify:cross-campus-counseling": "node --experimental-strip-types --env-file=.env.local scripts/verify-cross-campus-counseling.ts",
     "verify:people-lifecycle": "node --experimental-strip-types --env-file=.env.local scripts/verify-people-lifecycle.ts",

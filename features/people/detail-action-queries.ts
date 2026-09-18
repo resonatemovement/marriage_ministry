@@ -3,7 +3,7 @@ import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import type { PeopleDetail } from "./detail-model";
-import { eligibleCampusLeadCoachTeams, eligibleCampusLeadCounselorTeams, eligibleCounselorCampusLeadTeams, eligibleCoupleAssignmentTeams, eligibleCoupleOptions, eligibleUnassignedCounselorCoupleOptions, isAssignmentReadyCouple, isOperationalTeamReady, type PeopleDetailActionContext, type TeamOption } from "./detail-actions-model";
+import { eligibleCampusLeadCoachTeams, eligibleCoupleAssignmentTeams, eligibleCoupleOptions, eligibleUnassignedCounselorCoupleOptions, isAssignmentReadyCouple, isOperationalTeamReady, type PeopleDetailActionContext, type TeamOption } from "./detail-actions-model";
 import { coupleDisplayName } from "./types";
 
 type Row = Record<string, unknown>;
@@ -34,7 +34,7 @@ export async function getPeopleDetailActionContext(detail: PeopleDetail, mode: "
   const supabase = await createServerSupabaseClient();
   const { data: claims } = await supabase.auth.getClaims();
   const currentProfileId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
-  const [campusesResult, counselorResult, coachResult, currentResult, selfTeamResult, couplesResult, coupleInvitationsResult, campusLeadsResult, coupleReadinessResult, coupleReadinessInvitationsResult, leadCounselorResult, coachAssignmentResult] = await Promise.all([
+  const [campusesResult, counselorResult, coachResult, currentResult, selfTeamResult, couplesResult, coupleInvitationsResult, campusLeadsResult, coupleReadinessResult, coupleReadinessInvitationsResult, coachAssignmentResult] = await Promise.all([
     supabase.from("campuses").select("id,name,active").order("name"),
     supabase.from("groups").select(`id,name,group_type,active,campus:campuses(id,name),group_members(ended_at,profile:profiles(${readinessProfileSelection})),invitations(status)`).eq("group_type", "counselor_team").eq("active", true).order("name"),
     supabase.from("groups").select(`id,name,group_type,active,campus:campuses(id,name),group_members(ended_at,profile:profiles(${readinessProfileSelection})),invitations(status)`).eq("group_type", "coach_team").eq("active", true).order("name"),
@@ -55,13 +55,12 @@ export async function getPeopleDetailActionContext(detail: PeopleDetail, mode: "
     detail.kind === "group" && ["couples", "counselors"].includes(detail.type) ? supabase.from("groups").select(`id,name,group_type,active,campus:campuses(id,name),group_members(ended_at,profile:profiles(id,${readinessProfileSelection},profile_roles!profile_roles_profile_id_fkey(role),campus_lead_assignments!campus_lead_assignments_profile_id_fkey(campus_id,ended_at))),invitations(status)`).eq("group_type", "campus_lead_team" as "couple").eq("active", true).order("name") : Promise.resolve({ data: [], error: null }),
     detail.kind === "group" && detail.type === "couples" ? supabase.from("groups").select(`group_members(ended_at,profile:profiles(${readinessProfileSelection}))`).eq("id", detail.id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     detail.kind === "group" && detail.type === "couples" ? (supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } }).from("invitations").select("status").eq("group_id", detail.id) : Promise.resolve({ data: [], error: null }),
-    (supabase as unknown as { from: (table: "campus_lead_counselor_assignments") => { select: (columns: string) => { is: (column: string, value: null) => Promise<{ data: Row[] | null; error: { message: string } | null }> } } }).from("campus_lead_counselor_assignments").select("campus_lead_group_id,counselor_group_id,campus_lead_group:groups!campus_lead_counselor_assignments_campus_lead_group_id_fkey(id,name,group_type,active,campus:campuses(id,name)),counselor_group:groups!campus_lead_counselor_assignments_counselor_group_id_fkey(id,name,group_type,active,campus:campuses(id,name))").is("ended_at", null),
     detail.kind === "group" && detail.type === "campus_leads"
       ? (supabase as unknown as { from: (table: "campus_lead_coach_assignments") => { select: (columns: string) => { is: (column: string, value: null) => Promise<{ data: Row[] | null; error: { message: string } | null }> } } }).from("campus_lead_coach_assignments").select("coach_group_id").is("ended_at", null)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  if (campusesResult.error || counselorResult.error || coachResult.error || currentResult.error || selfTeamResult.error || couplesResult.error || coupleInvitationsResult.error || campusLeadsResult.error || coupleReadinessResult.error || coupleReadinessInvitationsResult.error || leadCounselorResult.error || coachAssignmentResult.error) {
+  if (campusesResult.error || counselorResult.error || coachResult.error || currentResult.error || selfTeamResult.error || couplesResult.error || coupleInvitationsResult.error || campusLeadsResult.error || coupleReadinessResult.error || coupleReadinessInvitationsResult.error || coachAssignmentResult.error) {
     throw new Error("People detail actions are unavailable");
   }
 
@@ -73,10 +72,7 @@ export async function getPeopleDetailActionContext(detail: PeopleDetail, mode: "
   const currentCounselorAssignment = assignments.find((assignment) => assignment.ended_at === null && assignment.assignment_type === "counselor");
   const currentCounselorTeams = detail.kind === "group" && detail.type === "coaches" ? counselorTeamsFromSupervisionRows(Array.isArray(currentRow) ? currentRow : []) : [];
   const currentCampusLeadCoaches = detail.kind === "group" && detail.type === "campus_leads" ? (Array.isArray(currentRow) ? currentRow : []).map((assignment) => asTeamOption(assignment.coach_group as Row)) : [];
-  const activeLeadCounselors = (leadCounselorResult.data ?? []) as Row[];
   const activeCoachAssignmentIds = ((coachAssignmentResult.data ?? []) as Row[]).map((assignment) => value(assignment, "coach_group_id")).filter(Boolean) as string[];
-  const currentCampusLeadCounselors = detail.kind === "group" && detail.type === "campus_leads" ? activeLeadCounselors.filter((assignment) => value(assignment, "campus_lead_group_id") === detail.id).map((assignment) => asTeamOption(assignment.counselor_group as Row)) : [];
-  const currentCampusLeadTeam = detail.kind === "group" && detail.type === "counselors" ? activeLeadCounselors.find((assignment) => value(assignment, "counselor_group_id") === detail.id)?.campus_lead_group as Row | undefined : undefined;
 
   const coupleCandidates = (couplesResult.data ?? []).map((couple) => {
     const members = (couple.group_members as unknown as Row[] | null) ?? [];
@@ -103,14 +99,10 @@ export async function getPeopleDetailActionContext(detail: PeopleDetail, mode: "
     coachTeams,
     eligibleCounselingTeams,
     campusLeadCoachTeams: detail.kind === "group" && detail.type === "campus_leads" ? eligibleCampusLeadCoachTeams(coachTeams, detail.campusId, activeCoachAssignmentIds) : [],
-    campusLeadCounselorTeams: detail.kind === "group" && detail.type === "campus_leads" ? eligibleCampusLeadCounselorTeams(counselorTeams, detail.campusId, activeLeadCounselors.map((assignment) => value(assignment, "counselor_group_id")!).filter(Boolean)) : [],
-    counselorCampusLeadTeams: detail.kind === "group" && detail.type === "counselors" ? eligibleCounselorCampusLeadTeams(campusLeadTargets, detail.campusId) : [],
     currentCounselorTeam: currentCounselorAssignment ? asTeamOption(currentCounselorAssignment.assigned_group as Row) : null,
     currentCoachTeam: !Array.isArray(currentRow) && currentRow?.coach_group ? asTeamOption(currentRow.coach_group as Row) : null,
     currentCounselorTeams,
     currentCampusLeadCoaches,
-    currentCampusLeadCounselors,
-    currentCampusLeadTeam: currentCampusLeadTeam ? asTeamOption(currentCampusLeadTeam) : null,
     currentCoupleTeam: currentCoupleAssignment?.assigned_group ? { ...asTeamOption(currentCoupleAssignment.assigned_group as Row), type: currentCoupleAssignment.assignment_type === "campus_lead" ? "campus_lead" : currentCoupleAssignment.assignment_type as "coach" | "counselor" } : null,
     currentCoupleAssignmentType: currentCoupleAssignment?.assignment_type === "coach" || currentCoupleAssignment?.assignment_type === "counselor" ? currentCoupleAssignment.assignment_type : null,
     coupleCampusId: detail.kind === "group" && detail.type === "couples" ? detail.campusId : null,

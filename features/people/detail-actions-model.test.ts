@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { actionLabel, availablePeopleDetailActions, campusLeadCoachAssignmentUnavailable, campusLeadCoachEmptyMessage, campusLeadCounselorAssignmentUnavailable, campusLeadCounselorEmptyMessage, counselorCampusLeadAssignmentUnavailable, counselorCampusLeadEmptyMessage, counselingTeamsEmptyMessage, counselingTeamsUnavailable, counselorAssignmentLabel, eligibleCampusLeadCoachTeams, eligibleCampusLeadCounselorTeams, eligibleCounselorCampusLeadTeams, eligibleCounselorCoupleOptions, eligibleCoupleAssignmentTeams, eligibleCoupleOptions, eligibleUnassignedCounselorCoupleOptions, filterPeopleDetailActions, isAssignmentReadyCouple, isOperationalTeamReady, teamOptionLabel } from "./detail-actions-model";
+import { actionLabel, availablePeopleDetailActions, campusLeadCoachAssignmentUnavailable, campusLeadCoachEmptyMessage, counselingTeamsEmptyMessage, counselingTeamsUnavailable, counselorAssignmentLabel, eligibleCampusLeadCoachTeams, eligibleCounselorCoupleOptions, eligibleCoupleAssignmentTeams, eligibleCoupleOptions, eligibleUnassignedCounselorCoupleOptions, filterPeopleDetailActions, isAssignmentReadyCouple, isOperationalTeamReady, teamOptionLabel } from "./detail-actions-model";
 import type { GroupPeopleDetail, ProfilePeopleDetail } from "./detail-model";
 
 const context = {
@@ -12,13 +12,9 @@ const context = {
   coachTeams: [],
   eligibleCounselingTeams: [],
   campusLeadCoachTeams: [],
-  campusLeadCounselorTeams: [],
-  counselorCampusLeadTeams: [],
   currentCounselorTeam: null,
   currentCounselorTeams: [],
   currentCampusLeadCoaches: [],
-  currentCampusLeadCounselors: [],
-  currentCampusLeadTeam: null,
   currentCoachTeam: null,
   currentCoupleTeam: null,
   currentCoupleAssignmentType: null,
@@ -92,14 +88,10 @@ describe("availablePeopleDetailActions", () => {
   });
 
   it("shows Assign Coach for an unsupervised Counselor and Reassign Coach once supervised", () => {
-    expect(availablePeopleDetailActions(counselor, context)).toEqual(["edit", "assign-coach", "assign-campus-lead"]);
-    expect(availablePeopleDetailActions(counselor, { ...context, currentCoachTeam: { id: "coach", name: "Coach", campus: null, type: "coach" } })).toEqual(["edit", "reassign-coach", "assign-campus-lead"]);
+    expect(availablePeopleDetailActions(counselor, context)).toEqual(["edit", "assign-coach"]);
+    expect(availablePeopleDetailActions(counselor, { ...context, currentCoachTeam: { id: "coach", name: "Coach", campus: null, type: "coach" } })).toEqual(["edit", "reassign-coach"]);
   });
 
-  it("offers Assign Campus Lead only to an unassigned Counselor in the admin context", () => {
-    expect(availablePeopleDetailActions(counselor, { ...context, mode: "campus_lead" })).toEqual([]);
-    expect(availablePeopleDetailActions(counselor, { ...context, currentCampusLeadTeam: { id: "lead", name: "Campus Lead", campus: "Hayward", type: "campus_lead" } })).toEqual(["edit", "assign-coach"]);
-  });
 
   it("offers Counselor assignment on Coach teams while preserving profile behavior", () => {
     expect(availablePeopleDetailActions(coach, context)).toEqual(["edit", "assign-counselor"]);
@@ -108,13 +100,12 @@ describe("availablePeopleDetailActions", () => {
 
   it("uses the Campus Lead-specific Coach action without falling through to Counselor-to-Coach actions", () => {
     const campusLead = { ...couple, type: "campus_leads" as const, name: "Campus Lead Team" };
-    expect(availablePeopleDetailActions(campusLead, context)).toEqual(["edit", "assign-campus-lead-coach", "assign-campus-lead-counselor"]);
+    expect(availablePeopleDetailActions(campusLead, context)).toEqual(["edit", "assign-campus-lead-coach"]);
   });
 
   it("scopes Campus Lead relationship-card actions to their relationship type", () => {
     const actions = availablePeopleDetailActions({ ...couple, type: "campus_leads" as const }, context);
     expect(filterPeopleDetailActions(actions, ["assign-campus-lead-coach"])).toEqual(["assign-campus-lead-coach"]);
-    expect(filterPeopleDetailActions(actions, ["assign-campus-lead-counselor"])).toEqual(["assign-campus-lead-counselor"]);
   });
 
   it("scopes Counselor relationship-card actions to their relationship type", () => {
@@ -124,15 +115,7 @@ describe("availablePeopleDetailActions", () => {
     });
 
     expect(filterPeopleDetailActions(assignedCoachActions, ["assign-coach", "reassign-coach"])).toEqual(["reassign-coach"]);
-    expect(filterPeopleDetailActions(assignedCoachActions, ["assign-campus-lead"])).toEqual(["assign-campus-lead"]);
-
-    const assignedCampusLeadActions = availablePeopleDetailActions(counselor, {
-      ...context,
-      currentCampusLeadTeam: { id: "campus-lead-team-id", name: "Campus Lead Team", type: "campus_lead", campus: "Hayward" },
-    });
-
-    expect(filterPeopleDetailActions(assignedCampusLeadActions, ["assign-campus-lead"])).toEqual([]);
-    expect(filterPeopleDetailActions(assignedCampusLeadActions, ["assign-coach", "reassign-coach"])).toEqual(["assign-coach"]);
+    expect(filterPeopleDetailActions(assignedCoachActions, ["assign-campus-lead-coach"])).toEqual([]);
   });
 });
 
@@ -247,36 +230,5 @@ describe("Campus Lead Coach assignment targets", () => {
     expect(eligible).toEqual([]);
     expect(campusLeadCoachAssignmentUnavailable(eligible)).toBe(true);
     expect(campusLeadCoachEmptyMessage("Hayward")).toBe("No eligible coaches are available at the Hayward campus.");
-  });
-});
-
-describe("Campus Lead Counselor assignment targets", () => {
-  it("keeps only ready same-campus Counselors that do not already have a Campus Lead", () => {
-    const eligible = eligibleCampusLeadCounselorTeams([
-      { id: "hayward", name: "Hayward Counselor Team", campus: "Hayward", campusId: "hayward", type: "counselor" },
-      { id: "fremont", name: "Fremont Counselor Team", campus: "Fremont", campusId: "fremont", type: "counselor" },
-      { id: "assigned", name: "Assigned Hayward Counselor", campus: "Hayward", campusId: "hayward", type: "counselor" },
-    ], "hayward", ["assigned"]);
-    expect(eligible.map((team) => team.id)).toEqual(["hayward"]);
-  });
-
-  it("provides a campus-specific disabled state when no Counselor is eligible", () => {
-    expect(campusLeadCounselorAssignmentUnavailable([])).toBe(true);
-    expect(campusLeadCounselorEmptyMessage("Hayward")).toBe("No eligible counselors are available at the Hayward campus.");
-  });
-});
-
-describe("Counselor Campus Lead assignment targets", () => {
-  it("includes ready same-campus Campus Leads and excludes cross-campus teams", () => {
-    const eligible = eligibleCounselorCampusLeadTeams([
-      { id: "hayward", name: "Hayward Campus Lead", campus: "Hayward", campusId: "hayward", type: "campus_lead" },
-      { id: "fremont", name: "Fremont Campus Lead", campus: "Fremont", campusId: "fremont", type: "campus_lead" },
-    ], "hayward");
-    expect(eligible.map((team) => team.id)).toEqual(["hayward"]);
-  });
-
-  it("uses campus-specific disabled copy when no Campus Lead is eligible", () => {
-    expect(counselorCampusLeadAssignmentUnavailable([])).toBe(true);
-    expect(counselorCampusLeadEmptyMessage("Hayward")).toBe("No eligible Campus Lead teams are available at the Hayward campus.");
   });
 });

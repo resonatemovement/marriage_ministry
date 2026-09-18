@@ -17,17 +17,16 @@ function id(form: FormData) { const value = form.get("profileId"); return typeof
 function groupId(form: FormData) { const value = form.get("groupId"); return typeof value === "string" ? value : ""; }
 function adminClient() { const { url } = getSupabaseEnvironment(); const key = process.env.SUPABASE_SECRET_KEY; if (!key) throw new Error("Missing required Supabase server configuration"); return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }); }
 async function profileDependencies(client: Awaited<ReturnType<typeof createServerSupabaseClient>>, profileId: string) {
-  const [memberships, cases, assignments, supervision, leadCoach, leadCounselor, documents] = await Promise.all([
+  const [memberships, cases, assignments, supervision, leadCoach, documents] = await Promise.all([
     client.from("group_members").select("id,group_id").eq("profile_id", profileId),
     client.from("counseling_cases").select("id").eq("created_by", profileId),
     client.from("case_assignments").select("id").or(`assigned_by.eq.${profileId},assigned_profile_id.eq.${profileId}`),
     client.from("supervision_assignments").select("id").eq("assigned_by", profileId),
     (client as unknown as { from(table: "campus_lead_coach_assignments"): { select(columns: string): { eq(column: string, value: string): Promise<{ data: { id: string }[] | null; error: { message: string } | null }> } } }).from("campus_lead_coach_assignments").select("id").eq("assigned_by", profileId),
-    (client as unknown as { from(table: "campus_lead_counselor_assignments"): { select(columns: string): { eq(column: string, value: string): Promise<{ data: { id: string }[] | null; error: { message: string } | null }> } } }).from("campus_lead_counselor_assignments").select("id").eq("assigned_by", profileId),
     client.from("assessment_documents").select("id").or(`profile_id.eq.${profileId},uploaded_by.eq.${profileId}`),
   ]);
-  if ([memberships, cases, assignments, supervision, leadCoach, leadCounselor, documents].some((result) => result.error)) return null;
-  return { memberships: memberships.data ?? [], protected: (cases.data?.length ?? 0) + (assignments.data?.length ?? 0) + (supervision.data?.length ?? 0) + (leadCoach.data?.length ?? 0) + (leadCounselor.data?.length ?? 0) + (documents.data?.length ?? 0) };
+  if ([memberships, cases, assignments, supervision, leadCoach, documents].some((result) => result.error)) return null;
+  return { memberships: memberships.data ?? [], protected: (cases.data?.length ?? 0) + (assignments.data?.length ?? 0) + (supervision.data?.length ?? 0) + (leadCoach.data?.length ?? 0) + (documents.data?.length ?? 0) };
 }
 
 export async function setPersonActive(formData: FormData, active: boolean): Promise<Result> {
