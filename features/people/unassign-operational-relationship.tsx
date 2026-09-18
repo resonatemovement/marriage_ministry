@@ -6,14 +6,14 @@ import { UserMinus } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-import { unassignCoachFromCampusLead, unassignCounselorFromCampusLead, unassignCounselorFromCoach } from "./detail-actions";
+import { unassignCoachFromCampusLead, unassignCounselorFromCoach } from "./detail-actions";
 
-type Relationship = "campus-lead-coach" | "campus-lead-counselor" | "coach-counselor";
+type Relationship = "campus-lead-coach" | "coach-counselor";
 
 export function UnassignOperationalRelationship({ relationship, sourceId, sourceName, targetId, targetName, open = false, onOpenChange, menuOnly = false }: { relationship: Relationship; sourceId: string; sourceName: string; targetId: string; targetName: string; open?: boolean; onOpenChange?: (open: boolean) => void; menuOnly?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const submit = relationship === "campus-lead-coach" ? unassignCoachFromCampusLead : relationship === "campus-lead-counselor" ? unassignCounselorFromCampusLead : unassignCounselorFromCoach;
+  const submit = relationship === "campus-lead-coach" ? unassignCoachFromCampusLead : unassignCounselorFromCoach;
   const sourceField = relationship === "coach-counselor" ? "coachGroupId" : "campusLeadGroupId";
   const targetField = relationship === "campus-lead-coach" ? "coachGroupId" : "counselorGroupId";
   const title = relationship === "campus-lead-coach" ? "Unassign Coach" : "Unassign Counselor";
