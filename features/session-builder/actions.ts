@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database.generated";
 
 import { requireSessionBuilderAccess } from "./access";
-import { isSessionLifecycleAction, normalizeSessionTitle, sessionLifecycleTransition, type SessionLifecycleAction } from "./model";
+import { isSessionLifecycleAction, isValidMaterialUrl, materialUrlFrom, normalizeSessionTitle, richTextHasMeaningfulContent, sessionLifecycleTransition, type SessionLifecycleAction } from "./model";
 
 type ActionResult = { success: true; sessionId?: string } | { error: string };
 
@@ -59,4 +60,32 @@ export async function changeSessionLifecycle(sessionId: string, action: SessionL
   if (error) return { error: "The session status could not be updated. Try again." };
   revalidate(sessionId);
   return { success: true };
+}
+
+function jsonFrom(formData: FormData): Json | null {
+  try { return JSON.parse(String(formData.get("richTextContent") ?? "")) as Json; } catch { return null; }
+}
+
+export async function saveSessionMaterialBlock(formData: FormData): Promise<ActionResult> {
+  const sessionId = sessionIdFrom(formData);
+  const blockId = String(formData.get("blockId") ?? "").trim();
+  const blockType = String(formData.get("blockType") ?? "");
+  const title = normalizeSessionTitle(String(formData.get("title") ?? "")) || null;
+  const description = normalizeSessionTitle(String(formData.get("description") ?? "")) || null;
+  const url = materialUrlFrom(formData);
+  if (!sessionId || !["rich_text", "video_link"].includes(blockType)) return { error: "This material block is invalid." };
+  const richTextContent = blockType === "rich_text" ? jsonFrom(formData) : null;
+  if (blockType === "rich_text" && !richTextHasMeaningfulContent(richTextContent)) return { error: "Add meaningful rich text before saving." };
+  if (blockType === "video_link" && !isValidMaterialUrl(url)) return { error: "Enter a valid http or https URL." };
+  const supabase = await client(`/session-builder/${sessionId}`);
+  const values = { session_id: sessionId, block_type: blockType, title, rich_text_content: richTextContent, url: blockType === "video_link" ? url : null, description };
+  const result = blockId ? await supabase.from("session_material_blocks").update(values).eq("id", blockId).eq("session_id", sessionId) : await supabase.from("session_material_blocks").insert({ ...values, position: await nextMaterialPosition(supabase, sessionId) });
+  if (result.error) return { error: "The material block could not be saved. Try again." };
+  revalidate(sessionId);
+  return { success: true };
+}
+
+async function nextMaterialPosition(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, sessionId: string) {
+  const { data } = await supabase.from("session_material_blocks").select("position").eq("session_id", sessionId).order("position", { ascending: false }).limit(1).maybeSingle();
+  return (data?.position ?? -1) + 1;
 }
