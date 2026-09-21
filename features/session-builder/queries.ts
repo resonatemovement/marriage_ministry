@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import type { SessionStatus } from "./model";
 import type { SessionSummary } from "./types";
+import type { SessionMaterialBlock } from "./types";
 import type { Database } from "@/types/database.generated";
 
 function summary(row: Pick<Database["public"]["Tables"]["sessions"]["Row"], "id" | "sequence_number" | "title" | "status" | "updated_at">): SessionSummary {
@@ -29,4 +30,11 @@ export async function getSession(sessionId: string): Promise<SessionSummary | nu
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.from("sessions").select("id,sequence_number,title,status,updated_at").eq("id", sessionId).maybeSingle();
   return error || !data ? null : summary(data);
+}
+
+export async function getSessionMaterialBlocks(sessionId: string): Promise<SessionMaterialBlock[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.from("session_material_blocks").select("id,session_id,block_type,position,title,rich_text_content,url,description").eq("session_id", sessionId).order("position", { ascending: true });
+  if (error) throw new Error("Session Material is unavailable");
+  return (data ?? []).map((row) => ({ id: row.id, sessionId: row.session_id, blockType: row.block_type as SessionMaterialBlock["blockType"], position: row.position, title: row.title, richTextContent: row.rich_text_content as Record<string, unknown> | null, url: row.url, description: row.description }));
 }
