@@ -1,7 +1,6 @@
 import {
   BookOpenText,
   ClipboardList,
-  HeartHandshake,
   LayoutDashboard,
   Settings,
   Users,
@@ -21,12 +20,11 @@ export interface NavigationItem {
 export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly NavigationItem[]>> = {
   admin: [
     { label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard },
-    { label: "Counseling Cases", href: "#workflow", icon: HeartHandshake },
     { label: "People & Teams", href: "/people", icon: Users },
     { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },
+    { label: "Session Builder", href: "/session-builder", icon: BookOpenText },
     { label: "Settings", href: "/settings", icon: Settings },
     { label: "My Profile", href: "/profile", icon: UserRound },
-    { label: "Content", href: "#content", icon: BookOpenText },
   ],
   campus_lead: [
     { label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard },
@@ -36,6 +34,6 @@ export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly Navigati
   ],
   coach: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
   counselor: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
-  author: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
+  author: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "Session Builder", href: "/session-builder", icon: BookOpenText }, { label: "My Profile", href: "/profile", icon: UserRound }],
   couple: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
 };

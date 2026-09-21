@@ -35,10 +35,10 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
   if (groupsResult.error || profilesResult.error || teamAssignmentsResult.error || supervisionResult.error || campusLeadAssignmentsResult.error || counselingCasesResult.error) return { records: [], error: "unavailable" };
 
   const assignedCoupleCounts = new Map<string, number>();
-  (teamAssignmentsResult.data ?? []).forEach((assignment) => assignedCoupleCounts.set(assignment.assigned_group_id, (assignedCoupleCounts.get(assignment.assigned_group_id) ?? 0) + 1));
+  (teamAssignmentsResult.data ?? []).forEach((assignment) => { if (assignment.assigned_group_id) assignedCoupleCounts.set(assignment.assigned_group_id, (assignedCoupleCounts.get(assignment.assigned_group_id) ?? 0) + 1); });
   const supervisingCoachByCounselor = new Map<string, string>();
   const supervisedCounselorCounts = new Map<string, number>();
-  (supervisionResult.data ?? []).forEach((assignment) => { supervisingCoachByCounselor.set(assignment.counselor_group_id, assignment.coach_group_id); supervisedCounselorCounts.set(assignment.coach_group_id, (supervisedCounselorCounts.get(assignment.coach_group_id) ?? 0) + 1); });
+  (supervisionResult.data ?? []).forEach((assignment) => { if (assignment.coach_group_id && assignment.counselor_group_id) { supervisingCoachByCounselor.set(assignment.counselor_group_id, assignment.coach_group_id); supervisedCounselorCounts.set(assignment.coach_group_id, (supervisedCounselorCounts.get(assignment.coach_group_id) ?? 0) + 1); } });
   const campusLeadByCoach = new Map<string, string>();
   (campusLeadAssignmentsResult.data ?? []).forEach((assignment) => campusLeadByCoach.set(value(assignment, "coach_group_id")!, value(assignment, "campus_lead_group_id")!));
   const casesByCouple = new Map((counselingCasesResult.data ?? []).map((counselingCase) => [counselingCase.couple_group_id, counselingCase as unknown as GroupRow]));
