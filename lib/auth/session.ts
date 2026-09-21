@@ -99,3 +99,11 @@ export async function requireOneOfWorkspaces(workspaces: readonly WorkspaceId[],
   }
   return identity;
 }
+
+export async function requireOneOfRoles(roles: readonly AppRole[], path: string) {
+  const { identity } = await requireDefaultWorkspace(path);
+  if (!roles.some((role) => identity.roles.includes(role))) {
+    redirect(defaultWorkspaceDestination(identity.workspaces)!);
+  }
+  return identity;
+}
