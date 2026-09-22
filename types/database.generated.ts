@@ -1277,6 +1277,14 @@ export type Database = {
         Args: { target_request_id: string }
         Returns: Json
       }
+      delete_session_material_block: {
+        Args: { target_block_id: string }
+        Returns: undefined
+      }
+      duplicate_session_material_block: {
+        Args: { target_block_id: string }
+        Returns: string
+      }
       ensure_and_assign_counseling_case: {
         Args: {
           reassignment_reason?: string
@@ -1318,6 +1326,10 @@ export type Database = {
         Returns: undefined
       }
       record_onboarding_photo: { Args: never; Returns: undefined }
+      reorder_session_material_blocks: {
+        Args: { target_block_ids: string[]; target_session_id: string }
+        Returns: undefined
+      }
       save_onboarding_profile: {
         Args: {
           target_first_name: string

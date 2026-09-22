@@ -40,6 +40,9 @@
     "cleanup:verifier-artifacts": "node --experimental-strip-types --env-file=.env.local scripts/cleanup-verifier-artifacts.ts"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "@tiptap/extension-link": "^3.31.3",
@@ -56,6 +59,7 @@
     "react-dom": "^19.1.0",
     "resend": "^6.26.0",
     "server-only": "^0.0.1",
+    "sonner": "^2.0.8",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
