@@ -6,7 +6,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database.generated";
 
 import { requireSessionBuilderAccess } from "./access";
-import { isSessionLifecycleAction, isValidMaterialUrl, materialUrlFrom, normalizeSessionTitle, richTextHasMeaningfulContent, sessionLifecycleTransition, type SessionLifecycleAction } from "./model";
+import { canPublishSession, isSessionLifecycleAction, isValidMaterialUrl, materialUrlFrom, normalizeSessionTitle, richTextHasMeaningfulContent, sessionLifecycleTransition, type SessionLifecycleAction } from "./model";
 
 type ActionResult = { success: true; sessionId?: string } | { error: string };
 
@@ -61,6 +61,12 @@ export async function changeSessionLifecycle(sessionId: string, action: SessionL
   revalidate(sessionId);
   return { success: true };
 }
+
+export async function reorderSessionMaterial(sessionId: string, ids: string[]): Promise<ActionResult> { const supabase = await client(`/session-builder/${sessionId}`); const { error } = await supabase.rpc("reorder_session_material_blocks", { target_session_id: sessionId, target_block_ids: ids }); if (error) return { error: "The material order could not be saved. Try again." }; revalidate(sessionId); return { success: true }; }
+export async function duplicateSessionMaterial(blockId: string, sessionId: string): Promise<ActionResult> { const supabase = await client(`/session-builder/${sessionId}`); const { error } = await supabase.rpc("duplicate_session_material_block", { target_block_id: blockId }); if (error) return { error: "The material block could not be duplicated. Try again." }; revalidate(sessionId); return { success: true }; }
+export async function deleteSessionMaterial(blockId: string, sessionId: string, confirmation: string): Promise<ActionResult> { if (confirmation !== "DELETE") return { error: "Type DELETE to confirm." }; const supabase = await client(`/session-builder/${sessionId}`); const { error } = await supabase.rpc("delete_session_material_block", { target_block_id: blockId }); if (error) return { error: "The material block could not be deleted. Try again." }; revalidate(sessionId); return { success: true }; }
+
+export async function publishSession(sessionId: string): Promise<ActionResult> { const supabase = await client(`/session-builder/${sessionId}`); const [{ data: session }, { data: blocks }] = await Promise.all([supabase.from("sessions").select("title").eq("id", sessionId).maybeSingle(), supabase.from("session_material_blocks").select("block_type,rich_text_content,url").eq("session_id", sessionId)]); const error = canPublishSession(session?.title ?? "", (blocks ?? []).map((block) => ({ blockType: block.block_type as "rich_text" | "video_link", richTextContent: block.rich_text_content as Record<string, unknown> | null, url: block.url }))); if (error) return { error }; const result = await supabase.from("sessions").update({ status: "published" }).eq("id", sessionId).eq("status", "draft"); if (result.error) return { error: "The session could not be published. Try again." }; revalidate(sessionId); return { success: true }; }
 
 function jsonFrom(formData: FormData): Json | null {
   try { return JSON.parse(String(formData.get("richTextContent") ?? "")) as Json; } catch { return null; }
