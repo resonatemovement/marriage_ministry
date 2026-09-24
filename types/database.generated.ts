@@ -544,6 +544,471 @@ export type Database = {
           },
         ]
       }
+      homework_answers: {
+        Row: {
+          answer_text: string
+          created_at: string
+          homework_version_block_id: string
+          id: string
+          participant_progress_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer_text?: string
+          created_at?: string
+          homework_version_block_id: string
+          id?: string
+          participant_progress_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          homework_version_block_id?: string
+          id?: string
+          participant_progress_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_answers_homework_version_block_id_fkey"
+            columns: ["homework_version_block_id"]
+            isOneToOne: false
+            referencedRelation: "homework_version_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_answers_participant_progress_id_fkey"
+            columns: ["participant_progress_id"]
+            isOneToOne: false
+            referencedRelation: "homework_participant_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_assignment_revisions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          homework_assignment_id: string
+          homework_version_id: string
+          id: string
+          started_at: string
+          update_reason: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          homework_assignment_id: string
+          homework_version_id: string
+          id?: string
+          started_at?: string
+          update_reason?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          homework_assignment_id?: string
+          homework_version_id?: string
+          id?: string
+          started_at?: string
+          update_reason?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_assignment_revisions_homework_assignment_id_fkey"
+            columns: ["homework_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignment_revisions_homework_version_id_fkey"
+            columns: ["homework_version_id"]
+            isOneToOne: false
+            referencedRelation: "homework_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignment_revisions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          counseling_case_id: string
+          created_at: string
+          homework_id: string
+          id: string
+          unassigned_at: string | null
+          unassigned_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          counseling_case_id: string
+          created_at?: string
+          homework_id: string
+          id?: string
+          unassigned_at?: string | null
+          unassigned_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          counseling_case_id?: string
+          created_at?: string
+          homework_id?: string
+          id?: string
+          unassigned_at?: string | null
+          unassigned_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignments_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignments_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homeworks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignments_unassigned_by_fkey"
+            columns: ["unassigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_audit_events: {
+        Row: {
+          actor_profile_id: string
+          created_at: string
+          event_type: string
+          from_version_id: string | null
+          homework_assignment_id: string | null
+          homework_id: string
+          id: string
+          metadata: Json
+          to_version_id: string | null
+        }
+        Insert: {
+          actor_profile_id: string
+          created_at?: string
+          event_type: string
+          from_version_id?: string | null
+          homework_assignment_id?: string | null
+          homework_id: string
+          id?: string
+          metadata?: Json
+          to_version_id?: string | null
+        }
+        Update: {
+          actor_profile_id?: string
+          created_at?: string
+          event_type?: string
+          from_version_id?: string | null
+          homework_assignment_id?: string | null
+          homework_id?: string
+          id?: string
+          metadata?: Json
+          to_version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_audit_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_audit_events_from_version_id_fkey"
+            columns: ["from_version_id"]
+            isOneToOne: false
+            referencedRelation: "homework_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_audit_events_homework_assignment_id_fkey"
+            columns: ["homework_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_audit_events_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homeworks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_audit_events_to_version_id_fkey"
+            columns: ["to_version_id"]
+            isOneToOne: false
+            referencedRelation: "homework_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_blocks: {
+        Row: {
+          created_at: string
+          homework_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          homework_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          homework_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_blocks_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homeworks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_participant_progress: {
+        Row: {
+          assignment_revision_id: string
+          created_at: string
+          id: string
+          profile_id: string
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["homework_progress_status"]
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          assignment_revision_id: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["homework_progress_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assignment_revision_id?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["homework_progress_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_participant_progress_assignment_revision_id_fkey"
+            columns: ["assignment_revision_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignment_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_participant_progress_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_version_blocks: {
+        Row: {
+          block_type: string
+          created_at: string
+          description: string | null
+          homework_block_id: string
+          homework_version_id: string
+          id: string
+          position: number
+          rich_text_content: Json | null
+          title: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          block_type: string
+          created_at?: string
+          description?: string | null
+          homework_block_id: string
+          homework_version_id: string
+          id?: string
+          position: number
+          rich_text_content?: Json | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          block_type?: string
+          created_at?: string
+          description?: string | null
+          homework_block_id?: string
+          homework_version_id?: string
+          id?: string
+          position?: number
+          rich_text_content?: Json | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_version_blocks_homework_block_id_fkey"
+            columns: ["homework_block_id"]
+            isOneToOne: false
+            referencedRelation: "homework_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_version_blocks_homework_version_id_fkey"
+            columns: ["homework_version_id"]
+            isOneToOne: false
+            referencedRelation: "homework_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_versions: {
+        Row: {
+          based_on_version_id: string | null
+          created_at: string
+          created_by: string
+          homework_id: string
+          id: string
+          published_at: string | null
+          status: Database["public"]["Enums"]["homework_version_status"]
+          updated_at: string
+          version_number: number | null
+        }
+        Insert: {
+          based_on_version_id?: string | null
+          created_at?: string
+          created_by: string
+          homework_id: string
+          id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["homework_version_status"]
+          updated_at?: string
+          version_number?: number | null
+        }
+        Update: {
+          based_on_version_id?: string | null
+          created_at?: string
+          created_by?: string
+          homework_id?: string
+          id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["homework_version_status"]
+          updated_at?: string
+          version_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_versions_based_on_version_id_fkey"
+            columns: ["based_on_version_id"]
+            isOneToOne: false
+            referencedRelation: "homework_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_versions_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homeworks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homeworks: {
+        Row: {
+          created_at: string
+          id: string
+          session_id: string
+          updated_at: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_id: string
+          updated_at?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_id?: string
+          updated_at?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homeworks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homeworks_withdrawn_by_fkey"
+            columns: ["withdrawn_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intake_request_people: {
         Row: {
           city: string | null
@@ -1240,6 +1705,14 @@ export type Database = {
         }
         Returns: string
       }
+      assign_homework: {
+        Args: {
+          target_case_id: string
+          target_homework_id: string
+          target_version_id: string
+        }
+        Returns: string
+      }
       cleanup_intake_permanent_delete_verifier_artifacts: {
         Args: { target_group_ids: string[] }
         Returns: Json
@@ -1296,9 +1769,29 @@ export type Database = {
         Returns: string
       }
       enter_onboarding: { Args: never; Returns: undefined }
+      force_update_homework_assignment: {
+        Args: {
+          reason?: string
+          target_assignment_id: string
+          target_version_id: string
+        }
+        Returns: undefined
+      }
+      get_or_create_homework_draft: {
+        Args: { source_version_id?: string; target_homework_id: string }
+        Returns: string
+      }
+      get_or_create_homework_draft_for_session: {
+        Args: { target_session_id: string }
+        Returns: string
+      }
       invite_intake_request: {
         Args: { target_request_id: string }
         Returns: Json
+      }
+      publish_homework_version: {
+        Args: { target_version_id: string }
+        Returns: undefined
       }
       record_invitation_auth_identity: {
         Args: { target_auth_user_id: string; target_invitation_id: string }
@@ -1330,6 +1823,14 @@ export type Database = {
         Args: { target_block_ids: string[]; target_session_id: string }
         Returns: undefined
       }
+      save_homework_answer: {
+        Args: {
+          target_answer: string
+          target_block_id: string
+          target_progress_id: string
+        }
+        Returns: undefined
+      }
       save_onboarding_profile: {
         Args: {
           target_first_name: string
@@ -1337,6 +1838,10 @@ export type Database = {
           target_phone: string
         }
         Returns: Json
+      }
+      submit_homework: {
+        Args: { target_progress_id: string }
+        Returns: undefined
       }
       take_intake_request_action: {
         Args: {
@@ -1369,6 +1874,10 @@ export type Database = {
         Args: { target_counselor_group_id: string }
         Returns: boolean
       }
+      unassign_homework: {
+        Args: { target_assignment_id: string }
+        Returns: undefined
+      }
       update_intake_request_status: {
         Args: {
           next_status: Database["public"]["Enums"]["intake_request_status"]
@@ -1383,6 +1892,10 @@ export type Database = {
           target_phone: string
           target_photo_path?: string
         }
+        Returns: undefined
+      }
+      withdraw_homework: {
+        Args: { target_homework_id: string }
         Returns: undefined
       }
     }
@@ -1411,6 +1924,12 @@ export type Database = {
         | "coach_team"
         | "counselor_team"
         | "campus_lead_team"
+      homework_progress_status:
+        | "not_started"
+        | "in_progress"
+        | "submitted"
+        | "reviewed"
+      homework_version_status: "draft" | "published"
       intake_relationship_status: "pre_engaged" | "engaged" | "married"
       intake_request_person_position: "requester" | "partner"
       intake_request_status:
@@ -1581,6 +2100,13 @@ export const Constants = {
         "counselor_team",
         "campus_lead_team",
       ],
+      homework_progress_status: [
+        "not_started",
+        "in_progress",
+        "submitted",
+        "reviewed",
+      ],
+      homework_version_status: ["draft", "published"],
       intake_relationship_status: ["pre_engaged", "engaged", "married"],
       intake_request_person_position: ["requester", "partner"],
       intake_request_status: [
