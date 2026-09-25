@@ -42,7 +42,7 @@ export const CONNECTION_LABEL: Record<string, string> = { member: "Resonate Memb
 
 export function notProvided(value: string | null | undefined) { return value?.trim() || "Not provided"; }
 export function yesNo(value: boolean) { return value ? "Yes" : "No"; }
-export function isDeleteConfirmation(value: string) { return value === "DELETE"; }
+export { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 export function isIntakeDeleteEligible(status: IntakeRequestStatus, invitedGroupId: string | null) { return status !== "invited" && invitedGroupId === null; }
 export function intakeLabels(values: readonly string[], labels: Record<string, string>) { const resolved = values.flatMap((value) => labels[value] ? [labels[value]] : []); return resolved.length ? resolved.join(", ") : "Not provided"; }
 export function formatIntakePhone(value: string | null | undefined) { const digits = (value ?? "").replace(/\D/g, ""); const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits; return national.length === 10 ? `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}` : "Not provided"; }

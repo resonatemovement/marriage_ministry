@@ -51,6 +51,8 @@ describe("Session Material", () => {
     expect(isValidMaterialUrl("https://example.com/article")).toBe(true);
     expect(isValidMaterialUrl("http://example.com/article")).toBe(true);
     expect(isValidMaterialUrl("not-a-url")).toBe(false);
+    expect(isValidMaterialUrl("https://")).toBe(false);
+    expect(isValidMaterialUrl("https://:443/video")).toBe(false);
     expect(isValidMaterialUrl("ftp://example.com/file")).toBe(false);
     expect(isValidMaterialUrl("mailto:test@example.com")).toBe(false);
     expect(isValidMaterialUrl("javascript:alert(1)")).toBe(false);
@@ -68,9 +70,8 @@ describe("Session Material", () => {
     expect(isValidMaterialUrl(materialUrlFrom(form))).toBe(false);
   });
 
-  it("derives readable summaries without requiring titles", () => {
-    expect(materialPreview({ blockType: "rich_text", title: null, richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "A helpful lesson" }] }] }, url: null, description: null })).toBe("A helpful lesson");
-    expect(materialPreview({ blockType: "video_link", title: null, richTextContent: null, url: "https://example.com", description: null })).toBe("https://example.com");
+  it("uses the URL as the Video / Link preview when no title exists", () => {
+    expect(materialPreview({ title: null, url: "https://example.com" })).toBe("https://example.com");
   });
 
   it("stores or removes new-tab link attributes", () => {

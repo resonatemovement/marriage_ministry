@@ -1,4 +1,7 @@
 import type { MaterialBlockType } from "./types";
+import { richTextHasMeaningfulContent } from "@/components/shared/authoring-completion";
+
+export { richTextHasMeaningfulContent } from "@/components/shared/authoring-completion";
 
 export const SESSION_STATUSES = ["draft", "published", "archived"] as const;
 
@@ -28,6 +31,12 @@ export function isSessionLifecycleAction(value: string): value is SessionLifecyc
 
 export function sessionStatusLabel(status: SessionStatus) {
   return labels[status];
+}
+
+export function sessionLifecycleBadgeClass(status: SessionStatus) {
+  if (status === "draft") return "bg-amber-100 text-amber-900";
+  if (status === "published") return "bg-green-100 text-green-800";
+  return "bg-surface-muted text-text-muted";
 }
 
 export function normalizeSessionTitle(value: string) {
@@ -68,24 +77,9 @@ export function reorderedBlockIds(ids: string[], activeId: string, overId: strin
 export function movedBlockIds(ids: string[], id: string, direction: -1 | 1) { const index = ids.indexOf(id); const next = index + direction; return index < 0 || next < 0 || next >= ids.length ? ids : reorderedBlockIds(ids, id, ids[next]); }
 export function canPublishSession(title: string, blocks: Array<{ blockType: MaterialBlockType; richTextContent: Record<string, unknown> | null; url: string | null }>) { if (!normalizeSessionTitle(title)) return "Enter a session title."; if (!blocks.length) return "Add at least one Session Material block before publishing."; for (const block of blocks) { if (block.blockType === "rich_text" && !richTextHasMeaningfulContent(block.richTextContent)) return "Rich Text material cannot be empty."; if (block.blockType === "video_link" && !isValidMaterialUrl(block.url ?? "")) return "Enter a valid http or https URL for the Video / Link block."; } return null; }
 
-export function richTextHasMeaningfulContent(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== "object") return false;
-  const node = value as { type?: string; text?: string; content?: unknown[] };
-  if (typeof node.text === "string" && node.text.trim()) return true;
-  return Array.isArray(node.content) && node.content.some(richTextHasMeaningfulContent);
-}
-
-export function materialPreview(block: { blockType: MaterialBlockType; title: string | null; richTextContent: Record<string, unknown> | null; url: string | null; description: string | null }) {
+export function materialPreview(block: { title: string | null; url: string | null }) {
   if (block.title?.trim()) return block.title.trim();
-  if (block.blockType === "video_link") return block.url ?? "Video / Link";
-  return richTextPreview(block.richTextContent) || "Rich Text";
-}
-
-function richTextPreview(value: unknown): string {
-  if (!value || typeof value !== "object") return "";
-  const node = value as { text?: string; content?: unknown[] };
-  if (typeof node.text === "string") return node.text.trim();
-  return Array.isArray(node.content) ? node.content.map(richTextPreview).join(" ").replace(/\s+/g, " ").trim() : "";
+  return block.url ?? "Video / Link";
 }
 
 export function sessionLifecycleTarget(status: SessionStatus, action: SessionLifecycleAction): SessionStatus | null {

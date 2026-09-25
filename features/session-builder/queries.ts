@@ -6,11 +6,13 @@ import type { SessionStatus } from "./model";
 import type { SessionSummary } from "./types";
 import type { SessionMaterialBlock } from "./types";
 import type { Database } from "@/types/database.generated";
+import { withCurriculumNumbers } from "./presentation";
 
 function summary(row: Pick<Database["public"]["Tables"]["sessions"]["Row"], "id" | "sequence_number" | "title" | "status" | "updated_at">): SessionSummary {
   return {
     id: row.id,
     sequenceNumber: row.sequence_number,
+    curriculumNumber: 0,
     title: row.title,
     status: row.status,
     updatedAt: row.updated_at,
@@ -19,17 +21,18 @@ function summary(row: Pick<Database["public"]["Tables"]["sessions"]["Row"], "id"
 
 export async function getSessions(status?: SessionStatus): Promise<SessionSummary[]> {
   const supabase = await createServerSupabaseClient();
-  let query = supabase.from("sessions").select("id,sequence_number,title,status,updated_at");
-  if (status) query = query.eq("status", status);
-  const { data, error } = await query.order("sequence_number", { ascending: true });
+  const { data, error } = await supabase.from("sessions").select("id,sequence_number,title,status,updated_at").order("sequence_number", { ascending: true });
   if (error) throw new Error("Session Builder data is unavailable");
-  return (data ?? []).map(summary);
+  const sessions = withCurriculumNumbers((data ?? []).map(summary));
+  return status ? sessions.filter((session) => session.status === status) : sessions;
 }
 
 export async function getSession(sessionId: string): Promise<SessionSummary | null> {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.from("sessions").select("id,sequence_number,title,status,updated_at").eq("id", sessionId).maybeSingle();
-  return error || !data ? null : summary(data);
+  if (error || !data) return null;
+  const { count, error: countError } = await supabase.from("sessions").select("id", { count: "exact", head: true }).lt("sequence_number", data.sequence_number);
+  return countError ? null : { ...summary(data), curriculumNumber: (count ?? 0) + 1 };
 }
 
 export async function getSessionMaterialBlocks(sessionId: string): Promise<SessionMaterialBlock[]> {
