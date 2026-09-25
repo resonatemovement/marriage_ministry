@@ -6,6 +6,10 @@
 - Reuse existing components, utilities, hooks, types, validation, data access, and domain logic when reuse is real.
 - Avoid duplication, speculative abstractions, dead files, unused exports, and unused dependencies.
 
+**Reuse-first rule:** Before creating a new component, helper, hook, validator, editor, card shell, dialog, menu, state utility, or similar abstraction, first inspect the existing codebase for an implementation with the same responsibility. Reuse or extend the existing implementation when practical. Create a separate implementation only when there is a concrete behavioral or domain reason not to share. When a separate implementation is necessary, document the reason in the task handoff. Do not duplicate existing behavior merely to avoid a small refactor.
+
+Prefer extracting a small shared primitive over creating parallel feature-specific copies, but do not force unrelated behaviors into a single over-generalized component.
+
 ## Architecture
 
 - This is a strict TypeScript Next.js App Router application. Prefer Server Components and server-side data access; minimize client components and client JavaScript.

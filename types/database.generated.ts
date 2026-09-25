@@ -1839,6 +1839,15 @@ export type Database = {
         }
         Returns: Json
       }
+      save_session_builder_state: {
+        Args: {
+          target_intent: string
+          target_material: Json
+          target_session_id: string
+          target_title: string
+        }
+        Returns: Json
+      }
       submit_homework: {
         Args: { target_progress_id: string }
         Returns: undefined
