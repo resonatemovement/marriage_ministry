@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { duplicateStagedBlock, editorStateIsDirty, initialSessionEditorState, materialForRpc, moveStagedBlock, newStagedBlock, restoreSessionEditorState, sessionEditorPageIsDirty, sessionPublishError, sessionSaveError, sessionStateFromRpc, type StagedMaterialBlock } from "./editor-model";
+import { duplicateStagedBlock, editorStateIsDirty, initialSessionEditorState, materialForRpc, moveStagedBlock, moveStagedBlockWithinType, newStagedBlock, restoreSessionEditorState, sessionEditorPageIsDirty, sessionPublishError, sessionSaveError, sessionStateFromRpc, type StagedMaterialBlock } from "./editor-model";
 
 const richText = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Lesson" }] }] };
 const saved: StagedMaterialBlock = { key: "saved-id", persistedId: "saved-id", blockType: "rich_text", title: "Intro", richTextContent: richText, url: "", description: "" };
@@ -42,6 +42,36 @@ describe("unified Session editor model", () => {
     expect(editorStateIsDirty({ ...baseline, blocks: duplicate }, baseline)).toBe(true);
     expect(moveStagedBlock(baseline.blocks, video.key, saved.key).map((block) => block.key)).toEqual([video.key, saved.key]);
     expect(editorStateIsDirty({ ...baseline, blocks: moveStagedBlock(baseline.blocks, video.key, saved.key) }, baseline)).toBe(true);
+  });
+
+  it("groups interleaved Page and Resource presentation without changing baseline, and reorders each type independently", () => {
+    const blocks = [saved, { ...video, key: "video-1" }, { ...saved, key: "page-2", persistedId: "page-2", title: "Second Page" }, { ...video, key: "video-2" }];
+    const baseline = { sessionId: "session-id", status: "draft" as const, title: "Lesson", blocks };
+    const pages = blocks.filter((block) => block.blockType === "rich_text");
+    const resources = blocks.filter((block) => block.blockType === "video_link");
+    expect(pages.map(({ key }) => key)).toEqual(["saved-id", "page-2"]);
+    expect(resources.map(({ key }) => key)).toEqual(["video-1", "video-2"]);
+    expect(editorStateIsDirty(baseline, baseline)).toBe(false);
+
+    const reorderedPages = moveStagedBlockWithinType(blocks, "rich_text", "page-2", "saved-id");
+    expect(reorderedPages.map(({ key }) => key)).toEqual(["page-2", "video-1", "saved-id", "video-2"]);
+    expect(reorderedPages.filter(({ blockType }) => blockType === "video_link").map(({ key }) => key)).toEqual(["video-1", "video-2"]);
+    const reorderedResources = moveStagedBlockWithinType(blocks, "video_link", "video-2", "video-1");
+    expect(reorderedResources.map(({ key }) => key)).toEqual(["saved-id", "video-2", "page-2", "video-1"]);
+    expect(reorderedResources.filter(({ blockType }) => blockType === "rich_text").map(({ key }) => key)).toEqual(["saved-id", "page-2"]);
+    expect(editorStateIsDirty({ ...baseline, blocks: reorderedPages }, baseline)).toBe(true);
+  });
+
+  it("creates Add Page and Add Resource using existing staged block identities and types", () => {
+    const page = newStagedBlock("rich_text");
+    const resource = newStagedBlock("video_link");
+    expect(page.blockType).toBe("rich_text");
+    expect(page.key).toMatch(/^local:/);
+    expect(page.persistedId).toBeNull();
+    expect(page.richTextContent).toEqual({ type: "doc", content: [{ type: "paragraph" }] });
+    expect(resource.blockType).toBe("video_link");
+    expect(resource.key).toMatch(/^local:/);
+    expect(resource.persistedId).toBeNull();
   });
 
   it("restores the complete persisted baseline for local discard", () => {

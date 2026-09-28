@@ -11,7 +11,9 @@ import { saveSessionBuilderState } from "./save-session-state";
 import { SessionMaterialEditor } from "./session-material-editor";
 import { SessionWorkspaceNavigation } from "./session-workspace-navigation";
 import { eligibleInternalNavigation } from "./navigation-guard";
-import type { SessionWorkspace } from "./workspace";
+import { SessionPreviewProvider, type SessionPreviewTab } from "./session-preview-context";
+import { SessionPreview } from "./session-preview";
+import { sessionPreviewTabForWorkspace, type SessionWorkspace } from "./workspace";
 import type { SessionMaterialBlock, SessionSummary } from "./types";
 
 export function SessionEditor({ session, blocks = [], activeWorkspace = "material", homework }: {
@@ -37,6 +39,8 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   const [pending, startTransition] = useTransition();
   const pendingRef = useRef(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewTab, setPreviewTab] = useState<SessionPreviewTab>("material");
   const pendingDestinationRef = useRef<string | null>(null);
   const bypassDestinationRef = useRef<string | null>(null);
   const dirty = editorStateIsDirty(editor, baseline);
@@ -131,17 +135,26 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
     setEditor(restoreSessionEditorState(baseline));
   }
 
+  function openPreview(tab: SessionPreviewTab) {
+    setPreviewTab(tab);
+    setPreviewOpen(true);
+  }
+
   return <div inert={pending} aria-busy={pending}>
-    <div className="grid gap-5">
-      <label className="grid gap-1.5 text-sm font-medium text-text-primary">Session title
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <label className="grid min-w-0 flex-1 basis-64 gap-1.5 text-sm font-medium text-text-primary">Session title
         <input value={editor.title} onChange={(event) => setEditor((current) => ({ ...current, title: event.target.value }))} autoFocus={firstSave} maxLength={180} disabled={archived} className="min-h-10 rounded-md border border-border bg-white px-3 text-sm text-text-primary outline-none focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" />
       </label>
+      <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace(activeWorkspace))} className="min-h-10 shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Preview</button>
     </div>
 
-    {editor.sessionId ? <SessionWorkspaceNavigation sessionId={editor.sessionId} activeWorkspace={activeWorkspace} /> : null}
-    {activeWorkspace === "material" || !editor.sessionId
-      ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} updateBlocks={updateBlocks} />
-      : homework}
+    <SessionPreviewProvider value={openPreview}>
+      {editor.sessionId ? <SessionWorkspaceNavigation sessionId={editor.sessionId} activeWorkspace={activeWorkspace} /> : null}
+      {activeWorkspace === "material" || !editor.sessionId
+        ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} updateBlocks={updateBlocks} />
+        : homework}
+    </SessionPreviewProvider>
+    <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} />
 
     <div className="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
       {pageDirty ? <span role="status" className="mr-auto text-xs font-medium text-text-muted">Unsaved changes</span> : null}

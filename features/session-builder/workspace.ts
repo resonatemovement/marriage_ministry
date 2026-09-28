@@ -1,5 +1,9 @@
 export type SessionWorkspace = "material" | "homework";
 
+export function sessionPreviewTabForWorkspace(workspace: SessionWorkspace) {
+  return workspace === "homework" ? "homework" : "material";
+}
+
 export function sessionWorkspaceFromSearch(value: string | undefined): SessionWorkspace {
   return value === "homework" ? "homework" : "material";
 }

@@ -89,6 +89,16 @@ Current verification commands:
 
 Every task returns `CHATGPT HANDOFF REPORT` with the current branch, files created and modified, behavior and decisions, migrations, validation/tests, browser or manual verification status, Git status and commit status, remaining concerns, and the exact recommended next task when requested.
 
+## Project State Updates
+
+`PROJECT_STATE.md` must be updated before every coding-agent task is considered complete. For every implementation, fix, refactor, migration, validation milestone, or Git milestone:
+
+- Preserve accurate information and revise stale sections instead of duplicating them.
+- Record relevant implementation changes, product and architecture decisions, validation actually performed, current branch and Git state, known risks or outstanding browser/manual verification, and exact next steps.
+- Do not claim tests that were not run, migrations that were not applied, commits or pushes that did not occur, or browser behavior that was not manually verified.
+
+The final `CHATGPT HANDOFF REPORT` must explicitly confirm that `PROJECT_STATE.md` was updated.
+
 ## Audible Completion
 
 - After successful implementation and validation, run the task-specific macOS `say` command when the prompt provides one.

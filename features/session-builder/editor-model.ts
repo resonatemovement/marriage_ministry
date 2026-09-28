@@ -65,6 +65,15 @@ export function moveStagedBlock(blocks: StagedMaterialBlock[], activeKey: string
   return keys.map((key) => blocks.find((block) => block.key === key)!);
 }
 
+export function moveStagedBlockWithinType(blocks: StagedMaterialBlock[], blockType: MaterialBlockType, activeKey: string, overKey: string): StagedMaterialBlock[] {
+  const sameType = blocks.filter((block) => block.blockType === blockType);
+  const orderedKeys = reorderedBlockIds(sameType.map((block) => block.key), activeKey, overKey);
+  if (orderedKeys.every((key, index) => key === sameType[index]?.key)) return blocks;
+  const byKey = new Map(sameType.map((block) => [block.key, block]));
+  let index = 0;
+  return blocks.map((block) => block.blockType === blockType ? byKey.get(orderedKeys[index++])! : block);
+}
+
 function normalizedBlock(block: StagedMaterialBlock) {
   return {
     identity: block.persistedId ?? block.key,
