@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, FileText, GripVertical, MoreHorizontal, Plus, Video } from "lucide-react";
+import { ChevronRight, GripVertical, MoreHorizontal, Plus, Video } from "lucide-react";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -13,10 +13,11 @@ import { RichTextSummary } from "@/components/shared/rich-text-summary";
 import { VideoLinkFields } from "@/components/shared/video-link-fields";
 import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
 
-import { duplicateStagedBlock, moveStagedBlock, newStagedBlock, type StagedMaterialBlock } from "./editor-model";
+import { duplicateStagedBlock, newStagedBlock, type StagedMaterialBlock } from "./editor-model";
 import { isValidMaterialUrl, materialPreview } from "./model";
 import { RichTextBlockAuthoring } from "./rich-text-block-authoring";
 import type { MaterialBlockType } from "./types";
+import { moveStagedBlockWithinType } from "./editor-model";
 
 type UpdateBlocks = (update: (blocks: StagedMaterialBlock[]) => StagedMaterialBlock[]) => void;
 
@@ -50,19 +51,28 @@ export function SessionMaterialEditor({ blocks, archived, updateBlocks }: { bloc
     setMessage(null);
   }
 
-  return <section className="mt-6" aria-labelledby="session-material-heading">
-    <AuthoringSectionHeader headingId="session-material-heading" title="Session Material" description="Build and organize the material participants will use."
-      action={!archived && !editing ? <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" />Add Content</button> : undefined} />
+  const pages = blocks.filter((block) => block.blockType === "rich_text");
+  const resources = blocks.filter((block) => block.blockType === "video_link");
+  const openEditing = editing ? <MaterialForm block={editing} patch={(change) => patch(editing.key, change)} done={done} message={message} /> : null;
 
-    {editing ? <MaterialForm block={editing} patch={(change) => patch(editing.key, change)} done={done} message={message} />
-      : blocks.length ? <MaterialRows blocks={blocks} archived={archived} updateBlocks={updateBlocks} edit={setEditingKey} />
-        : <div className="mt-5 rounded-md border border-dashed border-border p-6 text-sm text-text-muted">No material has been added yet. Choose Add Content to begin.</div>}
+  return <section className="mt-6 grid gap-8" aria-labelledby="session-material-heading">
+    <AuthoringSectionHeader headingId="session-material-heading" title="Session Material" description="Build and organize the material participants will use."
+      action={!archived && !editing ? <button type="button" onClick={() => add("rich_text")} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Page</button> : undefined} />
+
+    <section aria-labelledby="session-pages-heading">
+      <AuthoringSectionHeader headingId="session-pages-heading" title="Pages" description="Create and organize the reading material for this Session." />
+      {editing?.blockType === "rich_text" ? openEditing : pages.length ? <MaterialRows blockType="rich_text" blocks={pages} archived={archived} updateBlocks={updateBlocks} edit={setEditingKey} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Pages yet.</p>}
+    </section>
+    <section aria-labelledby="session-resources-heading">
+      <AuthoringSectionHeader headingId="session-resources-heading" title="Resources" description="Add supporting videos, links, and other resources for this Session."
+        action={!archived && !editing ? <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent"><Plus className="size-4" aria-hidden="true" />Add Resource</button> : undefined} />
+      {editing?.blockType === "video_link" ? openEditing : resources.length ? <MaterialRows blockType="video_link" blocks={resources} archived={archived} updateBlocks={updateBlocks} edit={setEditingKey} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Resources yet.</p>}
+    </section>
 
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0">
-      <SheetHeader className="border-b border-border px-6 py-5"><SheetTitle>Add Content</SheetTitle><SheetDescription>Choose the type of content to add.</SheetDescription></SheetHeader>
+      <SheetHeader className="border-b border-border px-6 py-5"><SheetTitle>Add Resource</SheetTitle><SheetDescription>Choose a resource type to add.</SheetDescription></SheetHeader>
       <div className="grid gap-3 p-6">
-        <Chooser icon={<FileText className="size-5" />} title="Rich Text" description="Write article-style session material." onClick={() => add("rich_text")} />
-        <Chooser icon={<Video className="size-5" />} title="Video / Link" description="Add a YouTube video or external link." onClick={() => add("video_link")} />
+        <Chooser icon={<Video className="size-5" />} title="Video / Link" description="Add a video or external link." onClick={() => add("video_link")} />
       </div>
     </SheetContent></Sheet>
   </section>;
@@ -74,7 +84,7 @@ function Chooser({ icon, title, description, onClick }: { icon: React.ReactNode;
 
 function MaterialForm({ block, patch, done, message }: { block: StagedMaterialBlock; patch: (change: Partial<StagedMaterialBlock>) => void; done: () => void; message: string | null }) {
   return <div className="mt-5 grid gap-4 rounded-md border border-border bg-white p-5">
-    <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{block.blockType === "rich_text" ? "Rich Text" : "Video / Link"}</p>
+    <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{block.blockType === "rich_text" ? "Page" : "Video / Link"}</p>
     {block.blockType === "rich_text" ? <RichTextBlockAuthoring title={block.title} content={block.richTextContent ?? { type: "doc", content: [] }}
       onTitleChange={(title) => patch({ title })} onContentChange={(richTextContent) => patch({ richTextContent })} onDone={done} doneLabel="Done editing" />
       : <><VideoLinkFields title={block.title} url={block.url} description={block.description}
@@ -84,11 +94,11 @@ function MaterialForm({ block, patch, done, message }: { block: StagedMaterialBl
   </div>;
 }
 
-function MaterialRows({ blocks, archived, updateBlocks, edit }: { blocks: StagedMaterialBlock[]; archived: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void }) {
+function MaterialRows({ blockType, blocks, archived, updateBlocks, edit }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; archived: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void }) {
   const dndContextId = useId();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }));
   const keys = blocks.map((block) => block.key);
-  function move(activeKey: string, overKey: string) { updateBlocks((current) => moveStagedBlock(current, activeKey, overKey)); }
+  function move(activeKey: string, overKey: string) { updateBlocks((current) => moveStagedBlockWithinType(current, blockType, activeKey, overKey)); }
   function onDragEnd({ active, over }: DragEndEvent) { if (over && active.id !== over.id) move(String(active.id), String(over.id)); }
   return <DndContext id={dndContextId} sensors={sensors} onDragEnd={onDragEnd}><SortableContext items={keys} strategy={verticalListSortingStrategy}><div className="mt-5 grid gap-3">
     {blocks.map((block, index) => <MaterialRow key={block.key} block={block} index={index} count={blocks.length} keys={keys} archived={archived}
@@ -107,8 +117,8 @@ function MaterialRow({ block, index, count, keys, archived, edit, move, duplicat
   function moveBy(direction: -1 | 1) { const target = keys[index + direction]; if (target) move(block.key, target); }
   return <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-md border border-border bg-white p-4">
     <div className="min-w-0 flex-1">{block.blockType === "rich_text" ? <>
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Rich Text</p>
-      <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Rich Text block" />
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Page</p>
+      <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Page" />
     </> : <><p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Video / Link</p><p className="mt-1 truncate text-sm font-semibold text-text-primary">{materialPreview(block)}</p></>}</div>
     {!archived ? confirming ? <div className="flex items-center gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">Remove</button></div> : <>
       <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>
