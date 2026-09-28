@@ -3,7 +3,7 @@ Last updated: September 28, 2026
 Current working branch: feature/homework-preview
 Repository: resonatemovement/marriage_ministry
 Current base: merged main at 81e177780c9adb35a0f523e84a9b62e5ed7273d4
-Current state: Preview milestone is approved for closeout with uncommitted changes. Preserve all intentional Preview work until it is committed and merged. Homework Builder milestone is already merged to main.
+Current state: Preview milestone is approved and committed locally on `feature/homework-preview`; push/merge closeout is blocked pending resolution of an automatic approval rejection for external repository data egress. Homework Builder milestone is already merged to main.
 1. Project Overview & Goals
 Product purpose
 The application is an internal and participant-facing platform for Resonate Movement’s pre-engagement / marriage counseling ministry.
@@ -739,7 +739,7 @@ Do not drag Pages into Resources or vice versa.
 Preview architecture
 Current branch:
 feature/homework-preview
-Preview is currently uncommitted.
+Preview is committed locally; feature push and merge are not complete.
 Preview uses current staged state, including unsaved changes.
 No save is required before previewing.
 Preview performs no DB writes.
@@ -874,8 +874,8 @@ feature/homework-builder-ui
 was deleted locally and remotely after merge.
 Current branch
 feature/homework-preview
-Base is merged main at 81e177780c9adb35a0f523e84a9b62e5ed7273d4. The Preview milestone remains uncommitted. The worktree is intentionally dirty; preserve all current intentional changes and do not reset or discard them.
-Current uncommitted Preview work
+Base is merged main at 81e177780c9adb35a0f523e84a9b62e5ed7273d4. Preview commit `64dec0314e78988f420ca957eb2bac064fb83a9d` is local. Its push was rejected by automatic approval review as external repository data egress; Preview is not pushed or merged. Preserve this commit and do not reset or discard it.
+Preview work included in the local milestone commit
 Major Preview work includes:
 - Homework Preview Pass 1
 - unified Session Material/Homework Preview
@@ -924,7 +924,7 @@ Final Preview milestone regression gate completed September 28, 2026 on the code
 - `npm run verify:supabase` was not run, per task scope; Preview made no DB changes.
 - No regression fixes were needed during the gate.
 Browser/manual Preview review is reported complete and approved by the user, including Session-level Preview behavior, Page title/body alignment, bounded editor scrolling with a visible toolbar, and Video / Link presentation in both Session Material Resources and Homework. The agent records the user's approval and does not claim independent browser execution.
-Current Git state before Preview closeout: branch `feature/homework-preview`; intentional uncommitted Preview work plus the approved `AGENTS.md` and `PROJECT_STATE.md` updates. No Preview commit, push, merge, or deploy has occurred yet.
+Current Git state after local Preview commit: branch `feature/homework-preview`; `64dec0314e78988f420ca957eb2bac064fb83a9d` committed the approved Preview work and `AGENTS.md`/`PROJECT_STATE.md` workflow updates. Feature push was rejected by automatic approval review as external repository data egress. No merge or deploy occurred.
 Focused validation for the Video / Link refinement before the final gate:
 - Node v24.21.0; 7 tests passed across 2 files.
 - `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
@@ -935,9 +935,10 @@ Browser/manual review status (user-reported complete and approved):
 - The user reports the overall Preview behavior and responsive presentation look correct. The agent did not independently perform the browser review.
 Next exact steps:
 1. Audit the complete Git status and diff and confirm every change belongs to the approved Preview milestone or the approved AGENTS.md/PROJECT_STATE.md workflow updates.
-2. Commit and push `feature/homework-preview`, merge it to `main` using a merge commit, push `main`, and confirm both remote updates.
-3. After confirming the pushed merge, delete the old Preview branch and create `feature/resource-library` from updated `main`.
-4. Update and commit the final PROJECT_STATE.md transition on `feature/resource-library`, push it, and leave the working tree clean.
+2. Obtain approval for the exact push of `64dec0314e78988f420ca957eb2bac064fb83a9d` to `origin/feature/homework-preview`; automatic approval review rejected it as external repository data egress and instructed against retrying or using another route.
+3. After that push succeeds, safely update local `main` from origin, merge Preview with a merge commit, push `main`, and confirm the remote merge.
+4. Only after confirming pushed `main`, delete `feature/homework-preview` locally/remotely and create `feature/resource-library` from updated `main`.
+5. Update, commit, and push the final `PROJECT_STATE.md` transition on `feature/resource-library`; leave the working tree clean.
 Preview milestone closeout
 After full validation:
 1. Audit entire git status and diff.
@@ -1023,7 +1024,7 @@ A fresh AI taking over this project should remember:
 15. Do not merge state models merely because their code looks similar.
 16. Use focused validation during development; full suite only at milestone gates.
 17. Use Node 24 for milestone validation.
-18. Current branch is feature/homework-preview and contains uncommitted Preview work that must be preserved.
+18. Current branch is feature/homework-preview and contains local Preview commit `64dec0314e78988f420ca957eb2bac064fb83a9d`, which must be preserved.
 19. Update PROJECT_STATE.md before considering every coding-agent task complete, including validation and Git milestones.
 20. Record browser/manual verification only when actually performed.
-21. Do not commit/push/merge the Preview branch until the full milestone regression gate and outstanding browser review are complete and the user approves Git closeout.
+21. Do not commit/push/merge Preview until the full milestone regression gate and browser review are complete and the user approves Git closeout. The current Preview commit is approved; its external push remains blocked by automatic approval review.
