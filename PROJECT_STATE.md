@@ -1,9 +1,9 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: September 28, 2026
-Current working branch: feature/homework-preview
+Current working branch: feature/resource-library
 Repository: resonatemovement/marriage_ministry
 Current base: merged main at 81e177780c9adb35a0f523e84a9b62e5ed7273d4
-Current state: Preview milestone is approved and committed locally on `feature/homework-preview`; push/merge closeout is blocked pending resolution of an automatic approval rejection for external repository data egress. Homework Builder milestone is already merged to main.
+Current state: Session + Homework Preview is complete, browser-reviewed and approved, and locally merged to `main`. The main push and remote Preview branch deletion remain manual user actions. Resource Library planning/foundation is the current milestone; implementation has not started.
 1. Project Overview & Goals
 Product purpose
 The application is an internal and participant-facing platform for Resonate Movement’s pre-engagement / marriage counseling ministry.
@@ -737,9 +737,7 @@ Pages reorder within Pages.
 Resources reorder within Resources.
 Do not drag Pages into Resources or vice versa.
 Preview architecture
-Current branch:
-feature/homework-preview
-Preview is committed locally; feature push and merge are not complete.
+Completed milestone: Session + Homework Preview. It is merged to local `main` and available on the manually pushed `feature/homework-preview` remote branch.
 Preview uses current staged state, including unsaved changes.
 No save is required before previewing.
 Preview performs no DB writes.
@@ -872,10 +870,23 @@ git@github.com:resonatemovement/marriage_ministry.git
 Old branch:
 feature/homework-builder-ui
 was deleted locally and remotely after merge.
+Completed Preview milestone
+Feature commit:
+64dec0314e78988f420ca957eb2bac064fb83a9d
+feat: complete session and homework preview
+User-authored feature-branch state commit:
+cd55a11887b34c37363e01c83c3d93a3f8041b30
+docs: record preview closeout status
+Local merge commit on `main`:
+a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2
+merge: complete session and homework preview
+The feature commit and follow-up docs commit were manually pushed by the user to `origin/feature/homework-preview`. The local merge is not pushed yet; user will push `main` manually. The remote `feature/homework-preview` branch remains and is to be deleted manually after pushing `main`.
+The local `feature/homework-preview` branch was deleted after verifying its commits are reachable from `main`.
 Current branch
-feature/homework-preview
-Base is merged main at 81e177780c9adb35a0f523e84a9b62e5ed7273d4. Preview commit `64dec0314e78988f420ca957eb2bac064fb83a9d` is local. Its push was rejected by automatic approval review as external repository data egress; Preview is not pushed or merged. Preserve this commit and do not reset or discard it.
-Preview work included in the local milestone commit
+feature/resource-library
+Created locally from updated `main` at `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. Local `main` is three commits ahead of `origin/main` (Preview feature commit, follow-up docs commit, and Preview merge commit). `feature/resource-library` has not been pushed and has no upstream yet.
+The Resource Library branch was created from clean local `main`; this milestone transition changes only `PROJECT_STATE.md`. No Resource Library implementation files have been created.
+Preview work included in the milestone merge
 Major Preview work includes:
 - Homework Preview Pass 1
 - unified Session Material/Homework Preview
@@ -905,7 +916,7 @@ features/session-builder/session-material-editor.tsx
 features/session-builder/session-editor.tsx
 features/session-builder/session-editor-presentation.test.ts
 plus shared Rich Text renderer/test changes and existing Preview integration files.
-Exact current Git diff should be inspected before milestone closeout rather than assuming this list is exhaustive.
+The Preview milestone audit found only Preview implementation/tests and approved AGENTS.md/PROJECT_STATE.md workflow documentation. No unrelated files, temporary files, debug code, secrets, migrations, generated types, or DB/security changes were included.
 Most recent focused validation before the full milestone gate:
 - Node v24.21.0
 - 21 focused tests passed across 5 files: Session Preview, RichTextEditor, Homework Preview, Session editor presentation, and Homework builder presentation.
@@ -924,7 +935,7 @@ Final Preview milestone regression gate completed September 28, 2026 on the code
 - `npm run verify:supabase` was not run, per task scope; Preview made no DB changes.
 - No regression fixes were needed during the gate.
 Browser/manual Preview review is reported complete and approved by the user, including Session-level Preview behavior, Page title/body alignment, bounded editor scrolling with a visible toolbar, and Video / Link presentation in both Session Material Resources and Homework. The agent records the user's approval and does not claim independent browser execution.
-Current Git state after local Preview commit: branch `feature/homework-preview`; `64dec0314e78988f420ca957eb2bac064fb83a9d` committed the approved Preview work and `AGENTS.md`/`PROJECT_STATE.md` workflow updates. Feature push was rejected by automatic approval review as external repository data egress. No merge or deploy occurred.
+Preview's final code is locally merged. The user's browser/manual review was completed and approved as described in the preceding section.
 Focused validation for the Video / Link refinement before the final gate:
 - Node v24.21.0; 7 tests passed across 2 files.
 - `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
@@ -933,51 +944,46 @@ Browser/manual review status (user-reported complete and approved):
 - RichTextEditor bounded internal scrolling and persistent toolbar visibility were reviewed and approved.
 - Shared Video / Link Preview was reviewed and approved in Session Material Resources and Homework; no redundant raw URL is shown.
 - The user reports the overall Preview behavior and responsive presentation look correct. The agent did not independently perform the browser review.
-Next exact steps:
-1. Audit the complete Git status and diff and confirm every change belongs to the approved Preview milestone or the approved AGENTS.md/PROJECT_STATE.md workflow updates.
-2. Obtain approval for the exact push of `64dec0314e78988f420ca957eb2bac064fb83a9d` to `origin/feature/homework-preview`; automatic approval review rejected it as external repository data egress and instructed against retrying or using another route.
-3. After that push succeeds, safely update local `main` from origin, merge Preview with a merge commit, push `main`, and confirm the remote merge.
-4. Only after confirming pushed `main`, delete `feature/homework-preview` locally/remotely and create `feature/resource-library` from updated `main`.
-5. Update, commit, and push the final `PROJECT_STATE.md` transition on `feature/resource-library`; leave the working tree clean.
-Preview milestone closeout
-After full validation:
-1. Audit entire git status and diff.
-2. Confirm all files belong to Preview milestone.
-3. Confirm no temporary/debug/secrets.
-4. Commit Preview branch.
-5. Push Preview branch.
-6. Merge to main.
-7. Push main.
-8. Delete completed Preview branch.
-9. Create next feature branch only after deciding next milestone.
-Do not deploy unless explicitly approved.
-PROD remains untouched.
-Likely future milestones
-These are known future directions but should not be started until the current Preview milestone is closed.
+Next exact development step: RESOURCE LIBRARY FOUNDATION DESIGN. Before implementation, inspect existing repository and Supabase conventions and design the resource domain/metadata model, version model, usage/reference strategy, Storage bucket/path strategy, private/public access, upload/download authorization, MIME and file validation, maximum file-size policy, RLS and server authorization, replace-file transaction, current-version selection, protected-version retention/pruning, archive/delete integrity, audit metadata, and the future-consumer integration boundary. Do not implement these items in the design task.
+Preview milestone closeout (completed locally)
+Final regression and diff checks passed; browser/manual review was user-approved.
+Preview and its follow-up state commit are on the remote Preview feature branch.
+Preview is merged locally to `main`; merge commit `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` is not yet pushed. User will push `main` manually.
+The local Preview branch was deleted after confirming its commits are reachable from local `main`. The remote Preview branch remains for the user to delete manually after pushing `main`.
+No deployment occurred; PROD remains untouched.
+Current milestone: Resource Library — planning/foundation
+The remaining manual Git actions are to push local `main` and then delete the remote `feature/homework-preview` branch. No push or remote deletion was performed in this task.
 Approved next milestone: Resource Library
 Product direction:
-- Build a standalone application-level Resource Library, not owned by Session Material; other features may reference its resources later.
-- Use WordPress Media Library as the general mental model.
-- Make it a top-level feature for `super_admin`, `admin`, and `author`.
+- Standalone application-level Resource Library, conceptually analogous to a WordPress Media Library.
+- Not owned by Session Material. Uploaded Resources may later be referenced from Session Material and other application features.
+- Consumers reference stable Resource identity; do not duplicate files or use raw Storage URLs as identity.
+- Top-level feature available to Super Admin, Admin, and Author.
 V1 permissions:
-- Super Admin/Admin: upload, browse, edit metadata, archive, delete unused resources, and replace files.
-- Author: upload, browse, select, edit metadata, and replace files they are permitted to edit.
-- Archive and permanent-delete authority remains Admin/Super Admin.
+- Super Admin/Admin: upload, browse, edit metadata, replace files, archive, and permanently delete eligible unused Resources.
+- Author: upload, browse, select, edit permitted metadata, and replace Resources they are permitted to edit.
+- Archive and permanent-delete authority remains Super Admin/Admin.
 Initial file categories:
-- Images, PDF/documents, Word documents, audio, and video.
+- Images, PDFs, document files including Word documents, audio, and video. Establish file-type foundations without implementing file-type-specific UI.
 Architecture direction:
-- Store binaries in Supabase Storage and metadata/identity in Postgres.
-- Consumers reference stable `resource_id` values, never copied raw Storage URLs as identity.
+- Binaries live in Supabase Storage. Metadata, stable identity, permissions, version relationships, and usage references live in Postgres.
+- `resource_id` is stable Resource identity. A consumer must not treat a raw Storage URL/path as identity.
 - External Video / Link remains distinct from uploaded managed Resources.
+Metadata model should anticipate:
+- stable resource ID; title/display name; optional description; original filename; MIME type; category; file size; uploader; created/updated timestamps; active/archive status; current-version relationship.
+- Exact schema remains to be designed.
 Replacement/versioning:
-- Replace File preserves the same stable `resource_id` and creates a new file version; current metadata and relationships stay attached to the Resource.
-- Current use may resolve to the latest active version; future immutable/historical assignments may pin a resource version.
-- Retain the current version and up to 3 previous versions. Protect versions referenced by historical/immutable records from automatic pruning; older unreferenced versions may be cleaned up.
-- Represent the retention count as configurable server-side policy, not scattered constants.
+- Replace File is a first-class operation that preserves `resource_id`, creates a new file version, and keeps current metadata and relationships attached to the Resource. Metadata edits are independent of binary replacement.
+- Normal/current use may resolve to the latest active version. Future immutable/historical assignments may pin a specific version; replacement must not alter a pinned historical version.
+- Always retain the current version and up to 3 previous versions. Protect versions referenced by historical/immutable records, even when older than the standard retention window.
+- Older unreferenced versions beyond the window are eligible for Supabase Storage and version-metadata cleanup. No cleanup is implemented yet.
+- Keep retention count in one centralized/configurable server-side policy value, not scattered magic numbers.
 Deletion:
-- Never hard-delete a referenced Resource; archive it.
-- Unused Resources may support destructive DELETE confirmation under the established app standard.
-No Resource Library implementation has started. Exact next step: design the foundation across the DB model, Storage layout, RLS/permissions, upload validation, replacement/version retention, and archive/delete integrity before implementation.
+- Never hard-delete a referenced Resource; archive it and keep historical references resolvable.
+- Unused Resources may eventually support permanent deletion with the established uppercase `DELETE` confirmation convention.
+- Enforce referential safety in server/database logic, not only in UI.
+Session Material integration is deferred until after the standalone Library exists. Later Resource actions may include `Choose from Resource Library` and `Add External Link`; do not integrate it during the foundation milestone.
+No Resource Library implementation has started. Exact next development task: RESOURCE LIBRARY FOUNDATION DESIGN. Inspect existing repository and Supabase conventions and design the resource metadata/domain model; version model; usage/reference strategy; Storage bucket/path and private/public access strategy; upload/download authorization; allowed MIME/file validation; maximum file-size policy; RLS and server authorization; replace-file transaction flow; current-version selection; protected-version retention/pruning algorithm; archive/delete integrity; audit metadata; and future-consumer integration boundary. Do not implement any of these items yet.
 Selective Page assignment
 Counselor can choose specific Session Pages for each couple.
 Important:
@@ -1024,7 +1030,7 @@ A fresh AI taking over this project should remember:
 15. Do not merge state models merely because their code looks similar.
 16. Use focused validation during development; full suite only at milestone gates.
 17. Use Node 24 for milestone validation.
-18. Current branch is feature/homework-preview and contains local Preview commit `64dec0314e78988f420ca957eb2bac064fb83a9d`, which must be preserved.
+18. Current branch is `feature/resource-library`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` is on local `main`.
 19. Update PROJECT_STATE.md before considering every coding-agent task complete, including validation and Git milestones.
 20. Record browser/manual verification only when actually performed.
-21. Do not commit/push/merge Preview until the full milestone regression gate and browser review are complete and the user approves Git closeout. The current Preview commit is approved; its external push remains blocked by automatic approval review.
+21. Preview is regression-validated, browser/manual reviewed and approved, and locally merged. The user will push `main` and delete the remote Preview branch manually.
