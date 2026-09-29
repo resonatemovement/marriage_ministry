@@ -1474,6 +1474,209 @@ export type Database = {
           },
         ]
       }
+      resource_storage_cleanup: {
+        Row: {
+          attempts: number
+          created_at: string
+          last_error: string | null
+          not_before: string
+          resource_id: string
+          storage_path: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          last_error?: string | null
+          not_before?: string
+          resource_id: string
+          storage_path: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          last_error?: string | null
+          not_before?: string
+          resource_id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      resource_uploads: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          mime_type: string
+          original_filename: string
+          resource_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          mime_type: string
+          original_filename: string
+          resource_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          mime_type?: string
+          original_filename?: string
+          resource_id?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_uploads_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_uploads_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_versions: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string
+          original_filename: string
+          resource_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          mime_type: string
+          original_filename: string
+          resource_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string
+          original_filename?: string
+          resource_id?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_versions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_versions_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          category: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          description: string | null
+          id: string
+          last_version_number: number
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          category: string
+          created_at?: string
+          created_by: string
+          current_version_id?: string | null
+          description?: string | null
+          id?: string
+          last_version_number?: number
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          current_version_id?: string | null
+          description?: string | null
+          id?: string
+          last_version_number?: number
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_current_version_fk"
+            columns: ["id", "current_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
+            referencedColumns: ["resource_id", "id"]
+          },
+          {
+            foreignKeyName: "resources_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_material_blocks: {
         Row: {
           block_type: string
@@ -1713,6 +1916,10 @@ export type Database = {
         }
         Returns: string
       }
+      cancel_resource_upload: {
+        Args: { target_upload_id: string }
+        Returns: undefined
+      }
       cleanup_intake_permanent_delete_verifier_artifacts: {
         Args: { target_group_ids: string[] }
         Returns: Json
@@ -1750,6 +1957,10 @@ export type Database = {
         Args: { target_request_id: string }
         Returns: Json
       }
+      delete_resource: {
+        Args: { target_resource_id: string }
+        Returns: undefined
+      }
       delete_session_material_block: {
         Args: { target_block_id: string }
         Returns: undefined
@@ -1769,6 +1980,27 @@ export type Database = {
         Returns: string
       }
       enter_onboarding: { Args: never; Returns: undefined }
+      expire_resource_uploads: { Args: never; Returns: number }
+      finalize_resource_upload: {
+        Args: { target_upload_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          mime_type: string
+          original_filename: string
+          resource_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+          version_number: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       force_update_homework_assignment: {
         Args: {
           reason?: string
@@ -1788,6 +2020,39 @@ export type Database = {
       invite_intake_request: {
         Args: { target_request_id: string }
         Returns: Json
+      }
+      prepare_resource_upload: {
+        Args: {
+          target_category: string
+          target_description: string
+          target_mime_type: string
+          target_original_filename: string
+          target_resource_id: string
+          target_safe_filename: string
+          target_size_bytes: number
+          target_title: string
+        }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          mime_type: string
+          original_filename: string
+          resource_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_uploads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      prune_resource_versions: {
+        Args: { keep_previous: number; target_resource_id: string }
+        Returns: number
       }
       publish_homework_version: {
         Args: { target_version_id: string }
@@ -1848,6 +2113,43 @@ export type Database = {
         }
         Returns: Json
       }
+      save_session_homework_authoring_state: {
+        Args: {
+          publish_homework: boolean
+          save_homework: boolean
+          save_session: boolean
+          target_homework_blocks: Json
+          target_homework_version_id: string
+          target_material: Json
+          target_session_id: string
+          target_session_intent: string
+          target_title: string
+        }
+        Returns: Json
+      }
+      set_resource_archived: {
+        Args: { should_archive: boolean; target_resource_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          category: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          description: string | null
+          id: string
+          last_version_number: number
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resources"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_homework: {
         Args: { target_progress_id: string }
         Returns: undefined
@@ -1902,6 +2204,33 @@ export type Database = {
           target_photo_path?: string
         }
         Returns: undefined
+      }
+      update_resource_metadata: {
+        Args: {
+          target_description: string
+          target_resource_id: string
+          target_title: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          category: string
+          created_at: string
+          created_by: string
+          current_version_id: string | null
+          description: string | null
+          id: string
+          last_version_number: number
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resources"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       withdraw_homework: {
         Args: { target_homework_id: string }

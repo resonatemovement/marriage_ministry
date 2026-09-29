@@ -1,9 +1,9 @@
 Project State Document — Resonate Marriage Ministry
-Last updated: September 28, 2026
+Last updated: September 29, 2026
 Current working branch: feature/resource-library
 Repository: resonatemovement/marriage_ministry
-Current base: merged main at 81e177780c9adb35a0f523e84a9b62e5ed7273d4
-Current state: Session + Homework Preview is complete, browser-reviewed and approved, and locally merged to `main`. The main push and remote Preview branch deletion remain manual user actions. Resource Library planning/foundation is the current milestone; implementation has not started.
+Current base: Preview merge on main at a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2; resource milestone documentation commit 1afe047db125e292ae48bd023b6142abe97b666b
+Current state: Session + Homework Preview is complete, browser-reviewed and approved, and merged on tracked main. Resource Library foundation is implemented and applied to Marriage Ministry DEV, with uncommitted review changes on feature/resource-library. No Resource Library UI or consumer integrations exist yet.
 1. Project Overview & Goals
 Product purpose
 The application is an internal and participant-facing platform for Resonate Movement’s pre-engagement / marriage counseling ministry.
@@ -15,7 +15,7 @@ The system is intended to support the full counseling workflow:
 - Couples eventually consume reading/resources and complete required Homework.
 - Counselors eventually review submitted responses.
 - Historical assignments and participant responses must remain stable even when curriculum is revised later.
-The current development focus is the Session Builder / Homework authoring system.
+The current development focus is the standalone Resource Library; the approved Session Builder / Homework authoring and Preview behavior remains unchanged.
 Runtime requirement: use Node 24 for project validation.
 Core product model
 A counseling curriculum consists of Sessions.
@@ -880,12 +880,11 @@ docs: record preview closeout status
 Local merge commit on `main`:
 a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2
 merge: complete session and homework preview
-The feature commit and follow-up docs commit were manually pushed by the user to `origin/feature/homework-preview`. The local merge is not pushed yet; user will push `main` manually. The remote `feature/homework-preview` branch remains and is to be deleted manually after pushing `main`.
+The feature commit and follow-up docs commit were manually pushed by the user. Current local tracking refs show `main` and `origin/main` at the Preview merge; the remote-tracking Preview branch is absent. No network fetch, push, or remote deletion was performed during the Resource Library foundation task.
 The local `feature/homework-preview` branch was deleted after verifying its commits are reachable from `main`.
 Current branch
 feature/resource-library
-Created locally from updated `main` at `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. Local `main` is three commits ahead of `origin/main` (Preview feature commit, follow-up docs commit, and Preview merge commit). `feature/resource-library` has not been pushed and has no upstream yet.
-The Resource Library branch was created from clean local `main`; this milestone transition changes only `PROJECT_STATE.md`. No Resource Library implementation files have been created.
+Created from updated `main` at `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. Current branch HEAD/upstream `origin/feature/resource-library` are at `1afe047db125e292ae48bd023b6142abe97b666b` (`docs: start resource library milestone`). Main matches its local origin tracking ref. The foundation is uncommitted: PROJECT_STATE.md, the exported existing admin-role helper, regenerated database types, the new Resource Library feature directory, and two migrations. No Git mutation/commit/push/merge/branch deletion occurred in the foundation task.
 Preview work included in the milestone merge
 Major Preview work includes:
 - Homework Preview Pass 1
@@ -944,16 +943,15 @@ Browser/manual review status (user-reported complete and approved):
 - RichTextEditor bounded internal scrolling and persistent toolbar visibility were reviewed and approved.
 - Shared Video / Link Preview was reviewed and approved in Session Material Resources and Homework; no redundant raw URL is shown.
 - The user reports the overall Preview behavior and responsive presentation look correct. The agent did not independently perform the browser review.
-Next exact development step: RESOURCE LIBRARY FOUNDATION DESIGN. Before implementation, inspect existing repository and Supabase conventions and design the resource domain/metadata model, version model, usage/reference strategy, Storage bucket/path strategy, private/public access, upload/download authorization, MIME and file validation, maximum file-size policy, RLS and server authorization, replace-file transaction, current-version selection, protected-version retention/pruning, archive/delete integrity, audit metadata, and the future-consumer integration boundary. Do not implement these items in the design task.
+Next exact development step: Resource Library standalone UI (see the implemented foundation and deferred risks below).
 Preview milestone closeout (completed locally)
 Final regression and diff checks passed; browser/manual review was user-approved.
 Preview and its follow-up state commit are on the remote Preview feature branch.
-Preview is merged locally to `main`; merge commit `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` is not yet pushed. User will push `main` manually.
-The local Preview branch was deleted after confirming its commits are reachable from local `main`. The remote Preview branch remains for the user to delete manually after pushing `main`.
+Preview is merged to `main`; local `origin/main` now matches merge commit `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. The local Preview branch was deleted after confirming reachability; its remote-tracking ref is now absent. These tracking observations do not claim a new fetch or agent push/deletion.
 No deployment occurred; PROD remains untouched.
-Current milestone: Resource Library — planning/foundation
-The remaining manual Git actions are to push local `main` and then delete the remote `feature/homework-preview` branch. No push or remote deletion was performed in this task.
-Approved next milestone: Resource Library
+Current milestone: Resource Library foundation validated and ready for commit on `feature/resource-library`.
+No deployment is authorized. Do not push, merge, deploy, or touch PROD as part of this milestone closeout.
+Approved next milestone: Resource Library standalone UI
 Product direction:
 - Standalone application-level Resource Library, conceptually analogous to a WordPress Media Library.
 - Not owned by Session Material. Uploaded Resources may later be referenced from Session Material and other application features.
@@ -961,29 +959,76 @@ Product direction:
 - Top-level feature available to Super Admin, Admin, and Author.
 V1 permissions:
 - Super Admin/Admin: upload, browse, edit metadata, replace files, archive, and permanently delete eligible unused Resources.
-- Author: upload, browse, select, edit permitted metadata, and replace Resources they are permitted to edit.
-- Archive and permanent-delete authority remains Super Admin/Admin.
+- Author: upload, browse active resources, select in future consumers, edit metadata and replace only Resources originally created by that Author. Archived resources are unavailable to Authors.
+- Archive, restore, and permanent-delete authority remains Super Admin/Admin. Admin replacement never transfers original ownership. Active workspace grants no permission.
 Initial file categories:
 - Images, PDFs, document files including Word documents, audio, and video. Establish file-type foundations without implementing file-type-specific UI.
 Architecture direction:
 - Binaries live in Supabase Storage. Metadata, stable identity, permissions, version relationships, and usage references live in Postgres.
 - `resource_id` is stable Resource identity. A consumer must not treat a raw Storage URL/path as identity.
 - External Video / Link remains distinct from uploaded managed Resources.
-Metadata model should anticipate:
-- stable resource ID; title/display name; optional description; original filename; MIME type; category; file size; uploader; created/updated timestamps; active/archive status; current-version relationship.
-- Exact schema remains to be designed.
+Implemented DB/domain model:
+- `resources`: stable UUID, title, optional description, DB-enforced image/document/audio/video category, original created_by, updated_by, timestamps, archived_at/by, current_version_id, persistent last_version_number.
+- `resource_versions`: immutable UUID, resource_id (RESTRICT FK), unique monotonic per-resource version_number, unique storage_path, original_filename, MIME, size_bytes, uploaded_by, created_at.
+- Composite current FK `(resources.id, current_version_id)` -> `(resource_versions.resource_id, id)` prevents cross-resource pointers. Resource row locking serializes finalization; monotonic counter survives pruning. Version UPDATE is rejected by a trigger; authenticated direct table writes are not granted.
+- `resource_uploads`: pending reserved Resource/Version IDs and intended metadata, uploader, created_at/3-hour expiry, exact destination; no upload/auth tokens stored. Initial resource shells are invisible through RLS until finalized.
+- `resource_storage_cleanup`: transactional deletion outbox, path/resource ID, not_before, timestamps, attempts, last_error. No speculative polymorphic usage table or production consumers.
+Storage and validation:
+- Private `resource-library` bucket, overall 262144000 bytes (250 MiB), accepted MIME allowlist. Object path `{resource_id}/{version_id}/{sanitized-original-filename}` is metadata, never identity/public canonical URL.
+- Central application/server `features/resource-library/policy.ts`: image 15 MiB, document 25 MiB, audio 75 MiB, video 250 MiB (approved MB values use binary bytes, consistent with existing buckets). The DB has one defense-in-depth validation snapshot with a focused alignment test, not limits scattered across RPCs.
+- MIME contract: image/jpeg, image/png, image/webp, image/avif; application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document; audio/mpeg, audio/mp4, audio/aac, audio/wav, audio/x-wav, audio/x-m4a; video/mp4, video/webm. Word is document. Filename extension alone never authorizes upload. Preserve original image binaries; no conversion or thumbnails.
+- Server-only prepare validates active authenticated role, ownership, category, MIME, size, and exact intent; authenticated hardened RPC independently validates permissions/file contract. Only then does server-only service Storage issue an exact-path non-upsert signed upload token. No authenticated Storage INSERT/UPDATE/DELETE policies, and no Next/Vercel binary proxy.
+- Finalize checks Storage object existence and actual upload metadata MIME/size, transactionally inserts history and advances current. RLS restricts metadata/private-file reads; view/download uses authenticated-client 5-minute signed URLs. Bearer access already issued expires naturally rather than instantly revoking on archive.
+- Reuse: existing AppRole and admin-role predicate (now exported without behavioral change), getAuthenticatedIdentity, createServerSupabaseClient, Supabase env/service-client conventions, private.current_user_has_role, private.set_updated_at, public.audit_events. Resource-specific validation/versioning is new because profile-photo overwrite/onboarding and Session/Homework lifecycles have different responsibilities.
+- `server.ts` provides prepare/finalize/cancel, browse/detail, metadata edit, signed view/download, archive/restore, uppercase DELETE eligible permanent delete, and explicit admin cleanup retry. These are server-only operations, not routes/actions/UI yet.
 Replacement/versioning:
 - Replace File is a first-class operation that preserves `resource_id`, creates a new file version, and keeps current metadata and relationships attached to the Resource. Metadata edits are independent of binary replacement.
 - Normal/current use may resolve to the latest active version. Future immutable/historical assignments may pin a specific version; replacement must not alter a pinned historical version.
 - Always retain the current version and up to 3 previous versions. Protect versions referenced by historical/immutable records, even when older than the standard retention window.
-- Older unreferenced versions beyond the window are eligible for Supabase Storage and version-metadata cleanup. No cleanup is implemented yet.
+- Successful replacement finalizes a NEW immutable version under the SAME Resource ID before pruning. Failure before finalization preserves the previous current version. Finalize retries are idempotent and never rewind current; future Restore Previous Version must create another new version.
+- Older unreferenced versions beyond the window are pruned transactionally into the cleanup outbox. The server removes only committed queued Storage paths, then acknowledges them. Failure leaves a retryable row/error and returns explicit maintenance errors without breaking current or claiming replacement failure.
 - Keep retention count in one centralized/configurable server-side policy value, not scattered magic numbers.
+- There are no production pinned consumers. BEFORE the first version-pinning consumer, add its explicit RESTRICT FKs and extend pruning/reference checks and tests. The current prune RPC already skips FK-protected candidates as the final safety net; the rollback-only verifier tests that with a temporary consumer table which does not persist.
+- Cancel/finalize lock in the same order; cancellation never queues a committed finalized version after an ambiguous network response. Abandoned initial shells/expired intents can be cleaned by admin retry. Cancellation removal waits beyond token expiry (3-hour reservation; signing permitted only in the first minute; standard signed tokens last 2 hours).
+- No scheduler added. Admin `retryResourceCleanup` expires intents/drains eligible queue in bounded batches; scheduled maintenance is deferred. Resumable/TUS introduction must revisit orphan timing (TUS URLs may live 24 hours).
 Deletion:
 - Never hard-delete a referenced Resource; archive it and keep historical references resolvable.
-- Unused Resources may eventually support permanent deletion with the established uppercase `DELETE` confirmation convention.
+- Admin/Super Admin archive/restore preserves Resource/history/binaries. Eligible unused permanent delete is implemented server-side and requires exact uppercase `DELETE`; confirmation UI is deferred.
 - Enforce referential safety in server/database logic, not only in UI.
+- DB deletion and outbox insertion are atomic. Future restrictive Resource/Version consumer FK rejection rolls back both; Storage is never touched on rejected DB deletion. No historical application records cascade away.
 Session Material integration is deferred until after the standalone Library exists. Later Resource actions may include `Choose from Resource Library` and `Add External Link`; do not integrate it during the foundation milestone.
-No Resource Library implementation has started. Exact next development task: RESOURCE LIBRARY FOUNDATION DESIGN. Inspect existing repository and Supabase conventions and design the resource metadata/domain model; version model; usage/reference strategy; Storage bucket/path and private/public access strategy; upload/download authorization; allowed MIME/file validation; maximum file-size policy; RLS and server authorization; replace-file transaction flow; current-version selection; protected-version retention/pruning algorithm; archive/delete integrity; audit metadata; and future-consumer integration boundary. Do not implement any of these items yet.
+Migrations and generated types:
+- Created/applied through Marriage Ministry DEV MCP only: `supabase/migrations/20260929152032_resource_library_schema.sql` and `20260929152039_resource_library_operations.sql`. Local timestamps match MCP-recorded DEV migration versions; both applied successfully to lctkqjjkhpyootwvttvj. Bucket verified private with approved overall limit/MIMEs.
+- `types/database.generated.ts` regenerated from DEV via MCP, never hand-edited. The sole nullable UUID RPC argument accommodation is localized in the server reserve adapter because the generator represents SQL nullable arguments as non-null strings; no `any` workaround.
+Foundation validation performed September 29, 2026:
+- Node v24.21.0; initial focused gate passed 63 tests across 4 files: policy (27), upload orchestration (10), server data access (14), existing counseling role/domain regressions (12).
+- Initial `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
+- Initial rollback-only DEV SQL verifier passed: Admin/Super Admin and own-Author management, other-Author/unauthorized denial, raw table/Storage write protection, hidden pending creation, Version 1/current, replacement/ownership/version numbering, failed object validation preserving current, immutable UPDATE, duplicate numbering, category/size enforcement, cross-resource FK, current+3 retention, temporary pinned-FK protection, archive/restore, delete rejection/outbox, abandoned-intent expiry. Synthetic Storage metadata only; no actual binary transfer.
+- Post-verifier read checks confirmed zero Resource/Version/intent/outbox rows, zero synthetic profiles/Storage objects, and no temporary verifier consumer table. No persisted synthetic fixtures.
+- Established `npm run verify:supabase` passed HTTP 200 after a network-sandbox failure and approved outside-sandbox retry. No secrets printed.
+- Browser/manual upload verification is not performed: there is no Library UI. Project-wide Storage limit is not verified or changed and could cap the bucket's 75/250 MiB allowances; verify it before large-file UI tests. MIME checks validate upload metadata, not file-signature/virus scanning. Real direct browser uploads and resumable transport remain unverified/deferred.
+- Resource implementation/details and future safety constraints documented in `features/resource-library/README.md`. No Session Material, Homework, Video/Link, or Preview changes/integration; no PROD access/mutations, deploy, commit, push, merge, or branch deletion.
+- Completion speech attempted with `say "Resonate Resource Library foundation is ready for review"`; the command returned 0 but emitted `sandbox_extension_issue_file failed for /usr/bin: 1 (Operation not permitted)`. Audible delivery is unconfirmed due to the sandbox error.
+
+Resource Library foundation final validation and closeout (September 29, 2026, Node v24.21.0):
+- `npm run typecheck` passed; `npm run lint` passed.
+- `npm test` passed: 409 tests across 71 files (includes the 63 focused foundation/domain tests).
+- `npm run build` passed using Next.js 16.3.1 with webpack.
+- `git diff --check` passed before this closeout state update; rerun after editing this file.
+- `npm run verify:supabase` passed HTTP 200 after network approval.
+- Marriage Ministry DEV MCP access was restored. The existing rollback-only `features/resource-library/resource-library-dev-verification.sql` was rerun successfully against Marriage Ministry DEV project `lctkqjjkhpyootwvttvj` and returned `PASS`; its transaction rolled back.
+- Post-run confirmation: no synthetic Resource fixtures, Resource Version fixtures, upload-reservation fixtures, or cleanup/outbox verifier fixtures remain. No legitimate DEV data was deleted.
+- Full diff/file audit found only the approved Resource Library foundation (code/policy/tests/docs/migrations), the generated database types, the reused admin-role helper export, and this project-state update. No UI, temporary files, debug logs, secrets/tokens, unrelated product behavior, unexpected PROD configuration, or stale generated-type edits. MCP-generated `types/database.generated.ts` matches generator output; the nullable RPC-argument accommodation remains localized.
+- The foundation is validated and ready for commit with `feat: add resource library foundation`. No push, merge, or deploy is part of this closeout.
+- Browser/manual upload verification is not performed: there is no Library UI. Project-wide Storage limit is not verified or changed and could cap the bucket's 75/250 MiB allowances; verify it before large-file UI tests. MIME checks validate upload metadata, not file-signature/virus scanning. Real direct browser uploads and resumable transport remain unverified/deferred.
+- Resource implementation/details and future safety constraints documented in `features/resource-library/README.md`. No Session Material, Homework, Video/Link, or Preview changes/integration; no PROD access/mutations, deploy, commit, push, merge, or branch deletion.
+- Completion speech attempted with `say "Resonate Resource Library foundation is ready for review"`; the command returned 0 but emitted `sandbox_extension_issue_file failed for /usr/bin: 1 (Operation not permitted)`. Audible delivery is unconfirmed due to the sandbox error.
+Exact next milestone: RESOURCE LIBRARY STANDALONE UI — top-level Resource Library navigation; grid-first library page; search and category filters; Upload Resource flow with direct browser-to-Supabase Storage upload and progress/error states; Resource detail Sheet; metadata editing; View/Open/Download; Replace File UX; Admin archive/restore; Admin permanent delete with exact `DELETE` confirmation; permission-aware Author behavior. Wrap server-only metadata operations in authenticated actions and transfer binaries directly to Supabase Storage. No UI is implemented yet.
+
+Deferred Resource Library validation and design:
+- Real browser upload validation and practical large-file browser testing belong to the standalone UI milestone. Consider resumable uploads only if later needed.
+- Session Material integration remains deferred until after the standalone Library exists; no Resource Library integration with Session Material, Homework, or Preview has been implemented.
+- Before adding future pinned or historical consumers, add explicit restrictive foreign keys/reference protection and extend pruning/reference tests.
 Selective Page assignment
 Counselor can choose specific Session Pages for each couple.
 Important:
@@ -1033,4 +1078,4 @@ A fresh AI taking over this project should remember:
 18. Current branch is `feature/resource-library`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` is on local `main`.
 19. Update PROJECT_STATE.md before considering every coding-agent task complete, including validation and Git milestones.
 20. Record browser/manual verification only when actually performed.
-21. Preview is regression-validated, browser/manual reviewed and approved, and locally merged. The user will push `main` and delete the remote Preview branch manually.
+21. Preview is regression-validated, browser/manual reviewed and approved, and merged; current local tracking refs show main at that merge. Resource Library foundation is uncommitted on feature/resource-library; next is Resource Library standalone UI, not Session/Homework integration.
