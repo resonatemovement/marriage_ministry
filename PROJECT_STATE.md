@@ -1,9 +1,9 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: September 29, 2026
-Current working branch: feature/resource-library
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
-Current base: Preview merge on main at a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2; resource milestone documentation commit 1afe047db125e292ae48bd023b6142abe97b666b
-Current state: Session + Homework Preview is complete, browser-reviewed and approved, and merged on tracked main. Resource Library foundation commit `863e526`, standalone UI, shared auth correction, upload UX refinements, and one-click secure download have passed the final regression gate; browser review is user-approved. Git closeout is in progress on `feature/resource-library`. No Resource Library consumer integrations exist.
+Current base: Resource Library merge on main at `eb6cdd5`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`
+Current state: Session + Homework Preview is complete, browser-reviewed and approved, and merged on main. Resource Library foundation `863e526` and completion `cbb562d` are merged into main by `eb6cdd5`; the standalone UI/auth/download milestone passed final validation and browser review is user-approved. No Resource Library consumer integrations exist.
 1. Project Overview & Goals
 Product purpose
 The application is an internal and participant-facing platform for Resonate Movement’s pre-engagement / marriage counseling ministry.
@@ -15,7 +15,7 @@ The system is intended to support the full counseling workflow:
 - Couples eventually consume reading/resources and complete required Homework.
 - Counselors eventually review submitted responses.
 - Historical assignments and participant responses must remain stable even when curriculum is revised later.
-The current development focus is the standalone Resource Library; the approved Session Builder / Homework authoring and Preview behavior remains unchanged.
+Resource Library standalone milestone is complete. The next product step is discussion/design of Session Material Resource Library integration; the approved Session Builder / Homework authoring and Preview behavior remains unchanged.
 Runtime requirement: use Node 24 for project validation.
 Core product model
 A counseling curriculum consists of Sessions.
@@ -883,8 +883,8 @@ merge: complete session and homework preview
 The feature commit and follow-up docs commit were manually pushed by the user. Current local tracking refs show `main` and `origin/main` at the Preview merge; the remote-tracking Preview branch is absent. No network fetch, push, or remote deletion was performed during the Resource Library foundation task.
 The local `feature/homework-preview` branch was deleted after verifying its commits are reachable from `main`.
 Current branch
-feature/resource-library
-Created from updated `main` at `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. Foundation commit `863e526` (`feat: add resource library foundation`) is on `feature/resource-library` and matches local `origin/feature/resource-library`. Standalone UI, targeted auth identity fix, upload-label refinement, and one-click download are uncommitted. No push, merge, or deploy occurred for these changes.
+main
+Resource Library foundation commit `863e526` (`feat: add resource library foundation`) and completion commit `cbb562d` (`feat: complete resource library`) are integrated through no-squash merge commit `eb6cdd5` (`merge: complete resource library`). The feature ref was pushed to `origin` before merging. No deployment occurred.
 Preview work included in the milestone merge
 Major Preview work includes:
 - Homework Preview Pass 1
@@ -949,8 +949,8 @@ Final regression and diff checks passed; browser/manual review was user-approved
 Preview and its follow-up state commit are on the remote Preview feature branch.
 Preview is merged to `main`; local `origin/main` now matches merge commit `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. The local Preview branch was deleted after confirming reachability; its remote-tracking ref is now absent. These tracking observations do not claim a new fetch or agent push/deletion.
 No deployment occurred; PROD remains untouched.
-Current milestone: Resource Library foundation and standalone UI are implemented, regression-validated, and browser-approved; final Git closeout is in progress.
-The Resource Library foundation is committed as `863e526`. Do not push, merge, deploy, or touch PROD as part of this UI milestone.
+Current milestone: Resource Library foundation and standalone UI are implemented, regression-validated, browser-approved, and merged into `main`.
+The Resource Library foundation is committed as `863e526`; completion is `cbb562d`, merged by `eb6cdd5`. No deployment occurred; PROD remains untouched.
 Exact next product step: DISCUSS / DESIGN SESSION MATERIAL RESOURCE LIBRARY INTEGRATION. No integration has begun.
 Product direction:
 - Standalone application-level Resource Library, conceptually analogous to a WordPress Media Library.
@@ -1117,7 +1117,7 @@ A fresh AI taking over this project should remember:
 15. Do not merge state models merely because their code looks similar.
 16. Use focused validation during development; full suite only at milestone gates.
 17. Use Node 24 for milestone validation.
-18. Current branch is `feature/resource-library`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` is on local `main`.
+18. Current branch is `main`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` and Resource Library merge `eb6cdd5` are on main.
 19. Update PROJECT_STATE.md before considering every coding-agent task complete, including validation and Git milestones.
 20. Record browser/manual verification only when actually performed.
-21. Preview is regression-validated, browser/manual reviewed and approved, and merged; current local tracking refs show main at that merge. Resource Library foundation commit `863e526` is on feature/resource-library; standalone UI, auth identity fix, upload-button loading-label refinement, and one-click download refinement passed final validation and are user-browser-approved, awaiting the explicitly requested Git closeout, not Session/Homework integration.
+21. Preview and Resource Library are regression-validated, browser/manual reviewed and approved, and merged to main. Resource Library foundation `863e526` and completion `cbb562d` are included in merge `eb6cdd5`. The next product step is to discuss/design Session Material Resource Library integration; do not start implementation before that discussion.
