@@ -18,6 +18,32 @@ export type ResourceActor = { id: string; roles: readonly AppRole[] };
 export type ResourceFile = { category: ResourceCategory; mimeType: string; sizeBytes: number; originalFilename: string };
 export type ResourceMetadata = { title: string; description?: string | null };
 
+export function resourceCategoryForMime(mimeType: string): ResourceCategory | null {
+  return (Object.entries(RESOURCE_POLICY.categories).find(([, rule]) =>
+    (rule.mimeTypes as readonly string[]).includes(mimeType),
+  )?.[0] as ResourceCategory | undefined) ?? null;
+}
+
+export function resourceTitleFromFilename(filename: string) {
+  return filename.replace(/\.[^.]+$/, "").trim();
+}
+
+export function formatResourceFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let size = sizeBytes / 1024;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit++;
+  }
+  return `${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(size)} ${units[unit]}`;
+}
+
+export function resourceFileAccept() {
+  return Object.values(RESOURCE_POLICY.categories).flatMap((rule) => rule.mimeTypes).join(",");
+}
+
 export function validateResourceFile(file: ResourceFile) {
   const rule = RESOURCE_POLICY.categories[file.category];
   if (!rule || !(rule.mimeTypes as readonly string[]).includes(file.mimeType)) {

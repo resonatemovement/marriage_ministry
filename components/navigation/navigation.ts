@@ -1,6 +1,7 @@
 import {
   BookOpenText,
   ClipboardList,
+  FolderOpen,
   LayoutDashboard,
   Settings,
   Users,
@@ -23,6 +24,7 @@ export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly Navigati
     { label: "People & Teams", href: "/people", icon: Users },
     { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },
     { label: "Session Builder", href: "/session-builder", icon: BookOpenText },
+    { label: "Resource Library", href: "/resource-library", icon: FolderOpen },
     { label: "Settings", href: "/settings", icon: Settings },
     { label: "My Profile", href: "/profile", icon: UserRound },
   ],
@@ -34,6 +36,6 @@ export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly Navigati
   ],
   coach: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
   counselor: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
-  author: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "Session Builder", href: "/session-builder", icon: BookOpenText }, { label: "My Profile", href: "/profile", icon: UserRound }],
+  author: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "Session Builder", href: "/session-builder", icon: BookOpenText }, { label: "Resource Library", href: "/resource-library", icon: FolderOpen }, { label: "My Profile", href: "/profile", icon: UserRound }],
   couple: [{ label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard }, { label: "My Profile", href: "/profile", icon: UserRound }],
 };

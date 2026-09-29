@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { canBrowseResources, canManageResource, RESOURCE_POLICY, resourcePruningCandidates, sanitizeResourceFilename, validateResourceFile, validateResourceMetadata, type ResourceCategory } from "./policy";
+import { canBrowseResources, canManageResource, formatResourceFileSize, RESOURCE_POLICY, resourceCategoryForMime, resourcePruningCandidates, resourceTitleFromFilename, sanitizeResourceFilename, validateResourceFile, validateResourceMetadata, type ResourceCategory } from "./policy";
 
 describe("Resource file policy", () => {
   for (const [category, rule] of Object.entries(RESOURCE_POLICY.categories)) {
@@ -34,6 +34,18 @@ describe("Resource file policy", () => {
     expect(validateResourceMetadata({ title: " Example ", description: " " })).toEqual({ title: "Example", description: null });
     for (const title of ["", "x".repeat(181)]) expect(() => validateResourceMetadata({ title })).toThrow();
     expect(() => validateResourceMetadata({ title: "Example", description: "x".repeat(4001) })).toThrow();
+  });
+  it("derives category only from allowed MIME and initializes a useful title from filenames", () => {
+    expect(resourceCategoryForMime("image/avif")).toBe("image");
+    expect(resourceCategoryForMime("application/pdf")).toBe("document");
+    expect(resourceCategoryForMime("application/octet-stream")).toBeNull();
+    expect(resourceTitleFromFilename("Our Guide.final.pdf")).toBe("Our Guide.final");
+    expect(resourceTitleFromFilename("no-extension")).toBe("no-extension");
+  });
+  it("formats file sizes with compact binary units", () => {
+    expect(formatResourceFileSize(500)).toBe("500 B");
+    expect(formatResourceFileSize(1024)).toBe("1 KB");
+    expect(formatResourceFileSize(1_572_864)).toBe("1.5 MB");
   });
   it("keeps the DB/bucket enforcement snapshot aligned with centralized application limits/MIMEs", () => {
     const migration = readFileSync("supabase/migrations/20260929152032_resource_library_schema.sql", "utf8");

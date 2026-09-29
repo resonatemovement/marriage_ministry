@@ -20,13 +20,13 @@ vi.mock("@/lib/supabase/server", () => ({ createServerSupabaseClient: async () =
 }) }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mock.serviceClient }));
 
-import { archiveResource, browseResources, editResourceMetadata, finalizeUpload, getResourceDetail, permanentlyDeleteResource, prepareUpload, retryResourceCleanup, signedResourceAccess } from "./server";
+import { archiveResource, browseResources, currentResourceActor, editResourceMetadata, finalizeUpload, getResourceDetail, permanentlyDeleteResource, prepareUpload, retryResourceCleanup, signedResourceAccess } from "./server";
 
 describe("Resource server boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks(); mock.results.length = 0; mock.builders.length = 0;
     vi.stubEnv("SUPABASE_SECRET_KEY", "server-test-secret");
-    mock.identity.mockResolvedValue({ roles: ["admin"], accountStage: "active" });
+    mock.identity.mockResolvedValue({ id: "owner", roles: ["admin"], accountStage: "active" });
     mock.claims.mockResolvedValue({ data: { claims: { sub: "owner" } } });
     mock.clientRpc.mockResolvedValue({ data: null, error: null });
     mock.serviceRpc.mockResolvedValue({ data: 0, error: null });
@@ -41,11 +41,27 @@ describe("Resource server boundary", () => {
   });
 
   it("rejects unauthenticated, inactive, and non-authoring actors before data access", async () => {
-    for (const identity of [null, { roles: ["admin"], accountStage: "onboarding" }, { roles: ["coach"], accountStage: "active" }]) {
+    for (const identity of [null, { id: "owner", roles: ["admin"], accountStage: "onboarding" }, { id: "owner", roles: ["coach"], accountStage: "active" }]) {
       mock.identity.mockResolvedValue(identity);
       await expect(browseResources()).rejects.toThrow("Not authorized");
     }
     expect(mock.from).not.toHaveBeenCalled(); expect(mock.serviceClient).not.toHaveBeenCalled();
+  });
+  it("uses the canonical identity ID and full multi-role set without a second claims lookup", async () => {
+    mock.identity.mockResolvedValue({ id: "john-id", roles: ["super_admin", "coach"], workspaces: ["coach"], accountStage: "active" });
+    await expect(currentResourceActor()).resolves.toEqual({ id: "john-id", roles: ["super_admin", "coach"] });
+    mock.clientRpc.mockResolvedValue({ data: { id: "version", resource_id: "resource", mime_type: "audio/mpeg", size_bytes: 100,
+      storage_path: "resource/version/file.mp3", created_at: new Date().toISOString() }, error: null });
+    await expect(prepareUpload({ title: "Audio", category: "audio", mimeType: "audio/mpeg", sizeBytes: 100, originalFilename: "file.mp3" })).resolves.toMatchObject({ resourceId: "resource" });
+    expect(mock.clientRpc).toHaveBeenCalledWith("prepare_resource_upload", expect.objectContaining({ target_mime_type: "audio/mpeg" }));
+    expect(mock.claims).not.toHaveBeenCalled();
+  });
+  it.each(["admin", "author"] as const)("allows %s to prepare a new Resource", async (role) => {
+    mock.identity.mockResolvedValue({ id: "uploader", roles: [role], accountStage: "active" });
+    mock.clientRpc.mockResolvedValue({ data: { id: "version", resource_id: "resource", mime_type: "application/pdf", size_bytes: 10,
+      storage_path: "resource/version/file.pdf", created_at: new Date().toISOString() }, error: null });
+    await expect(prepareUpload({ title: "Title", category: "document", mimeType: "application/pdf", sizeBytes: 10, originalFilename: "file.pdf" })).resolves.toMatchObject({ resourceId: "resource" });
+    expect(mock.claims).not.toHaveBeenCalled();
   });
   it("browses paginated active metadata/current versions using the authenticated RLS client", async () => {
     mock.results.push({ data: [{ id: "resource" }], error: null, count: 1 });
@@ -64,11 +80,11 @@ describe("Resource server boundary", () => {
   });
   it("only signs an RLS-readable version belonging to the requested resource", async () => {
     mock.results.push({ data: { current_version_id: "current" }, error: null },
-      { data: { storage_path: "resource/pinned/file.pdf", original_filename: "Original.pdf" }, error: null });
+      { data: { storage_path: "resource/pinned/file.pdf", original_filename: "../Original?.pdf" }, error: null });
     expect(await signedResourceAccess("resource", { versionId: "pinned", download: true })).toEqual({ signedUrl: "private-view" });
     expect(mock.builders[1].eq).toHaveBeenCalledWith("resource_id", "resource");
     expect(mock.builders[1].eq).toHaveBeenCalledWith("id", "pinned");
-    expect(mock.signedView).toHaveBeenCalledWith("resource/pinned/file.pdf", 300, { download: "Original.pdf" });
+    expect(mock.signedView).toHaveBeenCalledWith("resource/pinned/file.pdf", 300, { download: "_Original_.pdf" });
     expect(mock.serviceClient).not.toHaveBeenCalled();
   });
   it("never uses privileged Storage signing to bypass an RLS denial", async () => {
@@ -99,7 +115,7 @@ describe("Resource server boundary", () => {
     expect(mock.clientRpc).toHaveBeenCalledWith("cancel_resource_upload", { target_upload_id: "version" });
   });
   it("denies Author archive and permanent deletion server-side", async () => {
-    mock.identity.mockResolvedValue({ roles: ["author"], accountStage: "active" });
+    mock.identity.mockResolvedValue({ id: "owner", roles: ["author"], accountStage: "active" });
     await expect(archiveResource("resource", true)).rejects.toThrow("Not authorized");
     await expect(permanentlyDeleteResource("resource", "DELETE")).rejects.toThrow("Not authorized");
     expect(mock.clientRpc).not.toHaveBeenCalled();
@@ -134,9 +150,9 @@ describe("Resource server boundary", () => {
     expect(mock.remove.mock.invocationCallOrder[0]).toBeLessThan(mock.builders[1].delete.mock.invocationCallOrder[0]);
   });
   it("allows only admins to expire reservations and retry the bounded cleanup queue", async () => {
-    mock.identity.mockResolvedValue({ roles: ["author"], accountStage: "active" });
+    mock.identity.mockResolvedValue({ id: "owner", roles: ["author"], accountStage: "active" });
     await expect(retryResourceCleanup()).rejects.toThrow("Not authorized");
-    mock.identity.mockResolvedValue({ roles: ["super_admin"], accountStage: "active" });
+    mock.identity.mockResolvedValue({ id: "owner", roles: ["super_admin"], accountStage: "active" });
     mock.results.push({ data: [], error: null }, { data: null, error: null, count: 0 });
     expect(await retryResourceCleanup()).toEqual({ expired: 0, removed: 0, pending: 0, errors: [] });
     expect(mock.serviceRpc).toHaveBeenCalledWith("expire_resource_uploads");

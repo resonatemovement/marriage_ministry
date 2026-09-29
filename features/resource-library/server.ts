@@ -25,12 +25,15 @@ function unwrap<T>(result: { data: T; error: { message: string } | null }): NonN
 
 async function context() {
   const client = await createServerSupabaseClient();
-  const [identity, claims] = await Promise.all([getAuthenticatedIdentity(), client.auth.getClaims()]);
-  const id = claims.data?.claims?.sub;
-  if (typeof id !== "string" || !identity || identity.accountStage !== "active") throw new Error("Not authorized");
-  const actor = { id, roles: identity.roles };
+  const identity = await getAuthenticatedIdentity();
+  if (!identity || identity.accountStage !== "active") throw new Error("Not authorized");
+  const actor = { id: identity.id, roles: identity.roles };
   if (!canBrowseResources(actor)) throw new Error("Not authorized");
   return { client, actor };
+}
+
+export async function currentResourceActor() {
+  return (await context()).actor;
 }
 
 async function removeQueuedFiles(service: SupabaseClient<Database>, resourceId?: string) {
@@ -138,7 +141,27 @@ export async function signedResourceAccess(resourceId: string, options: { versio
   if (!versionId) throw new Error("Resource unavailable");
   const version = unwrap(await client.from("resource_versions").select("*").eq("resource_id", resourceId).eq("id", versionId).single());
   return unwrap(await client.storage.from(RESOURCE_POLICY.bucket).createSignedUrl(version.storage_path, RESOURCE_POLICY.accessSeconds,
-    options.download ? { download: version.original_filename } : undefined));
+    options.download ? { download: sanitizeResourceFilename(version.original_filename) } : undefined));
+}
+
+export async function signedResourcePreviews(resourceIds: readonly string[]) {
+  if (!resourceIds.length) return {} as Record<string, string>;
+  const { client } = await context();
+  const rows = unwrap(await client.from("resources")
+    .select("id, resource_versions!resources_current_version_fk(storage_path)")
+    .in("id", [...new Set(resourceIds)]));
+  const paths = rows.flatMap((row) => {
+    const version = Array.isArray(row.resource_versions) ? row.resource_versions[0] : row.resource_versions;
+    return version?.storage_path ? [{ id: row.id, path: version.storage_path }] : [];
+  });
+  if (!paths.length) return {} as Record<string, string>;
+  const signed = await client.storage.from(RESOURCE_POLICY.bucket)
+    .createSignedUrls(paths.map((item) => item.path), RESOURCE_POLICY.accessSeconds);
+  if (signed.error) throw new Error(signed.error.message);
+  return Object.fromEntries(paths.flatMap((item, index) => {
+    const url = signed.data[index]?.signedUrl;
+    return url ? [[item.id, url]] : [];
+  }));
 }
 
 export async function archiveResource(resourceId: string, archived: boolean) {

@@ -1,7 +1,7 @@
 import type { Database } from "@/types/database.generated";
 import {
   canBrowseResources, canManageResource, validateResourceFile, validateResourceMetadata,
-  type ResourceActor, type ResourceFile, type ResourceMetadata,
+  type ResourceActor, type ResourceCategory, type ResourceFile, type ResourceMetadata,
 } from "./policy";
 
 export type Resource = Database["public"]["Tables"]["resources"]["Row"];
@@ -63,4 +63,48 @@ export async function finalizeResourceUpload(store: ResourceUploadStore, uploadI
     maintenance = { pruned: 0, removed: 0, pending: 0, errors: [String(error)] };
   }
   return { version, maintenance }; // Cleanup failure is visible, never a failed replacement.
+}
+
+export type UploadActionResult<T> = { data: T } | { error: string };
+export type PreparedBrowserUpload = { uploadId: string; resourceId: string; token: string; path: string };
+export type FinalizedBrowserUpload = { version: ResourceVersion; maintenance: MaintenanceResult };
+export type BrowserUploadFile = Blob & { name: string; size: number; type: string };
+
+export interface BrowserUploadOperations {
+  prepare(input: UploadRequest): Promise<UploadActionResult<PreparedBrowserUpload>>;
+  upload(path: string, token: string, file: BrowserUploadFile): Promise<{ error: string | null }>;
+  finalize(uploadId: string): Promise<UploadActionResult<FinalizedBrowserUpload>>;
+  cancel(uploadId: string): Promise<UploadActionResult<void>>;
+}
+
+export async function uploadResourceFileDirect(
+  operations: BrowserUploadOperations,
+  file: BrowserUploadFile,
+  metadata: ResourceMetadata,
+  category: ResourceCategory,
+  resourceId?: string,
+  onStage: (stage: "preparing" | "uploading" | "finalizing") => void = () => {},
+) {
+  validateResourceFile({ category, mimeType: file.type, sizeBytes: file.size, originalFilename: file.name });
+  if (!resourceId) validateResourceMetadata(metadata);
+
+  onStage("preparing");
+  const reserved = await operations.prepare({ ...metadata, category, mimeType: file.type, sizeBytes: file.size, originalFilename: file.name, resourceId });
+  if ("error" in reserved) throw new Error(reserved.error);
+
+  onStage("uploading");
+  const uploaded = await operations.upload(reserved.data.path, reserved.data.token, file);
+  if (uploaded.error) {
+    const cancelled = await operations.cancel(reserved.data.uploadId);
+    if ("error" in cancelled) throw new AggregateError([new Error(uploaded.error), new Error(cancelled.error)], "Upload failed and its reservation could not be cancelled.");
+    throw new Error(uploaded.error);
+  }
+
+  onStage("finalizing");
+  const finalized = await operations.finalize(reserved.data.uploadId);
+  if ("error" in finalized) throw new Error(finalized.error);
+  if (finalized.data.version.resource_id !== reserved.data.resourceId) {
+    throw new Error("The uploaded file was finalized under an unexpected Resource.");
+  }
+  return finalized.data;
 }
