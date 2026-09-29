@@ -17,6 +17,7 @@ import {
 import { getActiveWorkspace } from "./active-workspace";
 
 export interface AuthenticatedIdentity {
+  id: string;
   displayName: string;
   roles: AppRole[];
   workspaces: WorkspaceId[];
@@ -26,23 +27,31 @@ export interface AuthenticatedIdentity {
 
 export async function getAuthenticatedIdentity(): Promise<AuthenticatedIdentity | null> {
   const supabase = await createServerSupabaseClient();
-  const { data: claims } = await supabase.auth.getClaims();
+  const { data: claims, error: claimsError } = await supabase.auth.getClaims().catch(() => {
+    throw new Error("Your session could not be verified. Please try again.");
+  });
+  if (claimsError) throw new Error("Your session could not be verified. Please try again.");
   const userId = claims?.claims?.sub;
 
   if (typeof userId !== "string") return null;
 
-  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }] = await Promise.all([
     supabase
       .from("profiles")
       .select("first_name, last_name, email, status")
       .eq("id", userId)
       .maybeSingle(),
     supabase.from("profile_roles").select("role").eq("profile_id", userId),
-  ]);
+  ]).catch(() => {
+    throw new Error("Your account information could not be loaded. Please try again.");
+  });
+  if (profileError) throw new Error("Your profile could not be loaded. Please try again.");
+  if (rolesError) throw new Error("Your account roles could not be loaded. Please try again.");
 
   const accountStage = profile?.status as AuthenticatedIdentity["accountStage"] | undefined;
   if (!profile || accountStage !== "active") {
     return {
+      id: userId,
       displayName: "Resonate member",
       roles: [],
       workspaces: [],
@@ -57,7 +66,7 @@ export async function getAuthenticatedIdentity(): Promise<AuthenticatedIdentity 
     || profile.email
     || "Resonate member";
 
-  return { displayName, roles, workspaces, onboardingRequired: false, accountStage: "active" };
+  return { id: userId, displayName, roles, workspaces, onboardingRequired: false, accountStage: "active" };
 }
 
 export async function requireDefaultWorkspace(path: string) {

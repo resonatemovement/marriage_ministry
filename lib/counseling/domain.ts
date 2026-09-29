@@ -54,7 +54,7 @@ export function isAppRole(value: string): value is AppRole {
   return APP_ROLE_SET.has(value);
 }
 
-function hasAdministrativeAccess(roles: readonly AppRole[]) {
+export function hasAdministrativeAccess(roles: readonly AppRole[]) {
   return roles.some((role) => ADMIN_ROLES.has(role));
 }
 
