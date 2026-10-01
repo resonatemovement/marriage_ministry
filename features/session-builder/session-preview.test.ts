@@ -8,6 +8,7 @@ vi.mock("@/features/session-builder/rich-text-editor", () => ({
 
 import { SessionMaterialPreviewContent, sessionPreviewTargetPage } from "./session-preview";
 import type { StagedMaterialBlock } from "./editor-model";
+import type { ResourceCategory } from "@/features/resource-library/policy";
 
 const page = (key: string, title: string, text: string): StagedMaterialBlock => ({
   key, persistedId: key, blockType: "rich_text", title,
@@ -25,6 +26,26 @@ function render(blocks: StagedMaterialBlock[]) {
 }
 
 describe("Session Material Preview", () => {
+  it.each(["image", "document", "audio", "video"] as ResourceCategory[])("renders %s through the shared private Resource presentation", (category) => {
+    const id = `${category}-id`;
+    const block: StagedMaterialBlock = { key: id, persistedId: id, blockType: "library_resource", title: "", richTextContent: null,
+      url: "", description: "", resourceId: id, resourceCategory: category,
+      resource: { id, title: `Canonical ${category}`, description: "Current description", category, archivedAt: null,
+        createdAt: "", updatedAt: "", canManage: false, currentVersion: { originalFilename: "opaque-original-name.pdf", mimeType: category === "image" ? "image/avif" : category === "document" ? "application/pdf" : category === "audio" ? "audio/mpeg" : "video/mp4", sizeBytes: 2048, uploadedAt: "" }, previewUrl: null } };
+    const markup = renderToStaticMarkup(createElement(SessionMaterialPreviewContent, { blocks: [block], resourceAccess: { [id]: "https://private.example/signed" } }));
+    expect(markup).toContain(`Canonical ${category}`);
+    expect(markup).toContain("Current description");
+    expect(markup).toContain(`/resource-library/${id}/open`);
+    expect(markup).toContain(`/resource-library/${id}/download`);
+    if (category === "image") expect(markup).toContain("<img");
+    if (category === "document") {
+      expect(markup).toContain("PDF · 2 KB");
+      expect(markup).not.toContain("opaque-original-name.pdf");
+    }
+    if (category === "audio") expect(markup).toContain("<audio");
+    if (category === "video") expect(markup).toContain("<video");
+    expect(markup).not.toContain("https://private.example/signed</");
+  });
   it("shows one current Page with its title, full staged content, count, and first-page navigation state", () => {
     const markup = render([page("p1", "Communication and Expectations", "Staged Page text"), page("p2", "Second Page", "Second staged text")]);
     expect(markup).toContain("Page 1 of 2");

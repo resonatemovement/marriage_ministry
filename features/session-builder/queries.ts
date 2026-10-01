@@ -7,6 +7,8 @@ import type { SessionSummary } from "./types";
 import type { SessionMaterialBlock } from "./types";
 import type { Database } from "@/types/database.generated";
 import { withCurriculumNumbers } from "./presentation";
+import { getResourceDetail, signedResourceAccess } from "@/features/resource-library/server";
+import type { ResourceCategory } from "@/features/resource-library/policy";
 
 function summary(row: Pick<Database["public"]["Tables"]["sessions"]["Row"], "id" | "sequence_number" | "title" | "status" | "updated_at">): SessionSummary {
   return {
@@ -37,7 +39,21 @@ export async function getSession(sessionId: string): Promise<SessionSummary | nu
 
 export async function getSessionMaterialBlocks(sessionId: string): Promise<SessionMaterialBlock[]> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.from("session_material_blocks").select("id,session_id,block_type,position,title,rich_text_content,url,description").eq("session_id", sessionId).order("position", { ascending: true });
+  // This boundary stays narrow until DEV OAuth permits generated-type refresh.
+  const { data, error } = await supabase.from("session_material_blocks").select("*").eq("session_id", sessionId).order("position", { ascending: true });
   if (error) throw new Error("Session Material is unavailable");
-  return (data ?? []).map((row) => ({ id: row.id, sessionId: row.session_id, blockType: row.block_type as SessionMaterialBlock["blockType"], position: row.position, title: row.title, richTextContent: row.rich_text_content as Record<string, unknown> | null, url: row.url, description: row.description }));
+  type MaterialRow = Database["public"]["Tables"]["session_material_blocks"]["Row"] & { resource_id: string | null; resource_category: string | null };
+  const rows = (data ?? []) as unknown as MaterialRow[];
+  const resources = new Map(await Promise.all([...new Set(rows.flatMap((row) => row.resource_id ? [row.resource_id] : []))].map(async (id) => {
+    const { resource, versions } = await getResourceDetail(id);
+    const version = versions.find((item) => item.id === resource.current_version_id);
+    if (!version) throw new Error("Linked Resource version is unavailable");
+    const access = await signedResourceAccess(id);
+    return [id, { id, title: resource.title, description: resource.description, category: resource.category as ResourceCategory,
+      archivedAt: resource.archived_at, createdAt: resource.created_at, updatedAt: resource.updated_at, canManage: false,
+      currentVersion: { originalFilename: version.original_filename, mimeType: version.mime_type, sizeBytes: version.size_bytes, uploadedAt: version.created_at },
+      previewUrl: access.signedUrl }] as const;
+  })));
+  return rows.map((row) => ({ id: row.id, sessionId: row.session_id, blockType: row.block_type as SessionMaterialBlock["blockType"], position: row.position, title: row.title, richTextContent: row.rich_text_content as Record<string, unknown> | null, url: row.url, description: row.description,
+    resourceId: row.resource_id, resourceCategory: row.resource_category as ResourceCategory | null, resource: row.resource_id ? resources.get(row.resource_id) ?? null : null }));
 }

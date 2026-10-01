@@ -48,3 +48,9 @@ export function resourceEmptyState(allItems: readonly ResourceLibraryItem[], vis
   if (!visibleItems.length && category !== "all") return "no-category-results";
   return null;
 }
+
+export function sessionResourcePickerEmptyState(allItems: readonly ResourceLibraryItem[], visibleItems: readonly ResourceLibraryItem[], search: string) {
+  if (!visibleItems.length && search.trim()) return "no-search-results";
+  if (!allItems.length) return "no-resources";
+  return null;
+}

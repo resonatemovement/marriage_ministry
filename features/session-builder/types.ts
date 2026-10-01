@@ -1,4 +1,6 @@
 import type { SessionStatus } from "./model";
+import type { ResourceCategory } from "@/features/resource-library/policy";
+import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
 
 export interface SessionSummary {
   id: string;
@@ -9,7 +11,7 @@ export interface SessionSummary {
   updatedAt: string;
 }
 
-export type MaterialBlockType = "rich_text" | "video_link";
+export type MaterialBlockType = "rich_text" | "video_link" | "library_resource";
 
 export interface SessionMaterialBlock {
   id: string;
@@ -20,4 +22,7 @@ export interface SessionMaterialBlock {
   richTextContent: Record<string, unknown> | null;
   url: string | null;
   description: string | null;
+  resourceId?: string | null;
+  resourceCategory?: ResourceCategory | null;
+  resource?: ResourceLibraryItem | null;
 }

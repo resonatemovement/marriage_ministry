@@ -1,9 +1,9 @@
 Project State Document — Resonate Marriage Ministry
-Last updated: September 29, 2026
-Current working branch: main
+Last updated: September 30, 2026
+Current working branch: feature/session-resource-library
 Repository: resonatemovement/marriage_ministry
 Current base: Resource Library merge on main at `eb6cdd5`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`
-Current state: Session + Homework Preview is complete, browser-reviewed and approved, and merged on main. Resource Library foundation `863e526` and completion `cbb562d` are merged into main by `eb6cdd5`; the standalone UI/auth/download milestone passed final validation and browser review is user-approved. No Resource Library consumer integrations exist.
+Current state: Session + Homework Preview and standalone Resource Library are complete, browser-approved, and merged on main. The Session Material Resource Library integration and block-first authoring refinements are complete and browser-approved on `feature/session-resource-library`; the previously successful DEV rollback-only verifier is accepted for closeout because the MCP safety layer rejects a repeat temporary-write transaction before execution. Git closeout is in progress. PROD is untouched.
 1. Project Overview & Goals
 Product purpose
 The application is an internal and participant-facing platform for Resonate Movement’s pre-engagement / marriage counseling ministry.
@@ -15,7 +15,7 @@ The system is intended to support the full counseling workflow:
 - Couples eventually consume reading/resources and complete required Homework.
 - Counselors eventually review submitted responses.
 - Historical assignments and participant responses must remain stable even when curriculum is revised later.
-Resource Library standalone milestone is complete. The next product step is discussion/design of Session Material Resource Library integration; the approved Session Builder / Homework authoring and Preview behavior remains unchanged.
+Resource Library standalone milestone and Session Material Resource Library integration are complete. Homework authoring/Preview and Session Material Video / Link behavior remain unchanged.
 Runtime requirement: use Node 24 for project validation.
 Core product model
 A counseling curriculum consists of Sessions.
@@ -36,9 +36,9 @@ Pages
 - Preview displays one Page at a time.
 Resources
 - Supplemental material.
-- Currently includes Video / Link.
+- Existing Video / Link remains, alongside completed Image / Document / Audio / Video library-backed integration.
 - Resources are displayed separately from Pages.
-- Future resources may include PDFs, worksheets, downloads, etc., but none of those are implemented yet.
+- Library-backed blocks reference a stable Resource identity and resolve the current file version; DEV migration and rollback verification passed, and user browser approval is complete.
 Homework
 Homework is content that participants will eventually complete.
 Supported authoring block types:
@@ -949,9 +949,9 @@ Final regression and diff checks passed; browser/manual review was user-approved
 Preview and its follow-up state commit are on the remote Preview feature branch.
 Preview is merged to `main`; local `origin/main` now matches merge commit `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2`. The local Preview branch was deleted after confirming reachability; its remote-tracking ref is now absent. These tracking observations do not claim a new fetch or agent push/deletion.
 No deployment occurred; PROD remains untouched.
-Current milestone: Resource Library foundation and standalone UI are implemented, regression-validated, browser-approved, and merged into `main`.
+Completed prior milestone: Resource Library foundation and standalone UI are implemented, regression-validated, browser-approved, and merged into `main`.
 The Resource Library foundation is committed as `863e526`; completion is `cbb562d`, merged by `eb6cdd5`. No deployment occurred; PROD remains untouched.
-Exact next product step: DISCUSS / DESIGN SESSION MATERIAL RESOURCE LIBRARY INTEGRATION. No integration has begun.
+The Session Material integration discussed after this standalone closeout is now in progress on `feature/session-resource-library`; its current status is recorded below.
 Product direction:
 - Standalone application-level Resource Library, conceptually analogous to a WordPress Media Library.
 - Not owned by Session Material. Uploaded Resources may later be referenced from Session Material and other application features.
@@ -959,7 +959,7 @@ Product direction:
 - Top-level feature available to Super Admin, Admin, and Author.
 V1 permissions:
 - Super Admin/Admin: upload, browse, edit metadata, replace files, archive, and permanently delete eligible unused Resources.
-- Author: upload, browse active resources, select in future consumers, edit metadata and replace only Resources originally created by that Author. Archived resources are unavailable to Authors.
+- Author: upload, browse active resources, select in consumers, edit metadata and replace only Resources originally created by that Author. The applied integration migration adds a narrow read exception for archived Resources already linked in Session Material; archived Resources remain unavailable for new selection.
 - Archive, restore, and permanent-delete authority remains Super Admin/Admin. Admin replacement never transfers original ownership. Active workspace grants no permission.
 File categories:
 - Images, PDFs, document files including Word documents, audio, and video. The standalone UI uses generic category-aware file representations and native audio/video controls; no elaborate file-specific renderer is included.
@@ -996,7 +996,7 @@ Deletion:
 - Admin/Super Admin archive/restore preserves Resource/history/binaries. Eligible unused permanent delete is implemented server-side and requires exact uppercase `DELETE`; confirmation UI is deferred.
 - Enforce referential safety in server/database logic, not only in UI.
 - DB deletion and outbox insertion are atomic. Future restrictive Resource/Version consumer FK rejection rolls back both; Storage is never touched on rejected DB deletion. No historical application records cascade away.
-Session Material integration remains deferred until after user review of the standalone Library. Later Resource actions may include `Choose from Resource Library` and `Add External Link`; do not integrate consumers during this milestone.
+At this standalone milestone, Session Material integration was deferred until user review. That review is complete, and the separately approved integration is now in progress below; no standalone Resource Library consumer was added during the original milestone.
 Migrations and generated types:
 - Created/applied through Marriage Ministry DEV MCP only: `supabase/migrations/20260929152032_resource_library_schema.sql` and `20260929152039_resource_library_operations.sql`. Local timestamps match MCP-recorded DEV migration versions; both applied successfully to lctkqjjkhpyootwvttvj. Bucket verified private with approved overall limit/MIMEs.
 - `types/database.generated.ts` regenerated from DEV via MCP, never hand-edited. The sole nullable UUID RPC argument accommodation is localized in the server reserve adapter because the generator represents SQL nullable arguments as non-null strings; no `any` workaround.
@@ -1065,19 +1065,36 @@ Resource Library standalone UI final regression gate and closeout review (Septem
 - Full branch/worktree audit found only the approved Resource Library foundation (including its two DEV-applied migrations and regenerated Resource database types), standalone UI, shared auth identity correction, upload-label and download refinements, their tests/docs, PROJECT_STATE updates, and the shared authoring workspace helper extraction with unchanged Session Builder behavior. The generated Homework authoring RPC type corresponds to its existing Homework migration; no Homework, Session Material, or Preview implementation/integration edits, temporary files, debug logs, secrets, or unapproved migrations were found. `features/session-builder/access.ts` only exports the existing workspace resolver for reuse.
 - Knip reported pre-existing repository findings in unrelated files: one unused script, three unlisted dependencies, fourteen unused exports, and ten unused exported types; it reported no unused Resource Library files/exports. No unrelated baseline finding was changed in this closeout.
 - No source/schema/RLS/RPC/migration/generated-type changes were made during final validation. No regression fix was needed. Current branch at validation was `feature/resource-library`; approved UI/auth/download changes were pending the explicitly authorized Git closeout. PROD was untouched.
-- Exact next product step: DISCUSS / DESIGN SESSION MATERIAL RESOURCE LIBRARY INTEGRATION. It is deferred; do not begin integration until after discussion/design.
+- The next approved milestone is Session Material Resource Library integration, now in progress; see the current status below.
 
 Deferred Resource Library validation and design:
 - Current DEV's 50 MB global Storage cap (user-reported) prevents manual validation of uploads larger than 50 MB; intended product category limits remain 15/25/75/250 MiB. Revisit practical large audio/video validation on a future Pro plan. Consider resumable uploads only if later needed.
-- Session Material integration and additional Resource consumers remain deferred. Exact next product step: DISCUSS / DESIGN SESSION MATERIAL RESOURCE LIBRARY INTEGRATION. Do not begin integration until that discussion/design occurs.
+- Additional Resource consumers beyond Session Material remain deferred. Future assigned/pinned consumers need explicit `resource_version_id` FK/reference protection and extended pruning tests before version pinning is enabled.
 - Before adding future pinned or historical consumers, add explicit restrictive foreign keys/reference protection and extend pruning/reference tests.
+
+Session Material → Resource Library integration (September 30, 2026; complete, Git closeout in progress):
+- Branch `feature/session-resource-library` was created from clean `main`. The complete integration is browser-approved; commit, push, merge, and feature-branch cleanup are the remaining authorized Git closeout operations. No deployment or PROD access occurred.
+- The authoring UI now offers dedicated Image, Document, Audio, Video, and existing Video / Link choices under one Resources list. The first four use one staged `library_resource` block model with `resource_id` and fixed `resource_category`; Video / Link remains the existing external URL block. The type-filtered picker reuses Resource Library browse authorization and metadata search, shows active Resources only, and makes no immediate DB write. Replace Selection stays in the same category; Remove from Session removes only the reference; duplicate creates a new Session block identity with the same Resource ID. All Resource types share staged ordering, whole-Session Save/Publish, Discard, and dirty/navigation protection.
+- Local Preview renders Image, Document, Audio, and uploaded Video distinctly, using authorized short-lived signed private access and same-origin Open/Download redirects; external Video / Link retains its existing presentation. No binary proxy or signed URL is persisted. Canonical Resource title/description/current version are resolved on Session load; no Session captions or version pins are stored. Archive keeps existing links visible and usable; picker excludes archived Resources. User browser review approved all listed integration behavior, including the Video / Link external-link icon.
+- DEV MCP authentication was restored and the project URL confirmed as `https://lctkqjjkhpyootwvttvj.supabase.co`. Only the contents of local migration `20260930120000_session_resource_library_integration.sql` were applied to DEV through the MCP; the server recorded version `20260930194424_session_resource_library_integration`. It adds the real `resource_id` FK with ON DELETE RESTRICT, category/content checks, a trigger and transactional save-RPC validation, and a narrow Author read policy for archived Resources already linked from Session Material. The Resource delete RPC's restrictive FK failure is DEV-verified. Current-version lookup is implemented in the application; an actual version replacement and browser playback/download remain unverified. Future assigned/historical consumers must pin a Resource Version separately with explicit FK/reference protection; no assignment/pinning integration exists.
+- `types/database.generated.ts` was regenerated from the DEV MCP output, not hand-edited, and matches that output exactly. Its diff adds only `resource_id` and `resource_category` to Session Material block row/insert/update types and the Resource FK relationship. The rollback-only verifier `features/session-builder/session-resource-library-dev-verification.sql` passed after fixing an ambiguous local variable and removing an authenticated-role read of the restricted Storage cleanup table. It covered four Resource categories, persisted IDs, category mismatch rejection, protected deletion, archived reference resolution, rejection of new archived selection, mixed ordering with Video / Link, duplicate block identity, and reference-only removal. Its transaction ended with `ROLLBACK`; a follow-up DEV query found zero matching synthetic users, Resources, and Sessions.
+- Node v24.21.0 validation after the DEV migration: 39 focused tests across 7 Session Builder files passed; `npm run typecheck`, `npm run lint`, and `git diff --check` passed. `npm run verify:supabase` passed via read-only Auth settings HTTP 200 for DEV project `lctkqjjkhpyootwvttvj` after an approved outside-sandbox retry. No full suite, production build, or browser review was run. No other Supabase project was accessed; PROD was untouched.
+- Session Resource authoring UX refinement: selecting Image, Document, Audio, or Video in Add Resource appends an incomplete local `library_resource` block and opens its editor without opening the picker. The block's type-specific Choose action opens one large responsive Radix Dialog modal; active matches display immediately and search only filters them. Type-specific modal headings, descriptions, and search placeholders identify Image, Document, Audio, or Video. Image results use the shared Resource Library thumbnail and signed preview mechanism in a responsive grid; other categories use browseable cards with shared file-type icons and size formatting. The browse area scrolls independently within the modal. Empty categories and empty searches have distinct type-specific messages. Selecting a Resource fills the same staged block, closes the modal, and leaves editing active. Replace Selection opens the same modal with same-category active-only filtering. Done editing stays disabled until a matching active Resource is selected; existing Save/Publish validation remains strict. Escape, close button, focus handling, accessible title/description, and keyboard-selectable cards use Radix Dialog behavior and semantic controls.
+- Cancel is shown only while a newly created Resource or Video / Link block remains in its initial edit state. It removes that local block and discards its staged fields or Resource reference. The existing staged Session/baseline comparison restores clean state when the block was the only change and preserves other dirty changes. Persisted blocks retain their existing edit/remove behavior. Unified Resource ordering is unchanged. This refinement made no DB/schema changes, applied no migrations, and did not change generated types; the current generated file was compared to the DEV MCP generator output and matched exactly.
+- Node v24.21.0 focused validation for block-first authoring: 28 tests passed across 4 files; `npm run typecheck`, `npm run lint`, and `git diff --check` passed. The later user browser review approved this behavior. Current branch remains `feature/session-resource-library`; all work is uncommitted; no commit, push, merge, deploy, or PROD access occurred.
+- Responsive Session Resource picker modal refinement: replaced only the picker Sheet with one large, responsive Radix Dialog; retained the block-first flow and new-block Cancel behavior. The shared Resource Library thumbnail/icon primitive is reused by both the standalone library and picker. No database/backend contracts or generated types changed, and no migration or DEV verifier was run. Node v24.21.0 focused validation passed 36 tests across 5 files: `features/session-builder/session-resource-picker.test.ts`, `features/session-builder/editor-model.test.ts`, `features/session-builder/resource-actions.test.ts`, `features/session-builder/session-editor-presentation.test.ts`, and `features/resource-library/presentation.test.ts`. Typecheck, lint, and `git diff --check` passed. The later user browser review approved this behavior; current branch is `feature/session-resource-library`, work is uncommitted, and no commit, push, merge, deploy, or PROD access occurred.
+- Session Resource metadata presentation refinement: added one shared MIME-to-label formatter for supported image, document, audio, and video types. Session Material authoring summaries, picker cards, and the document row in Session Preview now show Resource title followed by concise MIME-derived file type and formatted size; filename extensions cannot override the actual MIME label, and ordinary Session UI omits the original filename. The standalone Resource Library detail sheet remains unchanged and continues to show the original filename and MIME type for management/provenance. No filename/storage behavior, database/schema/RPC/RLS/generated types, or migration was changed.
+- Node v24.21.0 focused validation passed 55 tests across `features/resource-library/policy.test.ts`, `features/session-builder/session-resource-picker.test.ts`, `features/session-builder/session-preview.test.ts`, and `features/session-builder/session-editor-presentation.test.ts`. `npm run typecheck`, `npm run lint`, and `git diff --check` passed. The later user browser review approved this behavior; no DEV verification was needed or run for this presentation-only change. Current branch is `feature/session-resource-library`; work remains uncommitted, with no commit, push, merge, deploy, or PROD access.
+- Video / Link row icon refinement: added the existing Lucide `ExternalLink` icon inside the same 12-unit muted, brand-blue icon container already used by Audio and Document Resource rows. Existing Video / Link title/URL/description authoring, controls, staged behavior, validation, persistence, reordering, and Preview logic remain unchanged. Added a focused presentation assertion without pixel-level styling checks. No database, migration, Resource Library, picker, resource-model, authorization, generated-type, or Save/Publish changes.
+- Node v24.21.0 final regression gate: `npm run typecheck`, `npm run lint`, `npm test` (474 tests across 82 files), `npm run build`, and `git diff --check` passed. Browser review is user-approved. DEV migration `20260930194424_session_resource_library_integration` remains recorded for `lctkqjjkhpyootwvttvj`; the existing rollback-only verifier had passed previously, but this final closeout re-run was rejected by the MCP safety layer before execution because its temporary writes are not read-only. No fixtures were created during the rejected attempt. Generated types were checked against the current DEV generator output for the expected Resource fields and FK relationship; no regeneration was needed.
+- Exact next step: COMPLETE AUTHORIZED GIT CLOSEOUT, THEN DISCUSS / DESIGN ASSIGNMENT INTEGRATION WITH EXPLICIT HISTORICAL RESOURCE-VERSION PINNING.
 Selective Page assignment
 Counselor can choose specific Session Pages for each couple.
 Important:
 - reference stable Page identities;
 - do not use visual index as identity;
 - allow different couples to receive different Page selections.
-Resource-selection behavior remains to be designed.
+Future Couple-specific/assignment Resource-selection behavior remains to be designed; the current authoring picker is not an assignment workflow.
 Participant Session Material
 Eventually implement participant-facing reading experience using the reusable Preview/read-only content components where appropriate.
 Do not create a parallel rendering system if Preview components can be reused safely.
@@ -1109,7 +1126,7 @@ A fresh AI taking over this project should remember:
 7. One visible lifecycle belongs to the Session.
 8. Homework history/versioning must remain immutable once assigned.
 9. Existing assignments must not silently move to newer Homework versions.
-10. Pages are Session Material rich_text; Resources currently map to video_link. Do not rename DB values just for UI terminology.
+10. Pages are Session Material rich_text; external Video / Link uses video_link. The applied integration adds one library_resource type for Image / Document / Audio / Video; no existing block values are renamed.
 11. Homework Rich Text remains called Rich Text. Session Material Rich Text is called Page.
 12. Preview uses current staged content and performs no persistence.
 13. Future Page assignment must use stable Page identity.
@@ -1117,7 +1134,7 @@ A fresh AI taking over this project should remember:
 15. Do not merge state models merely because their code looks similar.
 16. Use focused validation during development; full suite only at milestone gates.
 17. Use Node 24 for milestone validation.
-18. Current branch is `main`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` and Resource Library merge `eb6cdd5` are on main.
+18. Current branch is `feature/session-resource-library`, branched from clean `main`; Preview merge `a3be0347cc82f2874eb2f2a68898e70ecf0f6cc2` and Resource Library merge `eb6cdd5` remain on main.
 19. Update PROJECT_STATE.md before considering every coding-agent task complete, including validation and Git milestones.
 20. Record browser/manual verification only when actually performed.
-21. Preview and Resource Library are regression-validated, browser/manual reviewed and approved, and merged to main. Resource Library foundation `863e526` and completion `cbb562d` are included in merge `eb6cdd5`. The next product step is to discuss/design Session Material Resource Library integration; do not start implementation before that discussion.
+21. Preview and standalone Resource Library are regression-validated, browser/manual reviewed and approved, and merged to main. Resource Library foundation `863e526` and completion `cbb562d` are included in merge `eb6cdd5`. Session Material integration passed its DEV migration/verifier gate; user browser review is next.

@@ -15,6 +15,7 @@ import { SessionPreviewProvider, type SessionPreviewTab } from "./session-previe
 import { SessionPreview } from "./session-preview";
 import { sessionPreviewTabForWorkspace, type SessionWorkspace } from "./workspace";
 import type { SessionMaterialBlock, SessionSummary } from "./types";
+import { refreshSessionResourceAccess } from "./resource-actions";
 
 export function SessionEditor({ session, blocks = [], activeWorkspace = "material", homework }: {
   session: SessionSummary | null;
@@ -41,6 +42,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewTab, setPreviewTab] = useState<SessionPreviewTab>("material");
+  const [resourceAccess, setResourceAccess] = useState<Record<string, string>>({});
   const pendingDestinationRef = useRef<string | null>(null);
   const bypassDestinationRef = useRef<string | null>(null);
   const dirty = editorStateIsDirty(editor, baseline);
@@ -138,6 +140,9 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   function openPreview(tab: SessionPreviewTab) {
     setPreviewTab(tab);
     setPreviewOpen(true);
+    const ids = editor.blocks.flatMap((block) => block.blockType === "library_resource" && block.resourceId ? [block.resourceId] : []);
+    if (ids.length) refreshSessionResourceAccess(ids).then(setResourceAccess)
+      .catch(() => toast.error("Resource preview could not be loaded. Please try again."));
   }
 
   return <div inert={pending} aria-busy={pending}>
@@ -154,7 +159,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
         ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} updateBlocks={updateBlocks} />
         : homework}
     </SessionPreviewProvider>
-    <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} />
+    <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} resourceAccess={resourceAccess} />
 
     <div className="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
       {pageDirty ? <span role="status" className="mr-auto text-xs font-medium text-text-muted">Unsaved changes</span> : null}
