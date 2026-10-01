@@ -1684,6 +1684,8 @@ export type Database = {
           description: string | null
           id: string
           position: number
+          resource_category: string | null
+          resource_id: string | null
           rich_text_content: Json | null
           session_id: string
           title: string | null
@@ -1696,6 +1698,8 @@ export type Database = {
           description?: string | null
           id?: string
           position: number
+          resource_category?: string | null
+          resource_id?: string | null
           rich_text_content?: Json | null
           session_id: string
           title?: string | null
@@ -1708,6 +1712,8 @@ export type Database = {
           description?: string | null
           id?: string
           position?: number
+          resource_category?: string | null
+          resource_id?: string | null
           rich_text_content?: Json | null
           session_id?: string
           title?: string | null
@@ -1715,6 +1721,13 @@ export type Database = {
           url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "session_material_blocks_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_material_blocks_session_id_fkey"
             columns: ["session_id"]

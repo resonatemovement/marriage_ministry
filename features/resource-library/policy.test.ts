@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { canBrowseResources, canManageResource, formatResourceFileSize, RESOURCE_POLICY, resourceCategoryForMime, resourcePruningCandidates, resourceTitleFromFilename, sanitizeResourceFilename, validateResourceFile, validateResourceMetadata, type ResourceCategory } from "./policy";
+import { canBrowseResources, canManageResource, formatResourceFileSize, formatResourceFileType, RESOURCE_POLICY, resourceCategoryForMime, resourcePruningCandidates, resourceTitleFromFilename, sanitizeResourceFilename, validateResourceFile, validateResourceMetadata, type ResourceCategory } from "./policy";
 
 describe("Resource file policy", () => {
   for (const [category, rule] of Object.entries(RESOURCE_POLICY.categories)) {
@@ -46,6 +46,11 @@ describe("Resource file policy", () => {
     expect(formatResourceFileSize(500)).toBe("500 B");
     expect(formatResourceFileSize(1024)).toBe("1 KB");
     expect(formatResourceFileSize(1_572_864)).toBe("1.5 MB");
+  });
+  it("formats concise file types from MIME rather than filenames", () => {
+    expect(["image/avif", "application/pdf", "audio/mpeg", "audio/mp4", "video/mp4"].map(formatResourceFileType)).toEqual(["AVIF", "PDF", "MP3", "M4A", "MP4"]);
+    expect(formatResourceFileType("APPLICATION/PDF")).toBe("PDF");
+    expect(formatResourceFileType("application/octet-stream")).toBe("FILE");
   });
   it("keeps the DB/bucket enforcement snapshot aligned with centralized application limits/MIMEs", () => {
     const migration = readFileSync("supabase/migrations/20260929152032_resource_library_schema.sql", "utf8");

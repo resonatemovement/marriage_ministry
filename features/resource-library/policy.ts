@@ -40,6 +40,18 @@ export function formatResourceFileSize(sizeBytes: number) {
   return `${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(size)} ${units[unit]}`;
 }
 
+const RESOURCE_FILE_TYPE_LABELS: Record<string, string> = {
+  "image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP", "image/avif": "AVIF",
+  "application/pdf": "PDF", "application/msword": "DOC",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+  "audio/mpeg": "MP3", "audio/mp4": "M4A", "audio/aac": "AAC", "audio/wav": "WAV", "audio/x-wav": "WAV", "audio/x-m4a": "M4A",
+  "video/mp4": "MP4", "video/webm": "WEBM",
+};
+
+export function formatResourceFileType(mimeType: string) {
+  return RESOURCE_FILE_TYPE_LABELS[mimeType.toLowerCase()] ?? "FILE";
+}
+
 export function resourceFileAccept() {
   return Object.values(RESOURCE_POLICY.categories).flatMap((rule) => rule.mimeTypes).join(",");
 }

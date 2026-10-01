@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import { FileAudio, FileImage, FileText, FileVideo, FolderOpen, Plus, Search } from "lucide-react";
+import { FolderOpen, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
@@ -11,14 +10,7 @@ import { filterResourceItems, RESOURCE_CATEGORY_FILTERS, resourceEmptyState, typ
 import { reloadResourceLibrary } from "./actions";
 import { ResourceDetailSheet } from "./resource-detail-sheet";
 import { ResourceUploadSheet } from "./resource-upload-sheet";
-
-function ResourceTypeIcon({ category, className = "size-8" }: { category: ResourceLibraryItem["category"]; className?: string }) {
-  const iconProps = { className, "aria-hidden": true as const };
-  if (category === "image") return <FileImage {...iconProps} />;
-  if (category === "audio") return <FileAudio {...iconProps} />;
-  if (category === "video") return <FileVideo {...iconProps} />;
-  return <FileText {...iconProps} />;
-}
+import { ResourceThumbnail } from "./resource-thumbnail";
 
 function ResourceCard({ item, archived, onOpen }: { item: ResourceLibraryItem; archived: boolean; onOpen: () => void }) {
   return (
@@ -28,12 +20,9 @@ function ResourceCard({ item, archived, onOpen }: { item: ResourceLibraryItem; a
       aria-label={`Open ${item.title} details`}
       className="group min-w-0 overflow-hidden rounded-lg border border-border bg-surface text-left shadow-[0_1px_2px_rgba(43,45,42,0.04),0_8px_24px_rgba(43,45,42,0.035)] transition hover:border-brand-primary/45 hover:shadow-[0_6px_24px_rgba(43,45,42,0.1)] focus-visible:border-brand-primary focus-visible:bg-sidebar-accent"
     >
-      <div className="relative grid aspect-[4/3] place-items-center overflow-hidden bg-surface-muted text-brand-secondary">
-        {item.category === "image" && item.previewUrl ? (
-          <Image src={item.previewUrl} alt={item.title} width={520} height={390} unoptimized className="size-full object-cover" />
-        ) : <ResourceTypeIcon category={item.category} className="size-10" />}
+      <ResourceThumbnail item={item}>
         {archived ? <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-text-muted shadow-sm">Archived</span> : null}
-      </div>
+      </ResourceThumbnail>
       <div className="min-w-0 p-4">
         <h2 className="truncate font-heading text-base font-bold text-text-primary" title={item.title}>{item.title}</h2>
         <p className="mt-1 truncate text-xs text-text-muted" title={item.currentVersion.originalFilename}>

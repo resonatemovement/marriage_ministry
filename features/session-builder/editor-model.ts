@@ -2,6 +2,8 @@ import type { Json } from "@/types/database.generated";
 
 import { canPublishSession, isValidMaterialUrl, normalizeSessionTitle, reorderedBlockIds, type SessionStatus } from "./model";
 import type { MaterialBlockType, SessionMaterialBlock, SessionSummary } from "./types";
+import type { ResourceCategory } from "@/features/resource-library/policy";
+import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
 
 export type StagedMaterialBlock = {
   key: string;
@@ -11,6 +13,9 @@ export type StagedMaterialBlock = {
   richTextContent: Record<string, unknown> | null;
   url: string;
   description: string;
+  resourceId?: string | null;
+  resourceCategory?: ResourceCategory | null;
+  resource?: ResourceLibraryItem | null;
 };
 
 export type SessionEditorState = {
@@ -35,6 +40,9 @@ export function initialSessionEditorState(session: SessionSummary | null, blocks
       richTextContent: block.richTextContent,
       url: block.url ?? "",
       description: block.description ?? "",
+      resourceId: block.resourceId ?? null,
+      resourceCategory: block.resourceCategory ?? null,
+      resource: block.resource ?? null,
     })),
   };
 }
@@ -48,7 +56,29 @@ export function newStagedBlock(blockType: MaterialBlockType): StagedMaterialBloc
     richTextContent: blockType === "rich_text" ? structuredClone(emptyRichText) : null,
     url: "",
     description: "",
+    resourceId: null,
+    resourceCategory: null,
+    resource: null,
   };
+}
+
+export function newLibraryResourceBlock(category: ResourceCategory): StagedMaterialBlock {
+  return { ...newStagedBlock("library_resource"), resourceCategory: category };
+}
+
+export function selectLibraryResource(block: StagedMaterialBlock, resource: ResourceLibraryItem): StagedMaterialBlock {
+  if (block.blockType !== "library_resource" || block.resourceCategory !== resource.category || resource.archivedAt) return block;
+  return { ...block, resourceId: resource.id, resource };
+}
+
+export function libraryResourceBlockIsComplete(block: StagedMaterialBlock): boolean {
+  return block.blockType === "library_resource" && Boolean(block.resourceId && block.resourceCategory && block.resource?.id === block.resourceId
+    && block.resource.category === block.resourceCategory && !block.resource.archivedAt);
+}
+
+export function removeStagedBlock(blocks: StagedMaterialBlock[], key: string): StagedMaterialBlock[] {
+  if (!blocks.some((block) => block.key === key)) return blocks;
+  return blocks.filter((block) => block.key !== key);
 }
 
 export function duplicateStagedBlock(blocks: StagedMaterialBlock[], key: string): StagedMaterialBlock[] {
@@ -66,12 +96,14 @@ export function moveStagedBlock(blocks: StagedMaterialBlock[], activeKey: string
 }
 
 export function moveStagedBlockWithinType(blocks: StagedMaterialBlock[], blockType: MaterialBlockType, activeKey: string, overKey: string): StagedMaterialBlock[] {
-  const sameType = blocks.filter((block) => block.blockType === blockType);
+  const sameType = blocks.filter((block) => blockType === "library_resource"
+    ? block.blockType !== "rich_text" : block.blockType === blockType);
   const orderedKeys = reorderedBlockIds(sameType.map((block) => block.key), activeKey, overKey);
   if (orderedKeys.every((key, index) => key === sameType[index]?.key)) return blocks;
   const byKey = new Map(sameType.map((block) => [block.key, block]));
   let index = 0;
-  return blocks.map((block) => block.blockType === blockType ? byKey.get(orderedKeys[index++])! : block);
+  return blocks.map((block) => (blockType === "library_resource" ? block.blockType !== "rich_text" : block.blockType === blockType)
+    ? byKey.get(orderedKeys[index++])! : block);
 }
 
 function normalizedBlock(block: StagedMaterialBlock) {
@@ -82,6 +114,8 @@ function normalizedBlock(block: StagedMaterialBlock) {
     richTextContent: block.blockType === "rich_text" ? block.richTextContent : null,
     url: block.blockType === "video_link" ? block.url.trim() : "",
     description: normalizeSessionTitle(block.description),
+    resourceId: block.blockType === "library_resource" ? block.resourceId : null,
+    resourceCategory: block.blockType === "library_resource" ? block.resourceCategory : null,
   };
 }
 
@@ -103,10 +137,13 @@ export function sessionSaveError(state: SessionEditorState): string | null {
   if (state.blocks.some((block) => block.blockType === "video_link" && !isValidMaterialUrl(block.url))) {
     return "Enter a valid http or https URL for each Video / Link block.";
   }
+  if (state.blocks.some((block) => block.blockType === "library_resource" && (!block.resourceId || !block.resourceCategory))) return "Select a Resource for each library block.";
   return null;
 }
 
 export function sessionPublishError(state: SessionEditorState): string | null {
+  const resourceError = sessionSaveError(state);
+  if (resourceError) return resourceError;
   return canPublishSession(state.title, state.blocks.map((block) => ({
     blockType: block.blockType,
     richTextContent: block.richTextContent,
@@ -122,6 +159,7 @@ export function materialForRpc(blocks: StagedMaterialBlock[]): Json {
     rich_text_content: block.blockType === "rich_text" ? block.richTextContent as Json : null,
     url: block.blockType === "video_link" ? block.url.trim() : null,
     description: normalizeSessionTitle(block.description) || null,
+    ...(block.blockType === "library_resource" ? { resource_id: block.resourceId, resource_category: block.resourceCategory } : {}),
   }));
 }
 
@@ -139,13 +177,15 @@ export function sessionStateFromRpc(value: Json, previousBlocks: StagedMaterialB
   const blocks: StagedMaterialBlock[] = [];
   for (const item of result.blocks) {
     const block = record(item);
-    if (!block || typeof block.id !== "string" || (block.block_type !== "rich_text" && block.block_type !== "video_link")
+    if (!block || typeof block.id !== "string" || (block.block_type !== "rich_text" && block.block_type !== "video_link" && block.block_type !== "library_resource")
       || typeof block.position !== "number" || typeof block.title !== "string" && block.title !== null
       || typeof block.url !== "string" && block.url !== null
       || typeof block.description !== "string" && block.description !== null) return null;
     const matched = previousBlocks.find((existing) => existing.persistedId === block.id || existing.key === block.client_id);
     const richTextContent = record(block.rich_text_content);
     if (block.block_type === "rich_text" && !richTextContent) return null;
+    if (block.block_type === "library_resource" && (typeof block.resource_id !== "string"
+      || !["image", "document", "audio", "video"].includes(String(block.resource_category)))) return null;
     if (block.position !== blocks.length) return null;
     blocks.push({
       key: matched?.key ?? block.id,
@@ -155,6 +195,9 @@ export function sessionStateFromRpc(value: Json, previousBlocks: StagedMaterialB
       richTextContent,
       url: block.url ?? "",
       description: block.description ?? "",
+      resourceId: block.block_type === "library_resource" ? block.resource_id as string : null,
+      resourceCategory: block.block_type === "library_resource" ? block.resource_category as ResourceCategory : null,
+      resource: block.block_type === "library_resource" && matched?.resourceId === block.resource_id ? matched?.resource : null,
     });
   }
   if (new Set(blocks.map((block) => block.persistedId)).size !== blocks.length) return null;

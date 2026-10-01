@@ -5,6 +5,7 @@ import { sessionPreviewTabForWorkspace } from "./workspace";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("./save-session-state", () => ({ saveSessionBuilderState: vi.fn() }));
+vi.mock("./resource-actions", () => ({ findSessionResources: vi.fn(), refreshSessionResourceAccess: vi.fn() }));
 
 import { SessionEditor } from "./session-editor";
 
@@ -18,6 +19,8 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain("Add Page");
     expect(markup.match(/>Add Page<\/button>/g)).toHaveLength(1);
     expect(markup).toContain("Add Resource");
+    expect(markup).not.toContain("Select Image");
+    expect(markup).not.toContain("Choose Image");
     expect(markup).toContain("Create and organize the reading material for this Session.");
     expect(markup).toContain("Add supporting videos, links, and other resources for this Session.");
     expect(markup.match(/>Preview<\/button>/g)).toHaveLength(1);
@@ -89,4 +92,31 @@ describe("unified Session editor presentation", () => {
     expect(markup.indexOf("Page two")).toBeLessThan(markup.indexOf("Resources"));
     expect(markup).not.toContain("Unsaved changes");
   });
+
+  it("renders Video / Link with the shared Resource icon treatment and preserves its title summary", () => {
+    const markup = renderToStaticMarkup(createElement(SessionEditor, {
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+      blocks: [{ id: "link-1", sessionId: "session-id", blockType: "video_link", position: 0, title: "Watch together", richTextContent: null, url: "https://example.com/video", description: "A discussion video" }],
+    }));
+    expect(markup).toContain("Video / Link");
+    expect(markup).toContain("Watch together");
+    expect(markup).toContain("size-12 shrink-0 place-items-center rounded bg-surface-muted text-brand-primary");
+    expect(markup).toContain("lucide-external-link");
+  });
+
+  it.each([["image", "image/avif", "AVIF · 1 KB"], ["document", "application/pdf", "PDF · 1 KB"], ["audio", "audio/mp4", "M4A · 1 KB"], ["video", "video/webm", "WEBM · 1 KB"]] as const)(
+    "shows MIME type and size for Session %s without the original filename",
+    (category, mimeType, metadata) => {
+      const markup = renderToStaticMarkup(createElement(SessionEditor, {
+        session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+        blocks: [{ id: "resource-1", sessionId: "session-id", blockType: "library_resource", position: 0, title: null, richTextContent: null, url: null, description: null,
+          resourceId: "resource-id", resourceCategory: category,
+          resource: { id: "resource-id", title: "Session resource", description: null, category, archivedAt: null, createdAt: "", updatedAt: "", canManage: false,
+            currentVersion: { originalFilename: "private-original-name.dat", mimeType, sizeBytes: 1024, uploadedAt: "" }, previewUrl: null } }],
+      }));
+      expect(markup).toContain("Session resource");
+      expect(markup).toContain(metadata);
+      expect(markup).not.toContain("private-original-name.dat");
+    },
+  );
 });
