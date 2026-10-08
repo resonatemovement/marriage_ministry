@@ -19,6 +19,7 @@ export type Database = {
           content_type: string
           counseling_case_id: string
           created_at: string
+          document_slot: string
           file_name: string
           id: string
           object_path: string
@@ -30,6 +31,7 @@ export type Database = {
           content_type: string
           counseling_case_id: string
           created_at?: string
+          document_slot: string
           file_name: string
           id?: string
           object_path: string
@@ -41,6 +43,7 @@ export type Database = {
           content_type?: string
           counseling_case_id?: string
           created_at?: string
+          document_slot?: string
           file_name?: string
           id?: string
           object_path?: string
@@ -357,6 +360,64 @@ export type Database = {
             columns: ["counseling_case_id"]
             isOneToOne: false
             referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_session_meetings: {
+        Row: {
+          counseling_case_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          location: string
+          scheduled_by: string
+          session_id: string | null
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          counseling_case_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          location: string
+          scheduled_by: string
+          session_id?: string | null
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          counseling_case_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          location?: string
+          scheduled_by?: string
+          session_id?: string | null
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_session_meetings_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_session_meetings_scheduled_by_fkey"
+            columns: ["scheduled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_session_meetings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1942,6 +2003,10 @@ export type Database = {
         Returns: Json
       }
       cleanup_verifier_relationship_artifacts: { Args: never; Returns: Json }
+      close_counseling_case: {
+        Args: { target_case_id: string }
+        Returns: undefined
+      }
       complete_onboarding: { Args: never; Returns: undefined }
       complete_profile_photo_handoff: {
         Args: { target_token_hash: string }
@@ -2021,6 +2086,55 @@ export type Database = {
           target_version_id: string
         }
         Returns: undefined
+      }
+      get_counseling_contact_group: {
+        Args: { target_case_id: string; target_group_id: string }
+        Returns: {
+          assignment_type: string
+          campus_name: string
+          email: string
+          first_name: string
+          group_id: string
+          group_name: string
+          group_type: string
+          last_name: string
+          member_id: string
+          onboarding_completed_at: string
+          phone: string
+          photo_path: string
+          profile_status: string
+          roles: string[]
+        }[]
+      }
+      get_counseling_workspace_couple_identity: {
+        Args: { target_case_id: string }
+        Returns: {
+          counseling_case_id: string
+          couple_group_id: string
+          group_name: string
+          first_name: string
+          last_name: string
+          photo_path: string
+          profile_id: string
+        }[]
+      }
+      get_current_couple_case_counselor: {
+        Args: never
+        Returns: {
+          counseling_case_id: string
+          counselor_group_id: string
+          counselor_name: string
+        }[]
+      }
+      get_current_couple_case_team: {
+        Args: never
+        Returns: {
+          campus_lead_name: string
+          coach_name: string
+          counseling_case_id: string
+          counselor_name: string
+          published_session_count: number
+        }[]
       }
       get_or_create_homework_draft: {
         Args: { source_version_id?: string; target_homework_id: string }
@@ -2140,6 +2254,16 @@ export type Database = {
         }
         Returns: Json
       }
+      schedule_case_session_meeting: {
+        Args: {
+          target_case_id: string
+          target_ends_at: string
+          target_location: string
+          target_session_id: string
+          target_starts_at: string
+        }
+        Returns: string
+      }
       set_resource_archived: {
         Args: { should_archive: boolean; target_resource_id: string }
         Returns: {
@@ -2187,6 +2311,14 @@ export type Database = {
         Args: {
           target_campus_lead_group_id: string
           target_counselor_group_id: string
+        }
+        Returns: boolean
+      }
+      unassign_coach_case_assignment: {
+        Args: {
+          target_case_id: string
+          target_group_id: string
+          unassignment_reason?: string
         }
         Returns: boolean
       }

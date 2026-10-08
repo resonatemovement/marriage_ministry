@@ -77,6 +77,7 @@ export interface GroupPeopleDetail {
 
 export interface AssignedCouple {
   id: string;
+  caseId: string;
   name: string;
   campus: string | null;
   status: CaseStatus | null;

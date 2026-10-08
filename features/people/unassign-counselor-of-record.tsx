@@ -6,9 +6,9 @@ import { UserMinus } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-import { unassignCounselorOfRecord } from "./detail-actions";
+import { unassignCoachCaseAssignment, unassignCounselorOfRecord } from "./detail-actions";
 
-export function UnassignCounselorOfRecord({ coupleId, coupleName, teamName, providerId, providerSide = false, open = false, onOpenChange, menuOnly = false }: { coupleId: string; coupleName: string; teamName: string; providerId?: string; providerSide?: boolean; open?: boolean; onOpenChange?: (open: boolean) => void; menuOnly?: boolean }) {
+export function UnassignCounselorOfRecord({ coupleId, caseId, coupleName, teamName, providerId, providerSide = false, assignmentType = "counselor", open = false, onOpenChange, menuOnly = false }: { coupleId: string; caseId?: string; coupleName: string; teamName: string; providerId?: string; providerSide?: boolean; assignmentType?: "counselor" | "coach"; open?: boolean; onOpenChange?: (open: boolean) => void; menuOnly?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -28,7 +28,8 @@ export function UnassignCounselorOfRecord({ coupleId, coupleName, teamName, prov
           event.preventDefault();
           setError(null);
           startTransition(async () => {
-            const result = await unassignCounselorOfRecord(new FormData(event.currentTarget));
+            const action = assignmentType === "coach" ? unassignCoachCaseAssignment : unassignCounselorOfRecord;
+            const result = await action(new FormData(event.currentTarget));
             if ("error" in result) { setError(result.error); return; }
             onOpenChange?.(false);
             window.location.reload();
@@ -36,6 +37,7 @@ export function UnassignCounselorOfRecord({ coupleId, coupleName, teamName, prov
         }}>
           <input type="hidden" name="coupleGroupId" value={coupleId} />
           {providerId ? <input type="hidden" name="providerGroupId" value={providerId} /> : null}
+          {assignmentType === "coach" && caseId ? <input type="hidden" name="caseId" value={caseId} /> : null}
           {error ? <p role="alert" className="text-sm text-danger-strong">{error}</p> : null}
           <div className="flex justify-end gap-3">
             <button type="button" onClick={() => onOpenChange?.(false)} disabled={pending} className="min-h-10 rounded-md px-3 text-sm font-semibold text-text-muted hover:bg-surface-muted disabled:opacity-60">Cancel</button>

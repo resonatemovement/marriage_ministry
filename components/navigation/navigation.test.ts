@@ -30,3 +30,12 @@ describe("Resource Library navigation access", () => {
     }
   });
 });
+
+describe("Counseling Workspace navigation", () => {
+  it("identifies Workspace, rather than Sessions, as the main counseling-team destination", () => {
+    for (const workspace of ["campus_lead", "coach", "counselor"] as const) {
+      expect(workspaceNavigation[workspace][0]).toMatchObject({ label: "Workspace", href: "/workspace" });
+      expect(workspaceNavigation[workspace].some((item) => item.label === "Sessions")).toBe(false);
+    }
+  });
+});

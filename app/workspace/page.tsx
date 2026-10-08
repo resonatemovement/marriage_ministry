@@ -8,14 +8,30 @@ import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
 import { WorkspaceShell } from "@/components/navigation/workspace-shell";
 import { dashboardMetrics } from "@/features/dashboard/data";
 import { WorkspacePlaceholder } from "@/features/workspace/workspace-placeholder";
-import { CampusLeadDashboard } from "@/features/campus-lead/dashboard";
+import { SessionsWorkspace } from "@/features/counseling-sessions/sessions-workspace";
+import { getCounselingSessionCards } from "@/features/counseling-sessions/queries";
+import { getCurrentCampusLeadCoaches } from "@/features/counseling-sessions/workspace-queries";
+import { CampusLeadCoachesRail } from "@/features/counseling-sessions/workspace-rail";
+import { CoupleWorkspace } from "@/features/couple-workspace/workspace";
+import { getCoupleWorkspaceData } from "@/features/couple-workspace/queries";
+import { getCouplePrepareEnrichDocument } from "@/features/prepare-enrich/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 
 export default async function WorkspaceRoute() {
   const { identity, workspace } = await requireActiveWorkspace("/workspace");
 
-  if (workspace === "campus_lead") {
-    return <WorkspaceShell workspace="campus_lead" activeHref="/workspace" identity={identity}><CampusLeadDashboard /></WorkspaceShell>;
+  if (workspace === "campus_lead" || workspace === "coach" || workspace === "counselor") {
+    const [cards, coaches] = await Promise.all([
+      getCounselingSessionCards(),
+      workspace === "campus_lead" ? getCurrentCampusLeadCoaches() : Promise.resolve(null),
+    ]);
+    return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}>
+      {workspace === "campus_lead" ? <SessionsWorkspace cards={cards} coachesRail={<CampusLeadCoachesRail coaches={coaches ?? []} />} /> : <SessionsWorkspace cards={cards} isCoachWorkspace={workspace === "coach"} />}
+    </WorkspaceShell>;
+  }
+  if (workspace === "couple") {
+    const [data, prepareEnrich] = await Promise.all([getCoupleWorkspaceData(identity.id), getCouplePrepareEnrichDocument()]);
+    return <WorkspaceShell workspace="couple" activeHref="/workspace" identity={identity}><CoupleWorkspace data={data} prepareEnrich={prepareEnrich} /></WorkspaceShell>;
   }
   if (workspace !== "admin") {
     return <WorkspacePlaceholder workspace={workspace} identity={identity} />;

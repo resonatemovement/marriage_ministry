@@ -46,4 +46,41 @@ describe("RelationshipCard", () => {
     expect(markup.indexOf("max-h-[12rem]")).toBeLessThan(markup.indexOf("Assign Coach"));
     expect(markup).not.toContain("max-h-72");
   });
+
+  it("makes the entire direct-navigation row one accessible link with a decorative chevron", () => {
+    const markup = renderToStaticMarkup(createElement(RelationshipCard, {
+      title: "Coaches",
+      rows: [
+        { id: "coach-1", name: "DEV Test Coach Team Two", metadata: "Coach · Fremont", href: "/workspace/coaches/coach-1" },
+        { id: "coach-2", name: "James & Gina Jacobs", metadata: "Coach · Fremont", href: "/workspace/coaches/coach-2" },
+      ],
+      empty: "No coaches assigned.",
+      navigationMode: "chevron",
+    }));
+
+    const links = [...markup.matchAll(/<a href="(\/workspace\/coaches\/[^\"]+)" aria-label="([^"]+)" class="([^"]+)">([\s\S]*?)<\/a>/g)];
+    expect(links).toHaveLength(2);
+    expect(links[0]?.[1]).toBe("/workspace/coaches/coach-1");
+    expect(links[0]?.[2]).toBe("View details for DEV Test Coach Team Two");
+    expect(links[0]?.[3]).toContain("h-[4rem]");
+    expect(links[1]?.[1]).toBe("/workspace/coaches/coach-2");
+    expect(links[1]?.[2]).toBe("View details for James &amp; Gina Jacobs");
+    expect(links[1]?.[3]).toContain("last:h-[5rem]");
+    for (const link of links) {
+      expect(link?.[3]).toContain("hover:bg-surface-muted");
+      expect(link?.[3]).toContain("focus-visible:bg-sidebar-accent");
+      expect(link?.[3]).toContain("px-4");
+      expect(link?.[4]).toContain('class="flex h-[4rem] items-center gap-3"');
+    }
+    expect(links[0]?.[4]).toContain("DEV Test Coach Team Two");
+    expect(links[0]?.[4]).toContain("Coach · Fremont");
+    expect(links[0]?.[4]).toContain("lucide-chevron-right size-4");
+    expect(links[0]?.[4]).toContain('aria-hidden="true"');
+    expect(markup).not.toMatch(/after:|pointer-events-none|z-\d+/);
+    expect(links[0]?.[3]).not.toMatch(/rounded|border-|shadow/);
+    expect(markup).not.toContain("More actions for");
+    expect(markup).not.toContain("View Details");
+    expect(markup).not.toContain("lucide-ellipsis-vertical");
+    expect(markup).not.toContain("tabIndex");
+  });
 });

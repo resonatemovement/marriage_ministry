@@ -6,6 +6,7 @@ import { requireOneOfWorkspaces, requireWorkspace } from "@/lib/auth/session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import { isAssignmentReadyCouple } from "./detail-actions-model";
+import { coupleDisplayName } from "./types";
 
 type ActionResult = { error: string } | { success: true };
 type AssignmentType = "counselor" | "coach";
@@ -69,17 +70,23 @@ export async function updatePeopleDetail(formData: FormData): Promise<ActionResu
   const recordId = formValue(formData, "recordId");
   const name = formValue(formData, "name");
   const campusId = formValue(formData, "campusId");
-  if (!recordId || !name || name.length > 120) return invalid("Enter a name of up to 120 characters.");
+  if (!recordId || name.length > 120) return invalid("Enter a name of up to 120 characters.");
 
   const supabase = await authorize(recordId);
-  const groupResult = await supabase.from("groups").select("id,campus_id,group_type").eq("id", recordId).maybeSingle();
+  const groupResult = await supabase.from("groups").select("id,campus_id,group_type,group_members(ended_at,profile:profiles(first_name,last_name,email)),invitations(first_name,last_name,email)").eq("id", recordId).maybeSingle();
   if (groupResult.error) return safeMutationError();
   if (groupResult.data) {
     if (!(["couple", "coach_team", "counselor_team", "campus_lead_team"] as const).includes(groupResult.data.group_type as ManagedGroupType)) return invalid("This record cannot be edited here.");
+    const isCouple = groupResult.data.group_type === "couple";
+    if (!name && !isCouple) return invalid("Enter a name of up to 120 characters.");
     if (campusId !== groupResult.data.campus_id && !await activeCampus(supabase, campusId)) return invalid("Choose an active campus.");
-    const { error } = await supabase.from("groups").update({ name, campus_id: campusId || null }).eq("id", recordId);
+    const activeMembers = isCouple ? groupResult.data.group_members.filter((membership) => membership.ended_at === null).map((membership) => ({ firstName: membership.profile?.first_name ?? null, lastName: membership.profile?.last_name ?? null, email: membership.profile?.email ?? null })) : [];
+    const invitations = isCouple ? groupResult.data.invitations.map((invitation) => ({ firstName: invitation.first_name, lastName: invitation.last_name, email: invitation.email })) : [];
+    const savedName = name || coupleDisplayName(null, activeMembers, invitations);
+    const { error } = await supabase.from("groups").update({ name: savedName, campus_id: campusId || null }).eq("id", recordId);
     if (error) return safeMutationError();
   } else {
+    if (!name) return invalid("Enter a name of up to 120 characters.");
     const firstName = formValue(formData, "firstName");
     const lastName = formValue(formData, "lastName");
     if (!firstName || !lastName || firstName.length > 80 || lastName.length > 80) return invalid("Enter a first and last name of up to 80 characters each.");
@@ -156,6 +163,42 @@ export async function unassignCounselorOfRecord(formData: FormData): Promise<Act
   revalidatePath(`/people/${coupleGroupId}`);
   if (providerGroupId) revalidatePath(`/people/${providerGroupId}`);
   revalidatePath("/people");
+  return { success: true };
+}
+
+export async function unassignCoachCaseAssignment(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const caseId = formValue(formData, "caseId");
+  const coachGroupId = formValue(formData, "providerGroupId");
+  if (!coupleGroupId || !caseId || !coachGroupId) return invalid("This Couple is no longer assigned to this team.");
+
+  const supabase = await authorize(coupleGroupId);
+  if (!await activeTeam(supabase, coupleGroupId, "couple") || !await activeTeam(supabase, coachGroupId, "coach_team")) {
+    return invalid("This Couple is no longer assigned to this team.");
+  }
+
+  const { data: counselingCase, error: caseError } = await supabase.from("counseling_cases").select("id,couple_group_id").eq("id", caseId).eq("couple_group_id", coupleGroupId).maybeSingle();
+  if (caseError) return safeMutationError();
+  if (!counselingCase) return invalid("This Couple is no longer assigned to this team.");
+
+  const { data: assignment, error: assignmentError } = await supabase.from("case_assignments").select("id").eq("counseling_case_id", caseId).eq("assigned_group_id", coachGroupId).eq("assignment_type", "coach").is("ended_at", null).maybeSingle();
+  if (assignmentError) return safeMutationError();
+  if (!assignment) return invalid("This Couple is no longer assigned to this team.");
+
+  const { data, error } = await supabase.rpc("unassign_coach_case_assignment", {
+    target_case_id: caseId,
+    target_group_id: coachGroupId,
+  });
+  if (error) {
+    console.error("Coach case unassignment failed.", { caseId, coupleGroupId, coachGroupId, error: error.message });
+    return safeMutationError();
+  }
+  if (!data) return invalid("This Couple is no longer assigned to this team.");
+
+  revalidatePath(`/people/${coupleGroupId}`);
+  revalidatePath(`/people/${coachGroupId}`);
+  revalidatePath("/people");
+  revalidatePath("/workspace");
   return { success: true };
 }
 

@@ -76,6 +76,28 @@ describe("Couple display names", () => {
     const intakeName = intakeCoupleDisplayName([{ firstName: "Janice", lastName: "Price", position: "partner" }, { firstName: "Jacob", lastName: "Mitchel", position: "requester" }]);
     expect(coupleDisplayName("Pending Couple invitation", [], [], intakeName)).toBe("Jacob Mitchel & Janice Price");
   });
+
+  it("prefers a saved Couple display override, but derives names when the stored name is the default", () => {
+    const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
+    expect(coupleDisplayName(" Lee Family ", profiles, [])).toBe("Lee Family");
+    expect(coupleDisplayName("Jordan Lee & Casey Lee", profiles, [])).toBe("Jordan Lee & Casey Lee");
+  });
+
+  it("returns partner-derived names after a Couple override is cleared", () => {
+    const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
+    expect(coupleDisplayName(null, profiles, [])).toBe("Jordan Lee & Casey Lee");
+  });
+
+  it("prefers a saved Couple display override, but derives names when the stored name is the default", () => {
+    const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
+    expect(coupleDisplayName(" Lee Family ", profiles, [])).toBe("Lee Family");
+    expect(coupleDisplayName("Jordan Lee & Casey Lee", profiles, [])).toBe("Jordan Lee & Casey Lee");
+  });
+
+  it("returns partner-derived names after a Couple override is cleared", () => {
+    const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
+    expect(coupleDisplayName(null, profiles, [])).toBe("Jordan Lee & Casey Lee");
+  });
 });
 
 describe("Grouped People roles", () => {

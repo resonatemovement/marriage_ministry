@@ -1,12 +1,14 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { buildPeopleBreadcrumbs, parsePeopleTrail, peopleDetailHref, peopleListDetailHref, peopleListHref, validatePeopleReturnTo } from "./breadcrumbs";
+import { buildPeopleBreadcrumbs, parsePeopleTrail, PeopleBreadcrumbs, peopleDetailHref, peopleListDetailHref, peopleListHref, validatePeopleReturnTo } from "./breadcrumbs";
 
 const detail = (id: string, name: string) => ({ id, name } as never);
 
 describe("People navigation breadcrumbs", () => {
   it("uses a canonical direct-entry fallback", () => {
-    expect(buildPeopleBreadcrumbs(detail("11111111-1111-1111-1111-111111111111", "Couple"), [], [])).toEqual([{ label: "People & Teams", href: "/people" }, { label: "Couple" }]);
+    expect(buildPeopleBreadcrumbs(detail("11111111-1111-1111-1111-111111111111", "Couple"), [], [])).toEqual([{ label: "People & Teams", href: "/people" }, { label: "Couple", current: true }]);
   });
 
   it("preserves only the actual drill-down trail", () => {
@@ -38,5 +40,20 @@ describe("People navigation breadcrumbs", () => {
 
   it("accepts a People URL with its query string", () => {
     expect(validatePeopleReturnTo("/people?filter=counselors&q=casey")).toBe("/people?filter=counselors&q=casey");
+  });
+
+  it("keeps Admin People & Teams as a linked parent and its detail as the static current page", () => {
+    const markup = renderToStaticMarkup(createElement(PeopleBreadcrumbs, { items: [{ label: "People & Teams", href: "/people" }, { label: "Coach Team", current: true }] }));
+    expect(markup).toContain('href="/people"');
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).not.toContain('href="/people/coach-team"');
+  });
+
+  it("renders a contextual segment as static text between the parent link and current page", () => {
+    const markup = renderToStaticMarkup(createElement(PeopleBreadcrumbs, { items: [{ label: "Workspace", href: "/workspace" }, { label: "Coaches" }, { label: "Fremont Coaches", current: true }] }));
+    expect(markup).toContain('href="/workspace"');
+    expect(markup).toContain(">Coaches</span>");
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).not.toContain('href="/workspace/coaches"');
   });
 });

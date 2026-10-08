@@ -15,6 +15,7 @@ import {
   type ProfilePeopleDetail,
 } from "./detail-model";
 import { coupleDisplayName, intakeCoupleDisplayName } from "./types";
+import { assignedCoupleAssignmentType } from "./team-assignment";
 
 type Row = Record<string, unknown>;
 
@@ -117,7 +118,7 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
       : Promise.resolve({ data: null, error: null }),
     type === "couples"
       ? Promise.resolve({ data: [], error: null })
-      : supabase.from("case_assignments").select("id,started_at,counseling_case:counseling_cases(status,couple_group:groups!counseling_cases_couple_group_id_fkey(id,name,campus:campuses(name),group_members(ended_at,profile:profiles(first_name,last_name,email))))").eq("assigned_group_id", groupId).eq("assignment_type", "counselor" as "coach").is("ended_at", null),
+      : supabase.from("case_assignments").select("id,started_at,counseling_case:counseling_cases(id,status,couple_group:groups!counseling_cases_couple_group_id_fkey(id,name,campus:campuses(name),group_members(ended_at,profile:profiles(first_name,last_name,email))))").eq("assigned_group_id", groupId).eq("assignment_type", assignedCoupleAssignmentType(type)!).is("ended_at", null),
     type === "coaches"
       ? supabase.from("supervision_assignments").select("id,counselor_group:groups!supervision_assignments_counselor_group_id_fkey(name)").eq("coach_group_id", groupId).is("ended_at", null)
       : type === "counselors"
@@ -143,7 +144,7 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
   const counselorAssignment = type === "couples" ? caseAssignments.filter((assignment) => value(assignment, "assignment_type") === "counselor").map((assignment) => value(assignment.assigned_group as Row, "name")).find(Boolean) ?? null : null;
   const campusLeadAssignment = type === "couples" ? directAssignmentName("campus_lead") : null;
   const supervisedNames = supervision.map((assignment) => value((assignment.counselor_group ?? assignment.coach_group) as Row, "name")).filter(Boolean) as string[];
-  const assignedCouples = type === "coaches" || type === "counselors" || type === "campus_leads" ? teamAssignments.map((assignment) => { const counselingCase = assignment.counseling_case as Row | null; const couple = counselingCase?.couple_group as Row | null; const campus = couple?.campus as Row | null; const coupleMembers = rows(couple?.group_members).filter((member) => member.ended_at === null).map((member) => { const profile = member.profile as Row | null; return { firstName: value(profile, "first_name"), lastName: value(profile, "last_name"), email: value(profile, "email") }; }); return { id: value(couple, "id")!, name: coupleDisplayName(value(couple, "name"), coupleMembers, []), campus: value(campus, "name"), status: value(counselingCase, "status") as GroupPeopleDetail["counselingStatus"], assignedAt: value(assignment, "started_at") }; }).filter((couple) => couple.id) : [];
+  const assignedCouples = type === "coaches" || type === "counselors" || type === "campus_leads" ? teamAssignments.map((assignment) => { const counselingCase = assignment.counseling_case as Row | null; const couple = counselingCase?.couple_group as Row | null; const campus = couple?.campus as Row | null; const coupleMembers = rows(couple?.group_members).filter((member) => member.ended_at === null).map((member) => { const profile = member.profile as Row | null; return { firstName: value(profile, "first_name"), lastName: value(profile, "last_name"), email: value(profile, "email") }; }); return { id: value(couple, "id")!, caseId: value(counselingCase, "id")!, name: coupleDisplayName(value(couple, "name"), coupleMembers, []), campus: value(campus, "name"), status: value(counselingCase, "status") as GroupPeopleDetail["counselingStatus"], assignedAt: value(assignment, "started_at") }; }).filter((couple) => couple.id && couple.caseId) : [];
   const campus = group.campus as Row | null;
   const intake = group.intake_requests as Row | null;
   const intakeName = intakeCoupleDisplayName(rows(intake?.intake_request_people).map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position") })));

@@ -25,6 +25,7 @@
     "verify:account-setup-recovery": "node --experimental-strip-types --env-file=.env.local scripts/verify-account-setup-recovery.ts",
     "verify:counselor-assignment-candidates": "node --experimental-strip-types --env-file=.env.local scripts/verify-counselor-assignment-candidates.ts",
     "verify:supervision": "node --experimental-strip-types --env-file=.env.local scripts/verify-supervision.ts",
+    "verify:counseling-contacts": "node --experimental-strip-types --env-file=.env.local scripts/verify-counseling-contact-drilldowns.ts",
     "verify:operational-unassign": "node --experimental-strip-types --env-file=.env.local scripts/verify-operational-unassign.ts",
     "verify:counselor-unassign": "node --experimental-strip-types --env-file=.env.local scripts/verify-counselor-unassign.ts",
     "verify:intake-requests": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-requests.ts",

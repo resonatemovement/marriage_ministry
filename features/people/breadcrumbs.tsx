@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { PeopleDetail } from "./detail-model";
 
-export type PeopleBreadcrumb = { label: string; href?: string };
+export type PeopleBreadcrumb = { label: string; href?: string; current?: true };
 
 export function peopleListHref(filter: string, search: string) {
   const params = new URLSearchParams();
@@ -40,10 +40,10 @@ export function peopleListDetailHref(recordId: string, returnTo: string) {
 export function buildPeopleBreadcrumbs(detail: PeopleDetail, parents: PeopleDetail[], trail: string[], returnTo?: string) {
   const items: PeopleBreadcrumb[] = [{ label: "People & Teams", href: validatePeopleReturnTo(returnTo) }];
   parents.forEach((parent, index) => items.push({ label: parent.name, href: peopleDetailHref(parent.id, trail.slice(0, index)) }));
-  items.push({ label: detail.name });
+  items.push({ label: detail.name, current: true });
   return items;
 }
 
 export function PeopleBreadcrumbs({ items }: { items: PeopleBreadcrumb[] }) {
-  return <nav aria-label="Breadcrumb" className="mb-4 min-w-0 overflow-hidden text-sm text-text-muted"><ol className="flex flex-wrap items-center gap-x-1 gap-y-1"><li><span className="sr-only">You are here: </span></li>{items.map((item, index) => <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1"><span aria-hidden="true" className="inline-flex min-w-5 justify-center">/</span>{item.href ? <Link href={item.href} className="max-w-48 truncate text-brand-primary hover:underline sm:max-w-72">{item.label}</Link> : <span aria-current="page" className="max-w-56 truncate font-medium text-text-primary sm:max-w-96">{item.label}</span>}</li>)}</ol></nav>;
+  return <nav aria-label="Breadcrumb" className="mb-4 min-w-0 overflow-hidden text-sm text-text-muted"><ol className="flex flex-wrap items-center gap-x-1 gap-y-1"><li><span className="sr-only">You are here: </span></li>{items.map((item, index) => <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1"><span aria-hidden="true" className="inline-flex min-w-5 justify-center">/</span>{item.href ? <Link href={item.href} className="max-w-48 truncate text-brand-primary hover:underline sm:max-w-72">{item.label}</Link> : <span aria-current={item.current ? "page" : undefined} className={item.current ? "max-w-56 truncate font-medium text-text-primary sm:max-w-96" : "max-w-56 truncate text-text-muted sm:max-w-96"}>{item.label}</span>}</li>)}</ol></nav>;
 }

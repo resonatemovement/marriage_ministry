@@ -6,6 +6,7 @@ import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesPe
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
 import { groupOperationalStatuses, operationalStatusLabel } from "./detail-model";
 import { counselingStatusLabel } from "@/lib/counseling/domain";
+import { activeTeamAssignmentCounts, assignedCoupleAssignmentType } from "./team-assignment";
 
 type QueryResult = { records: PeopleRecord[]; error?: "unauthorized" | "unavailable" };
 type GroupRow = Record<string, unknown>;
@@ -27,15 +28,14 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
   const [groupsResult, profilesResult, teamAssignmentsResult, supervisionResult, campusLeadAssignmentsResult, counselingCasesResult] = await Promise.all([
     supabase.from("groups").select(peopleGroupSelection).in("group_type", ["couple", "coach_team", "counselor_team", "campus_lead_team" as "couple"]),
     supabase.from("profiles").select(peopleProfileSelection),
-    supabase.from("case_assignments").select("assigned_group_id").eq("assignment_type", "counselor" as "coach").is("ended_at", null),
+    supabase.from("case_assignments").select("assigned_group_id,assignment_type,ended_at").in("assignment_type", ["coach", "counselor"]).is("ended_at", null),
     supabase.from("supervision_assignments").select("coach_group_id,counselor_group_id").is("ended_at", null),
     (supabase as unknown as { from: (table: "campus_lead_coach_assignments") => { select: (columns: string) => { is: (column: string, value: null) => Promise<{ data: GroupRow[] | null; error: { message: string } | null }> } } }).from("campus_lead_coach_assignments").select("campus_lead_group_id,coach_group_id").is("ended_at", null),
     supabase.from("counseling_cases").select("couple_group_id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(id,name,group_type))"),
   ]);
   if (groupsResult.error || profilesResult.error || teamAssignmentsResult.error || supervisionResult.error || campusLeadAssignmentsResult.error || counselingCasesResult.error) return { records: [], error: "unavailable" };
 
-  const assignedCoupleCounts = new Map<string, number>();
-  (teamAssignmentsResult.data ?? []).forEach((assignment) => { if (assignment.assigned_group_id) assignedCoupleCounts.set(assignment.assigned_group_id, (assignedCoupleCounts.get(assignment.assigned_group_id) ?? 0) + 1); });
+  const assignedCoupleCounts = activeTeamAssignmentCounts(teamAssignmentsResult.data ?? []);
   const supervisingCoachByCounselor = new Map<string, string>();
   const supervisedCounselorCounts = new Map<string, number>();
   (supervisionResult.data ?? []).forEach((assignment) => { if (assignment.coach_group_id && assignment.counselor_group_id) { supervisingCoachByCounselor.set(assignment.counselor_group_id, assignment.coach_group_id); supervisedCounselorCounts.set(assignment.coach_group_id, (supervisedCounselorCounts.get(assignment.coach_group_id) ?? 0) + 1); } });
@@ -54,6 +54,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
     const counselorAssignment = activeAssignments.find((assignment) => value(assignment, "assignment_type") === "counselor");
     const campus = group.campus as Record<string, unknown> | null;
     const type = groupType === "coach_team" ? "coaches" : groupType === "counselor_team" ? "counselors" : groupType === "campus_lead_team" ? "campus_leads" : "couples";
+    const assignedCoupleType = assignedCoupleAssignmentType(type);
     const intake = group.intake_requests as GroupRow | null;
     const intakeName = intakeCoupleDisplayName(rows(intake?.intake_request_people).map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position") })));
     const name = type === "couples"
@@ -62,7 +63,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
     const statuses = groupOperationalStatuses({
       type,
       members: [...members.map((member) => ({ accountStatus: value(member, "status") === "active" ? "Active" as const : "Invitation Sent" as const })), ...invitations.map(() => ({ accountStatus: "Invitation Sent" as const, pending: true }))],
-      activeAssignmentCount: assignedCoupleCounts.get(value(group, "id")!) ?? 0,
+      activeAssignmentCount: assignedCoupleType ? assignedCoupleCounts.get(value(group, "id")!)?.[assignedCoupleType] ?? 0 : 0,
       hasCounselorAssignment: activeAssignments.some((assignment) => value(assignment, "assignment_type") === "counselor"),
       supervisionCount: type === "coaches" ? supervisedCounselorCounts.get(value(group, "id")!) ?? 0 : type === "counselors" && supervisingCoachByCounselor.has(value(group, "id")!) ? 1 : 0,
     });
