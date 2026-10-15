@@ -10,10 +10,16 @@ describe("Resource private download redirect", () => {
     signedResourceAccess.mockResolvedValue({ signedUrl: "https://storage.example/private-signed-url" });
     const response = await GET(new Request("https://app.example/resource-library/resource-1/download"), { params: Promise.resolve({ resourceId: "resource-1" }) });
 
-    expect(signedResourceAccess).toHaveBeenCalledWith("resource-1", { download: true });
+    expect(signedResourceAccess).toHaveBeenCalledWith("resource-1", { versionId: undefined, download: true });
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://storage.example/private-signed-url");
     expect(await response.text()).toBe("");
+  });
+
+  it("opens the immutable Resource version pinned to a released Couple Session", async () => {
+    signedResourceAccess.mockResolvedValue({ signedUrl: "https://storage.example/pinned-version" });
+    await GET(new Request("https://app.example/resource-library/resource-1/download?version=version-2"), { params: Promise.resolve({ resourceId: "resource-1" }) });
+    expect(signedResourceAccess).toHaveBeenCalledWith("resource-1", { versionId: "version-2", download: true });
   });
 
   it("returns failed or unauthorized preparation to the Library without exposing server details", async () => {

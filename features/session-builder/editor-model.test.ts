@@ -12,7 +12,7 @@ describe("unified Session editor model", () => {
     const resource: ResourceLibraryItem = { id: "resource-id", title: "File", description: "Canonical", category: "document", archivedAt: null,
       createdAt: "", updatedAt: "", canManage: false, currentVersion: { originalFilename: "file.pdf", mimeType: "application/pdf", sizeBytes: 42, uploadedAt: "" }, previewUrl: null };
     const library = selectLibraryResource(newLibraryResourceBlock("document"), resource);
-    const baseline = { sessionId: "session-id", status: "draft" as const, title: "Lesson", blocks: [video] };
+    const baseline = { sessionId: "session-id", status: "draft" as const, isFinal: false, title: "Lesson", blocks: [video] };
     const staged = { ...baseline, blocks: [...baseline.blocks, library] };
     expect(library.blockType).toBe("library_resource");
     expect(library.resourceId).toBe(resource.id);
@@ -27,7 +27,7 @@ describe("unified Session editor model", () => {
     expect(restoreSessionEditorState(baseline)).toEqual(baseline);
     expect(sessionPublishError({ ...baseline, blocks: [library] })).toBeNull();
     expect(sessionSaveError({ ...baseline, blocks: [{ ...library, resourceId: null }] })).toContain("Select a Resource");
-    const persisted = sessionStateFromRpc({ session_id: "session-id", status: "draft", title: "Lesson", blocks: [{
+    const persisted = sessionStateFromRpc({ session_id: "session-id", status: "draft", title: "Lesson", is_final: false, blocks: [{
       id: "new-block-id", client_id: library.key, block_type: "library_resource", position: 0,
       title: null, rich_text_content: null, url: null, description: null,
       resource_id: resource.id, resource_category: resource.category,
@@ -39,7 +39,7 @@ describe("unified Session editor model", () => {
     for (const category of ["image", "document", "audio", "video"] as const) {
       const block = newLibraryResourceBlock(category);
       expect(block).toMatchObject({ blockType: "library_resource", persistedId: null, resourceId: null, resourceCategory: category, resource: null });
-      expect(sessionSaveError({ sessionId: null, status: "draft", title: "Session", blocks: [block] })).toContain("Select a Resource");
+      expect(sessionSaveError({ sessionId: null, status: "draft", title: "Session", isFinal: false, blocks: [block] })).toContain("Select a Resource");
     }
   });
   it("selects into the same block only for its active matching category", () => {
@@ -54,7 +54,7 @@ describe("unified Session editor model", () => {
     expect(selectLibraryResource(block, { ...resource, archivedAt: "2026-01-01" })).toBe(block);
   });
   it("cancels only the new block and lets baseline comparison restore dirty state naturally", () => {
-    const baseline = { sessionId: "session-id", status: "draft" as const, title: "Lesson", blocks: [saved] };
+    const baseline = { sessionId: "session-id", status: "draft" as const, isFinal: false, title: "Lesson", blocks: [saved] };
     for (const category of ["image", "document", "audio", "video"] as const) {
       const fresh = newLibraryResourceBlock(category);
       const withFresh = { ...baseline, blocks: [...baseline.blocks, fresh] };
@@ -86,18 +86,19 @@ describe("unified Session editor model", () => {
     const fresh = initialSessionEditorState(null);
     expect(fresh.sessionId).toBeNull();
     expect(editorStateIsDirty(fresh, initialSessionEditorState(null))).toBe(false);
-    const existing = initialSessionEditorState({ id: "session-id", sequenceNumber: 1, curriculumNumber: 1, title: "Lesson", status: "draft", updatedAt: "" }, [
+    const existing = initialSessionEditorState({ id: "session-id", sequenceNumber: 1, curriculumNumber: 1, title: "Lesson", status: "draft", isFinal: false, updatedAt: "" }, [
       { id: "saved-id", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Intro", richTextContent: richText, url: null, description: null },
     ]);
-    expect(editorStateIsDirty(existing, initialSessionEditorState({ id: "session-id", sequenceNumber: 1, curriculumNumber: 1, title: "Lesson", status: "draft", updatedAt: "" }, [
+    expect(editorStateIsDirty(existing, initialSessionEditorState({ id: "session-id", sequenceNumber: 1, curriculumNumber: 1, title: "Lesson", status: "draft", isFinal: false, updatedAt: "" }, [
       { id: "saved-id", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Intro", richTextContent: richText, url: null, description: null },
     ]))).toBe(false);
   });
 
   it("detects title, content, metadata, addition, deletion, duplication and order changes without writing", () => {
-    const baseline = { sessionId: "session-id", status: "draft" as const, title: "Lesson", blocks: [saved, video] };
+    const baseline = { sessionId: "session-id", status: "draft" as const, isFinal: false, title: "Lesson", blocks: [saved, video] };
     expect(editorStateIsDirty({ ...baseline, title: " Lesson " }, baseline)).toBe(false);
     expect(editorStateIsDirty({ ...baseline, title: "Updated" }, baseline)).toBe(true);
+    expect(editorStateIsDirty({ ...baseline, isFinal: true }, baseline)).toBe(true);
     expect(editorStateIsDirty({ ...baseline, blocks: [{ ...saved, title: "Edited" }, video] }, baseline)).toBe(true);
     expect(editorStateIsDirty({ ...baseline, blocks: [saved, { ...video, url: "https://other.example" }] }, baseline)).toBe(true);
     expect(editorStateIsDirty({ ...baseline, blocks: [saved] }, baseline)).toBe(true);
@@ -115,7 +116,7 @@ describe("unified Session editor model", () => {
 
   it("groups interleaved Page and Resource presentation without changing baseline, and reorders each type independently", () => {
     const blocks = [saved, { ...video, key: "video-1" }, { ...saved, key: "page-2", persistedId: "page-2", title: "Second Page" }, { ...video, key: "video-2" }];
-    const baseline = { sessionId: "session-id", status: "draft" as const, title: "Lesson", blocks };
+    const baseline = { sessionId: "session-id", status: "draft" as const, isFinal: false, title: "Lesson", blocks };
     const pages = blocks.filter((block) => block.blockType === "rich_text");
     const resources = blocks.filter((block) => block.blockType === "video_link");
     expect(pages.map(({ key }) => key)).toEqual(["saved-id", "page-2"]);
@@ -144,7 +145,7 @@ describe("unified Session editor model", () => {
   });
 
   it("restores the complete persisted baseline for local discard", () => {
-    const baseline = { sessionId: "session-id", status: "draft" as const, title: "Lesson", blocks: [saved, video] };
+    const baseline = { sessionId: "session-id", status: "draft" as const, isFinal: false, title: "Lesson", blocks: [saved, video] };
     const changed = { ...baseline, title: "Changed", blocks: [video, { ...saved, key: "local:duplicate", persistedId: null, title: "Duplicate" }] };
     const restored = restoreSessionEditorState(baseline);
     expect(restored).toEqual(baseline);
@@ -160,7 +161,7 @@ describe("unified Session editor model", () => {
     expect(sessionSaveError(titled)).toBeNull();
     expect(sessionPublishError(titled)).toContain("at least one");
     expect(sessionPublishError({ ...titled, blocks: [saved] })).toBeNull();
-    expect(sessionPublishError({ ...titled, blocks: [newStagedBlock("rich_text")] })).toContain("cannot be empty");
+    expect(sessionPublishError({ ...titled, blocks: [{ ...newStagedBlock("rich_text"), title: "Empty Page" }] })).toBe("Complete or remove “Empty Page” before publishing.");
     expect(sessionSaveError({ ...titled, blocks: [newStagedBlock("video_link")] })).toContain("valid http");
   });
 
@@ -174,14 +175,15 @@ describe("unified Session editor model", () => {
 
   it("adopts returned database IDs and order while retaining stable editor keys", () => {
     const local = { ...newStagedBlock("video_link"), url: "https://example.com/new" };
-    const result = sessionStateFromRpc({ session_id: "session-id", status: "published", title: "Published Session", blocks: [
+    const result = sessionStateFromRpc({ session_id: "session-id", status: "published", title: "Published Session", is_final: false, blocks: [
       { id: "new-db-id", client_id: local.key, block_type: "video_link", position: 0, title: null, rich_text_content: null, url: local.url, description: null },
       { id: "saved-id", client_id: null, block_type: "rich_text", position: 1, title: "Intro", rich_text_content: richText, url: null, description: null },
     ] }, [saved, local]);
     expect(result?.blocks.map((block) => [block.key, block.persistedId])).toEqual([[local.key, "new-db-id"], [saved.key, "saved-id"]]);
     expect(result?.status).toBe("published");
+    expect(result?.isFinal).toBe(false);
     if (!result) throw new Error("Expected a valid RPC result");
-    const next = { sessionId: result.sessionId, status: result.status, title: result.title, blocks: result.blocks };
+    const next = { sessionId: result.sessionId, status: result.status, title: result.title, isFinal: result.isFinal, blocks: result.blocks };
     expect(editorStateIsDirty(next, next)).toBe(false);
   });
 });

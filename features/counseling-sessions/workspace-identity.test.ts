@@ -12,7 +12,7 @@ describe("counseling workspace Couple identity", () => {
       caseId: "case-1",
       coupleId: "couple-1",
       coupleName: "John Smith & Stacy Miller",
-      partners: [{ id: "john", name: "John Smith", photoPath: "john.jpg" }, { id: "stacy", name: "Stacy Miller", photoPath: "stacy.jpg" }],
+      partners: [{ id: "john", firstName: "John", name: "John Smith", photoPath: "john.jpg" }, { id: "stacy", firstName: "Stacy", name: "Stacy Miller", photoPath: "stacy.jpg" }],
     });
     expect(identity.coupleName).not.toContain("Pending Couple invitation");
   });

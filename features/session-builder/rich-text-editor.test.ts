@@ -10,7 +10,7 @@ vi.mock("@tiptap/react", () => ({
   EditorContent: ({ className }: { className: string }) => createElement("div", { className }),
 }));
 
-import { RichTextEditor, richTextEditorExtensions, richTextEditorViewportClass } from "./rich-text-editor";
+import { RichTextEditor, RichTextReadOnly, richTextEditorExtensions, richTextEditorViewportClass } from "./rich-text-editor";
 
 describe("RichTextEditor extension configuration", () => {
   it("registers Link once through the explicitly configured extension", () => {
@@ -38,5 +38,16 @@ describe("RichTextEditor extension configuration", () => {
     expect(markup).toContain("sm:max-h-[28rem]");
     expect(markup).toContain("Undo");
     expect(markup).toContain("Redo");
+  });
+
+  it("allows compact participant Rich Text while preserving default reader and authoring height", () => {
+    const content = { type: "doc", content: [] };
+    const compactMarkup = renderToStaticMarkup(createElement(RichTextReadOnly, { content, compact: true }));
+    const defaultMarkup = renderToStaticMarkup(createElement(RichTextReadOnly, { content }));
+    const editorMarkup = renderToStaticMarkup(createElement(RichTextEditor, { content, onChange: () => undefined }));
+    expect(compactMarkup).toContain("p-4");
+    expect(compactMarkup).not.toContain("min-h-40");
+    expect(defaultMarkup).toContain("min-h-40");
+    expect(editorMarkup).toContain("min-h-40");
   });
 });

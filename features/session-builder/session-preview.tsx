@@ -45,7 +45,7 @@ export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialB
   </Sheet>;
 }
 
-export function SessionMaterialPreviewContent({ blocks, resourceAccess = {} }: { blocks: StagedMaterialBlock[]; resourceAccess?: Record<string, string> }) {
+export function SessionMaterialPreviewContent({ blocks, resourceAccess = {}, fullWidth = false, pageCountPlacement = "inside", onPageChange }: { blocks: StagedMaterialBlock[]; resourceAccess?: Record<string, string>; fullWidth?: boolean; pageCountPlacement?: "inside" | "external"; onPageChange?: (page: number) => void }) {
   const pages = blocks.filter((block) => block.blockType === "rich_text");
   const resources = blocks.filter((block) => block.blockType !== "rich_text");
   const [pageKey, setPageKey] = useState<string | null>(null);
@@ -54,20 +54,27 @@ export function SessionMaterialPreviewContent({ blocks, resourceAccess = {} }: {
   const selectedIndex = pages.findIndex(({ key }) => key === pageKey);
   const pageIndex = selectedIndex < 0 ? 0 : selectedIndex;
   const page = pages[pageIndex];
-  return <div className="mx-auto grid max-w-3xl gap-8">
+  function navigatePage(direction: -1 | 1) {
+    if (!page) return;
+    const targetKey = sessionPreviewTargetPage(pages, page.key, direction);
+    if (!targetKey) return;
+    setPageKey(targetKey);
+    onPageChange?.(pages.findIndex(({ key }) => key === targetKey) + 1);
+  }
+  return <div className={fullWidth ? "grid w-full gap-8" : "mx-auto grid max-w-3xl gap-8"}>
     {page ? <section aria-label="Session Material Page" className="grid gap-5">
-      <p className="text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p>
+      {pageCountPlacement === "inside" ? <p className="text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p> : null}
       <article className="overflow-hidden rounded-lg border border-border bg-white">
         <h2 className="p-4 pb-0 font-heading text-xl font-bold text-text-primary">{page.title}</h2>
         {page.richTextContent ? <RichTextReadOnly content={page.richTextContent} /> : null}
       </article>
       <nav aria-label="Page navigation" className="flex items-center justify-between gap-3">
-        <button type="button" disabled={pageIndex === 0} onClick={() => setPageKey(sessionPreviewTargetPage(pages, page.key, -1))} className="min-h-10 rounded-md border border-border px-4 py-2 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Previous Page</button>
-        <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => setPageKey(sessionPreviewTargetPage(pages, page.key, 1))} className="min-h-10 rounded-md border border-border px-4 py-2 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Next Page</button>
+        <button type="button" disabled={pageIndex === 0} onClick={() => navigatePage(-1)} className="min-h-10 rounded-md border border-border px-4 py-2 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Previous Page</button>
+        <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => navigatePage(1)} className="min-h-10 rounded-md border border-border px-4 py-2 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Next Page</button>
       </nav>
     </section> : null}
     {resources.length ? <section aria-labelledby="session-preview-resources"><h2 id="session-preview-resources" className="mb-4 font-heading text-xl font-bold text-text-primary">Resources</h2><div className="grid gap-4">{resources.map((resource) => resource.blockType === "library_resource"
-      ? <LibraryResourcePreview key={resource.key} block={resource} url={resource.resourceId ? resourceAccess[resource.resourceId] : undefined} />
+      ? <LibraryResourcePreview key={resource.key} block={resource} url={resource.resourceId ? resourceAccess[resource.resourceId] ?? resource.resource?.previewUrl ?? undefined : undefined} />
       : <VideoLinkPreview key={resource.key} title={resource.title} description={resource.description} url={resource.url} />)}</div></section> : null}
   </div>;
 }
@@ -75,8 +82,9 @@ export function SessionMaterialPreviewContent({ blocks, resourceAccess = {} }: {
 function LibraryResourcePreview({ block, url }: { block: StagedMaterialBlock; url?: string }) {
   const resource = block.resource;
   if (!resource) return <p className="rounded-md border border-border p-4 text-sm text-text-muted">Resource unavailable.</p>;
-  const download = `/resource-library/${resource.id}/download`;
-  const open = `/resource-library/${resource.id}/open`;
+  const version = block.resourceVersionId ? `?version=${encodeURIComponent(block.resourceVersionId)}` : "";
+  const download = `/resource-library/${resource.id}/download${version}`;
+  const open = `/resource-library/${resource.id}/open${version}`;
   return <article className="grid gap-3 rounded-lg border border-border bg-white p-4">
     <div><h3 className="text-base font-semibold text-text-primary">{resource.title}</h3>{resource.description ? <p className="mt-1 text-sm text-text-muted">{resource.description}</p> : null}</div>
     {resource.category === "image" && url ? <Image unoptimized src={url} alt={resource.title} width={960} height={540} className="max-h-[32rem] w-full rounded-md object-contain" /> : null}

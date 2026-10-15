@@ -1,8 +1,6 @@
 import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
-
-import { getSupabaseEnvironment } from "@/lib/supabase/env";
+import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 
 import { recordDeliveryFailure, sendDeliveryAttempt } from "./delivery";
 import { createResendEmailProvider } from "./provider";
@@ -22,14 +20,7 @@ type IntakeRow = {
 };
 type RoleRow = { profile_id: string; role: string };
 
-function createServiceClient() {
-  const { url } = getSupabaseEnvironment();
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
-  if (!secretKey) throw new Error("Notifications are not configured.");
-  return createClient(url, secretKey, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-
-function createDeliveryStore(client: ReturnType<typeof createServiceClient>): DeliveryStore {
+function createDeliveryStore(client: ReturnType<typeof createServiceRoleSupabaseClient>): DeliveryStore {
   return {
     async create(input) {
       const { data, error } = await client.from("notification_deliveries" as never).insert({
@@ -64,7 +55,7 @@ async function safeDelivery(attempt: () => Promise<unknown>) {
 
 export async function dispatchIntakeSubmittedNotifications(intakeRequestId: string) {
   try {
-    const client = createServiceClient();
+    const client = createServiceRoleSupabaseClient();
     const [{ data: intakeData, error: intakeError }, { data: roleData, error: roleError }] = await Promise.all([
       client.from("intake_requests" as never).select("id,campus_id,relationship_status,requested_support,submitted_at,campus_other,campus:campuses(name),people:intake_request_people(person_position,first_name,last_name,email)").eq("id", intakeRequestId).maybeSingle(),
       client.from("profile_roles").select("profile_id,role").in("role", ["admin", "super_admin", "campus_lead"]),

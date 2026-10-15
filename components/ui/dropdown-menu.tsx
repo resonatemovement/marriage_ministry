@@ -48,7 +48,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "flex h-9 cursor-pointer select-none items-center gap-2 rounded-md px-2 text-sm font-medium text-text-primary outline-none transition hover:bg-surface-muted focus:bg-surface-muted data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-danger-strong data-[variant=destructive]:hover:bg-danger-soft data-[variant=destructive]:focus:bg-danger-soft",
+        "flex h-9 cursor-pointer select-none items-center gap-2 rounded-md px-2 text-sm font-medium text-text-primary outline-none transition hover:bg-surface-muted data-[highlighted]:bg-surface-muted data-[highlighted]:text-text-primary focus-visible:bg-surface-muted focus-visible:text-text-primary data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[disabled]:hover:bg-transparent data-[disabled]:focus:bg-transparent data-[disabled]:data-[highlighted]:bg-transparent data-[disabled]:data-[variant=destructive]:hover:bg-transparent data-[disabled]:data-[variant=destructive]:focus-visible:bg-transparent data-[disabled]:data-[variant=destructive]:data-[highlighted]:bg-transparent data-[inset]:pl-8 data-[variant=destructive]:text-danger-strong data-[variant=destructive]:hover:bg-danger-soft data-[variant=destructive]:data-[highlighted]:bg-danger-soft data-[variant=destructive]:focus-visible:bg-danger-soft data-[variant=destructive]:focus-visible:text-danger-strong",
         className,
       )}
       {...props}

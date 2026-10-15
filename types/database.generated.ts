@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -364,8 +364,81 @@ export type Database = {
           },
         ]
       }
+      case_session_material_blocks: {
+        Row: {
+          block_type: string
+          case_session_id: string
+          created_at: string
+          description: string | null
+          id: string
+          position: number
+          resource_category: string | null
+          resource_id: string | null
+          resource_version_id: string | null
+          rich_text_content: Json | null
+          source_block_id: string | null
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          block_type: string
+          case_session_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          position: number
+          resource_category?: string | null
+          resource_id?: string | null
+          resource_version_id?: string | null
+          rich_text_content?: Json | null
+          source_block_id?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          block_type?: string
+          case_session_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          position?: number
+          resource_category?: string | null
+          resource_id?: string | null
+          resource_version_id?: string | null
+          rich_text_content?: Json | null
+          source_block_id?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_session_material_blocks_case_session_id_fkey"
+            columns: ["case_session_id"]
+            isOneToOne: false
+            referencedRelation: "case_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_session_material_blocks_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_session_material_resource_version_fk"
+            columns: ["resource_id", "resource_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
+            referencedColumns: ["resource_id", "id"]
+          },
+        ]
+      }
       case_session_meetings: {
         Row: {
+          case_session_id: string | null
+          completed_at: string | null
+          completed_by: string | null
           counseling_case_id: string
           created_at: string
           ends_at: string
@@ -377,6 +450,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          case_session_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           counseling_case_id: string
           created_at?: string
           ends_at: string
@@ -388,6 +464,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          case_session_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           counseling_case_id?: string
           created_at?: string
           ends_at?: string
@@ -399,6 +478,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "case_session_meetings_case_session_id_fkey"
+            columns: ["case_session_id"]
+            isOneToOne: false
+            referencedRelation: "case_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_session_meetings_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "case_session_meetings_counseling_case_id_fkey"
             columns: ["counseling_case_id"]
@@ -415,6 +508,102 @@ export type Database = {
           },
           {
             foreignKeyName: "case_session_meetings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_sessions: {
+        Row: {
+          activated_at: string
+          activated_by: string
+          actual_sequence: number
+          completed_at: string | null
+          completed_by: string | null
+          counseling_case_id: string
+          created_at: string
+          homework_assignment_revision_id: string | null
+          homework_released_at: string | null
+          id: string
+          is_final: boolean
+          material_released_at: string
+          session_id: string
+          status: Database["public"]["Enums"]["case_session_status"]
+          template_sequence_number: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at: string
+          activated_by: string
+          actual_sequence: number
+          completed_at?: string | null
+          completed_by?: string | null
+          counseling_case_id: string
+          created_at?: string
+          homework_assignment_revision_id?: string | null
+          homework_released_at?: string | null
+          id?: string
+          is_final?: boolean
+          material_released_at: string
+          session_id: string
+          status?: Database["public"]["Enums"]["case_session_status"]
+          template_sequence_number: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string
+          activated_by?: string
+          actual_sequence?: number
+          completed_at?: string | null
+          completed_by?: string | null
+          counseling_case_id?: string
+          created_at?: string
+          homework_assignment_revision_id?: string | null
+          homework_released_at?: string | null
+          id?: string
+          is_final?: boolean
+          material_released_at?: string
+          session_id?: string
+          status?: Database["public"]["Enums"]["case_session_status"]
+          template_sequence_number?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_sessions_activated_by_fkey"
+            columns: ["activated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_sessions_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_sessions_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_sessions_homework_assignment_revision_id_fkey"
+            columns: ["homework_assignment_revision_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignment_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_sessions_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
@@ -1351,62 +1540,145 @@ export type Database = {
       }
       notification_deliveries: {
         Row: {
+          attempt_number: number
+          bounced_at: string | null
           channel: string
+          complained_at: string | null
+          counseling_case_id: string | null
           created_at: string
+          delayed_at: string | null
+          delivered_at: string | null
+          delivery_key: string | null
           error_category: string | null
           error_message: string | null
           event_type: string
           failed_at: string | null
           id: string
+          last_provider_event_at: string | null
+          meeting_id: string | null
           provider_message_id: string | null
-          recipient_email: string
+          recipient_email: string | null
           recipient_profile_id: string | null
           related_entity_id: string
           related_entity_type: string
+          resend_of_delivery_id: string | null
           sent_at: string | null
           status: string
+          suppressed_at: string | null
           template_key: string
         }
         Insert: {
+          attempt_number?: number
+          bounced_at?: string | null
           channel: string
+          complained_at?: string | null
+          counseling_case_id?: string | null
           created_at?: string
+          delayed_at?: string | null
+          delivered_at?: string | null
+          delivery_key?: string | null
           error_category?: string | null
           error_message?: string | null
           event_type: string
           failed_at?: string | null
           id?: string
+          last_provider_event_at?: string | null
+          meeting_id?: string | null
           provider_message_id?: string | null
-          recipient_email: string
+          recipient_email?: string | null
           recipient_profile_id?: string | null
           related_entity_id: string
           related_entity_type: string
+          resend_of_delivery_id?: string | null
           sent_at?: string | null
           status?: string
+          suppressed_at?: string | null
           template_key: string
         }
         Update: {
+          attempt_number?: number
+          bounced_at?: string | null
           channel?: string
+          complained_at?: string | null
+          counseling_case_id?: string | null
           created_at?: string
+          delayed_at?: string | null
+          delivered_at?: string | null
+          delivery_key?: string | null
           error_category?: string | null
           error_message?: string | null
           event_type?: string
           failed_at?: string | null
           id?: string
+          last_provider_event_at?: string | null
+          meeting_id?: string | null
           provider_message_id?: string | null
-          recipient_email?: string
+          recipient_email?: string | null
           recipient_profile_id?: string | null
           related_entity_id?: string
           related_entity_type?: string
+          resend_of_delivery_id?: string | null
           sent_at?: string | null
           status?: string
+          suppressed_at?: string | null
           template_key?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "case_session_meetings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notification_deliveries_recipient_profile_id_fkey"
             columns: ["recipient_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_resend_of_delivery_id_fkey"
+            columns: ["resend_of_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "notification_deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_webhook_events: {
+        Row: {
+          delivery_id: string | null
+          event_type: string
+          provider_event_id: string
+          received_at: string
+        }
+        Insert: {
+          delivery_id?: string | null
+          event_type: string
+          provider_event_id: string
+          received_at?: string
+        }
+        Update: {
+          delivery_id?: string | null
+          event_type?: string
+          provider_event_id?: string
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_webhook_events_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "notification_deliveries"
             referencedColumns: ["id"]
           },
         ]
@@ -1803,6 +2075,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          is_final: boolean
           published_at: string | null
           sequence_number: number
           status: Database["public"]["Enums"]["session_status"]
@@ -1813,6 +2086,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          is_final?: boolean
           published_at?: string | null
           sequence_number?: never
           status?: Database["public"]["Enums"]["session_status"]
@@ -1823,6 +2097,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          is_final?: boolean
           published_at?: string | null
           sequence_number?: never
           status?: Database["public"]["Enums"]["session_status"]
@@ -1912,6 +2187,15 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: never; Returns: Json }
+      activate_first_case_session: {
+        Args: {
+          target_case_id: string
+          target_ends_at: string
+          target_session_id: string
+          target_starts_at: string
+        }
+        Returns: string
+      }
       activate_invitation_account: { Args: never; Returns: Json }
       admin_assert_incomplete_profile: {
         Args: { target_profile_id: string }
@@ -2003,8 +2287,26 @@ export type Database = {
         Returns: Json
       }
       cleanup_verifier_relationship_artifacts: { Args: never; Returns: Json }
-      close_counseling_case: {
-        Args: { target_case_id: string }
+      close_counseling_case_incomplete: {
+        Args: {
+          closure_notes?: string
+          closure_reason?: string
+          target_case_session_id: string
+        }
+        Returns: undefined
+      }
+      complete_case_session_schedule_next: {
+        Args: {
+          override_confirmation?: string
+          target_case_session_id: string
+          target_ends_at: string
+          target_session_id: string
+          target_starts_at: string
+        }
+        Returns: string
+      }
+      complete_counseling_program: {
+        Args: { override_confirmation?: string; target_case_session_id: string }
         Returns: undefined
       }
       complete_onboarding: { Args: never; Returns: undefined }
@@ -2111,8 +2413,8 @@ export type Database = {
         Returns: {
           counseling_case_id: string
           couple_group_id: string
-          group_name: string
           first_name: string
+          group_name: string
           last_name: string
           photo_path: string
           profile_id: string
@@ -2147,6 +2449,14 @@ export type Database = {
       invite_intake_request: {
         Args: { target_request_id: string }
         Returns: Json
+      }
+      persist_participant_homework: {
+        Args: {
+          target_answers: Json
+          target_intent: string
+          target_progress_id: string
+        }
+        Returns: Database["public"]["Enums"]["homework_progress_status"]
       }
       prepare_resource_upload: {
         Args: {
@@ -2210,9 +2520,36 @@ export type Database = {
         Args: { target_invitation_id: string }
         Returns: undefined
       }
+      record_meeting_notification_webhook: {
+        Args: {
+          target_delivery_id?: string
+          target_event_type: string
+          target_failure_message?: string
+          target_occurred_at: string
+          target_provider_event_id: string
+          target_provider_message_id: string
+        }
+        Returns: boolean
+      }
       record_onboarding_photo: { Args: never; Returns: undefined }
       reorder_session_material_blocks: {
         Args: { target_block_ids: string[]; target_session_id: string }
+        Returns: undefined
+      }
+      reschedule_case_session_meeting: {
+        Args: {
+          target_ends_at: string
+          target_meeting_id: string
+          target_starts_at: string
+        }
+        Returns: string
+      }
+      reset_counseling_journey: {
+        Args: { reset_confirmation: string; target_case_id: string }
+        Returns: undefined
+      }
+      reset_counseling_journey_impl: {
+        Args: { reset_confirmation: string; target_case_id: string }
         Returns: undefined
       }
       save_homework_answer: {
@@ -2240,26 +2577,58 @@ export type Database = {
         }
         Returns: Json
       }
-      save_session_homework_authoring_state: {
-        Args: {
-          publish_homework: boolean
-          save_homework: boolean
-          save_session: boolean
-          target_homework_blocks: Json
-          target_homework_version_id: string
-          target_material: Json
-          target_session_id: string
-          target_session_intent: string
-          target_title: string
-        }
-        Returns: Json
-      }
+      save_session_homework_authoring_state:
+        | {
+            Args: {
+              publish_homework: boolean
+              save_homework: boolean
+              save_session: boolean
+              target_homework_blocks: Json
+              target_homework_version_id: string
+              target_material: Json
+              target_session_id: string
+              target_session_intent: string
+              target_title: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              publish_homework: boolean
+              save_homework: boolean
+              save_session: boolean
+              target_homework_blocks: Json
+              target_homework_version_id: string
+              target_is_final: boolean
+              target_material: Json
+              target_session_id: string
+              target_session_intent: string
+              target_title: string
+            }
+            Returns: Json
+          }
       schedule_case_session_meeting: {
         Args: {
           target_case_id: string
           target_ends_at: string
           target_location: string
           target_session_id: string
+          target_starts_at: string
+        }
+        Returns: string
+      }
+      schedule_followup_case_session_meeting: {
+        Args: {
+          target_case_session_id: string
+          target_ends_at: string
+          target_starts_at: string
+        }
+        Returns: string
+      }
+      schedule_initial_case_meeting: {
+        Args: {
+          target_case_id: string
+          target_ends_at: string
           target_starts_at: string
         }
         Returns: string
@@ -2392,6 +2761,7 @@ export type Database = {
         | "author"
         | "campus_lead"
       case_assignment_type: "coach" | "counselor" | "campus_lead"
+      case_session_status: "active" | "completed"
       case_status:
         | "requested"
         | "assessment"
@@ -2566,6 +2936,7 @@ export const Constants = {
         "campus_lead",
       ],
       case_assignment_type: ["coach", "counselor", "campus_lead"],
+      case_session_status: ["active", "completed"],
       case_status: [
         "requested",
         "assessment",

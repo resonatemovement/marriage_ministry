@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { sessionCardState } from "./model";
-import { counselingSessionPresentation, counselingSessionsGridClassName, couplePhotoSlots, sessionCardActionClassName, sessionCardNavigation, sessionCardNavigationClassName } from "./presentation";
+import { counselingProgressPercent, counselingSessionPresentation, counselingSessionsGridClassName, couplePhotoSlots, sessionCardNavigation, sessionCardNavigationClassName } from "./presentation";
 
-const sessions = [{ id: "one", number: 1, title: "Foundations" }, { id: "two", number: 2, title: "Communication" }];
-const meeting = { id: "meeting", sessionId: "two", startsAt: "2026-10-12T19:00:00Z", endsAt: "2026-10-12T20:00:00Z", location: "Church" };
+const sessions = [{ id: "one", number: 1, title: "Foundations", isFinal: false }, { id: "two", number: 2, title: "Communication", isFinal: false }];
+const meeting = { id: "meeting", sessionId: "two", caseSessionId: "couple-session", startsAt: "2026-10-12T19:00:00Z", endsAt: "2026-10-12T20:00:00Z", location: "Church", completedAt: null, createdAt: "2026-10-10T10:00:00Z" };
+const active = { id: "couple-session", sessionId: "two", actualSequence: 1, templateSequence: 2, title: "Communication", status: "active" as const, isFinal: false, homeworkAssignmentRevisionId: "homework-revision", materialReleasedAt: "2026-10-10T00:00:00Z", homeworkReleasedAt: "2026-10-10T00:00:00Z" };
 
 describe("Counseling Sessions card presentation", () => {
   it("uses a responsive grid with no more than two columns", () => {
@@ -20,33 +21,39 @@ describe("Counseling Sessions card presentation", () => {
     expect(couplePhotoSlots(partners.slice(0, 1))[1]).toBeNull();
   });
 
-  it("provides an accessible counseling-case destination while keeping primary actions above the card link", () => {
+  it("provides an accessible counseling-case destination", () => {
     expect(sessionCardNavigation("case-1", "Anthony Jones & Amy Lee")).toEqual({ href: "/workspace/cases/case-1", label: "Open counseling case for Anthony Jones & Amy Lee" });
     expect(sessionCardNavigationClassName).toContain("focus-visible:bg-info-soft/45");
     expect(sessionCardNavigationClassName).toContain("z-0");
-    expect(sessionCardActionClassName).toContain("z-10");
   });
 
   it("keeps Initial Meeting state and action presentation intact", () => {
     const state = sessionCardState("matched", sessions, [], []);
-    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "INITIAL MEETING", sessionTitle: "Not Scheduled", homework: null, action: "schedule-initial", progress: "0 of 2 Sessions" });
+    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "SESSION 0", sessionTitle: "Initial Meeting · Not Scheduled", homework: null, action: "schedule-initial", progress: "Session 0 of 2" });
   });
 
   it("keeps Session, homework, meeting, progress, and primary-action content available", () => {
-    const state = sessionCardState("active", sessions, [meeting], [{ sessionId: "two", complete: false }]);
-    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "SESSION 2", sessionTitle: "Communication", homework: "Awaiting Completion", action: "reschedule-meeting", progress: "2 of 2 Sessions" });
+    const state = sessionCardState("active", sessions, [meeting], [{ sessionId: "two", complete: false }], [active]);
+    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "SESSION 2", sessionTitle: "Communication", homework: "Released", action: "complete-session", progress: "Session 1 of 2" });
     expect(state.meeting?.startsAt).toBe(meeting.startsAt);
   });
 
-  it("presents the current Session, incomplete Homework, meeting, and unchanged reschedule action", () => {
-    const state = sessionCardState("active", sessions, [meeting], [{ sessionId: "two", complete: false }]);
-    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "SESSION 2", sessionTitle: "Communication", homework: "Awaiting Completion", action: "reschedule-meeting", progress: "2 of 2 Sessions" });
+  it("presents the active Session completion action while retaining its meeting", () => {
+    const state = sessionCardState("active", sessions, [meeting], [{ sessionId: "two", complete: false }], [active]);
+    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "SESSION 2", sessionTitle: "Communication", homework: "Released", action: "complete-session", progress: "Session 1 of 2" });
     expect(state.meeting).toEqual(meeting);
   });
 
-  it("presents a completed final Session as Close Case and never Schedule Next Meeting", () => {
-    const state = sessionCardState("active", sessions, [meeting], [{ sessionId: "two", complete: true }]);
-    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "FINAL SESSION", sessionTitle: "Communication", homework: "Completed", action: "close-case", progress: "2 of 2 Sessions" });
-    expect(state.action).not.toBe("schedule-next");
+  it("keeps case closure separate from Session progression", () => {
+    const state = sessionCardState("active", sessions, [meeting], [{ sessionId: "two", complete: true }], [active]);
+    expect(counselingSessionPresentation(state)).toMatchObject({ statusLabel: "SESSION 2", sessionTitle: "Communication", homework: "Released", action: "complete-session" });
+  });
+
+  it("derives the displayed progress bar from the unchanged X of Y label", () => {
+    expect(counselingProgressPercent("Session 1 of 6", false)).toBeCloseTo(100 / 6);
+    expect(counselingProgressPercent("Session 0 of 6", false)).toBe(0);
+    expect(counselingProgressPercent("Session 2 of 2", false)).toBe(100);
+    expect(counselingProgressPercent("6 Sessions", true)).toBe(100);
+    expect(counselingProgressPercent("3 Sessions", false)).toBeNull();
   });
 });

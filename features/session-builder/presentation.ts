@@ -1,5 +1,14 @@
 import type { SessionSummary } from "./types";
 
+export function withAuthoredSessionNumbers<T extends { sequenceNumber: number }>(sessions: readonly T[]) {
+  return [...sessions]
+    .sort((left, right) => left.sequenceNumber - right.sequenceNumber)
+    .map((session, index) => ({ ...session, authoredSessionNumber: index + 1 }));
+}
+
 export function withCurriculumNumbers(sessions: SessionSummary[]): SessionSummary[] {
-  return sessions.map((session, index) => ({ ...session, curriculumNumber: index + 1 }));
+  return withAuthoredSessionNumbers(sessions).map(({ authoredSessionNumber, ...session }) => ({
+    ...session,
+    curriculumNumber: authoredSessionNumber,
+  }));
 }

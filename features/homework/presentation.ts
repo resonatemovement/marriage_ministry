@@ -12,3 +12,19 @@ const homeworkProgressLabels: Record<HomeworkProgressStatus, string> = {
 export function homeworkProgressLabel(status: HomeworkProgressStatus) {
   return homeworkProgressLabels[status];
 }
+
+export function homeworkProgressBadgeClass(status: HomeworkProgressStatus) {
+  switch (status) {
+    case "not_started":
+      return "bg-surface-muted text-text-muted";
+    case "in_progress":
+      return "bg-info-soft text-info-strong";
+    case "submitted":
+    case "reviewed":
+      return "bg-success-soft text-success-strong";
+  }
+}
+
+export function participantHomeworkTitle(sessionTitle: string) {
+  return `${sessionTitle} Homework`;
+}

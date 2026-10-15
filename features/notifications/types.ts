@@ -11,6 +11,8 @@ export type EmailMessage = {
   subject: string;
   text: string;
   html: string;
+  attachments?: { filename: string; content: string; contentType: string }[];
+  tags?: { name: string; value: string }[];
 };
 
 export type ProviderSendResult =

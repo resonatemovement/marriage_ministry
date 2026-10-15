@@ -8,8 +8,8 @@ const mock = vi.hoisted(() => ({ identity: vi.fn(), claims: vi.fn(), clientRpc: 
 function builder() {
   return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), not: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(), lte: vi.fn().mockReturnThis(), ilike: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), range: vi.fn().mockReturnThis(),
-    single: vi.fn().mockReturnThis(), update: vi.fn().mockReturnThis(), delete: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), range: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(),
+    single: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockReturnThis(), update: vi.fn().mockReturnThis(), delete: vi.fn().mockReturnThis(),
     then: (resolve: (result: Result) => unknown, reject: (error: unknown) => unknown) => Promise.resolve(mock.results.shift() ?? { data: [], error: null }).then(resolve, reject) };
 }
 vi.mock("server-only", () => ({}));
@@ -79,13 +79,34 @@ describe("Resource server boundary", () => {
     expect(mock.builders[1].order).toHaveBeenCalledWith("version_number", { ascending: false });
   });
   it("only signs an RLS-readable version belonging to the requested resource", async () => {
-    mock.results.push({ data: { current_version_id: "current" }, error: null },
-      { data: { storage_path: "resource/pinned/file.pdf", original_filename: "../Original?.pdf" }, error: null });
+    mock.results.push({ data: { storage_path: "resource/pinned/file.pdf", original_filename: "../Original?.pdf" }, error: null });
     expect(await signedResourceAccess("resource", { versionId: "pinned", download: true })).toEqual({ signedUrl: "private-view" });
-    expect(mock.builders[1].eq).toHaveBeenCalledWith("resource_id", "resource");
-    expect(mock.builders[1].eq).toHaveBeenCalledWith("id", "pinned");
+    expect(mock.builders[0].eq).toHaveBeenCalledWith("resource_id", "resource");
+    expect(mock.builders[0].eq).toHaveBeenCalledWith("id", "pinned");
     expect(mock.signedView).toHaveBeenCalledWith("resource/pinned/file.pdf", 300, { download: "_Original_.pdf" });
     expect(mock.serviceClient).not.toHaveBeenCalled();
+  });
+  it("allows Couples to sign only a pinned Resource version from their own released Session", async () => {
+    mock.identity.mockResolvedValue({ id: "partner", roles: ["couple"], accountStage: "active" });
+    mock.clientRpc.mockResolvedValue({ data: [{ counseling_case_id: "own-case" }], error: null });
+    mock.results.push(
+      { data: [{ id: "own-session" }], error: null },
+      { data: { id: "released-block" }, error: null },
+      { data: { storage_path: "resource/pinned/file.pdf", original_filename: "Pinned.pdf" }, error: null },
+    );
+    await expect(signedResourceAccess("resource", { versionId: "pinned" })).resolves.toEqual({ signedUrl: "private-view" });
+    expect(mock.builders[0].eq).toHaveBeenCalledWith("counseling_case_id", "own-case");
+    expect(mock.builders[1].eq).toHaveBeenCalledWith("resource_version_id", "pinned");
+    expect(mock.builders[2].eq).toHaveBeenCalledWith("id", "pinned");
+    expect(mock.signedView).toHaveBeenCalledWith("resource/pinned/file.pdf", 300, undefined);
+    expect(mock.serviceClient).not.toHaveBeenCalled();
+  });
+  it("denies Couple Resource signing when the requested version is not pinned to their case", async () => {
+    mock.identity.mockResolvedValue({ id: "partner", roles: ["couple"], accountStage: "active" });
+    mock.clientRpc.mockResolvedValue({ data: [{ counseling_case_id: "own-case" }], error: null });
+    mock.results.push({ data: [{ id: "own-session" }], error: null }, { data: null, error: null });
+    await expect(signedResourceAccess("resource", { versionId: "other-version" })).rejects.toThrow("Not authorized");
+    expect(mock.signedView).not.toHaveBeenCalled();
   });
   it("never uses privileged Storage signing to bypass an RLS denial", async () => {
     mock.results.push({ data: null, error: { message: "Resource unavailable" } });

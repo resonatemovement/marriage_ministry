@@ -12,7 +12,7 @@ import { saveSessionBuilderState } from "./save-session-state";
 import type { SessionEditorState } from "./editor-model";
 import { deleteHomeworkBlock, duplicateHomeworkBlock, homeworkEditorStateFromRows, newHomeworkBlock, addHomeworkBlock, reorderHomeworkBlocks, updateHomeworkBlock } from "@/features/homework/homework-editor-model";
 
-const session: SessionEditorState = { sessionId: "session-id", status: "draft", title: "Session", blocks: [] };
+const session: SessionEditorState = { sessionId: "session-id", status: "draft", title: "Session", isFinal: false, blocks: [] };
 const emptyHomework = homeworkEditorStateFromRows("draft-id", []);
 
 describe("atomic Session and Homework RPC adapter", () => {
@@ -23,7 +23,7 @@ describe("atomic Session and Homework RPC adapter", () => {
     const homework = addHomeworkBlock(emptyHomework, local);
     const stagedHomework = updateHomeworkBlock(homework, local.key, { title: "Watch", url: "https://example.com/video" });
     rpc.mockResolvedValue({ data: {
-      session: { session_id: "session-id", status: "published", title: "Session", blocks: [] },
+      session: { session_id: "session-id", status: "published", title: "Session", is_final: false, blocks: [] },
       homework: { version_id: "published-homework-id", status: "published", version_number: 1, blocks: [
         { id: "snapshot-id", homework_block_id: "logical-id", client_id: local.key, block_type: "video_link", position: 0, title: "Watch", rich_text_content: null, url: "https://example.com/video", description: null },
       ] },
@@ -36,7 +36,7 @@ describe("atomic Session and Homework RPC adapter", () => {
     expect(supabaseClient.rpc).toHaveBeenCalledTimes(1);
     expect(supabaseClient.rpc.mock.instances[0]).toBe(supabaseClient);
     expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
-      target_session_id: "session-id", target_session_intent: "publish",
+      target_session_id: "session-id", target_is_final: false, target_session_intent: "publish",
       save_session: true, save_homework: true, publish_homework: true,
       target_homework_version_id: "draft-id",
       target_homework_blocks: [{ client_id: local.key, block_type: "video_link", title: "Watch", rich_text_content: null, url: "https://example.com/video", description: null }],
@@ -44,9 +44,61 @@ describe("atomic Session and Homework RPC adapter", () => {
     expect(result).toMatchObject({ sessionState: { status: "published" }, homework: { status: "published", blocks: [{ id: "snapshot-id", clientId: local.key }] } });
   });
 
+  it("publishes a valid Session when no Homework version exists", async () => {
+    const page = { key: "local:page", persistedId: null, blockType: "rich_text" as const, title: "Updated Page", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Current staged content" }] }] }, url: "", description: "" };
+    const stagedSession = { ...session, title: "Updated Session", blocks: [page] };
+    rpc.mockResolvedValue({ data: {
+      session: { session_id: "session-id", status: "published", title: "Updated Session", is_final: true, blocks: [] },
+      homework: { version_id: null, status: null, version_number: null, blocks: [] },
+    }, error: null });
+    const noHomework = { ...homeworkEditorStateFromRows("draft-id", []), versionId: null, versionStatus: null };
+    const result = await saveSessionBuilderState({ ...stagedSession, isFinal: true }, noHomework, {
+      intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
+    });
+
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+      target_session_intent: "publish", target_is_final: true,
+      target_title: "Updated Session",
+      target_material: [{ client_id: "local:page", block_type: "rich_text", title: "Updated Page", rich_text_content: page.richTextContent, url: null, description: null }],
+      target_homework_version_id: null, target_homework_blocks: [],
+      save_homework: false, publish_homework: true,
+    }));
+    expect(result).toMatchObject({ sessionState: { status: "published", title: "Updated Session", isFinal: true }, homework: { versionId: null, status: null, blocks: [] } });
+  });
+
+  it("returns a specific publish validation error and does not issue a second publish request", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "Rich Text material cannot be empty" } });
+    const result = await saveSessionBuilderState(session, emptyHomework, {
+      intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
+    });
+
+    expect(result).toEqual({ error: "Rich Text material cannot be empty" });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls[0][1]).toMatchObject({ target_session_intent: "publish", save_session: true });
+  });
+
+  it("uses corrective author-facing copy for an invalid non-null Homework selection", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "Select a valid Homework draft or remove the unavailable Homework selection" } });
+    const result = await saveSessionBuilderState(session, emptyHomework, {
+      intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
+    });
+    expect(result).toEqual({ error: "Select a valid Homework draft or remove the unavailable Homework selection" });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses Session-specific wording for unexpected Publish failures", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "unexpected database detail" } });
+    const result = await saveSessionBuilderState(session, emptyHomework, {
+      intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
+    });
+    expect(result).toEqual({ error: "The Session could not be published. Please try again." });
+    expect(JSON.stringify(result)).not.toContain("Homework could not be saved");
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
   it("saves Homework-only edits without rewriting Session state", async () => {
     rpc.mockResolvedValue({ data: {
-      session: { session_id: "session-id", status: "published", title: "Session", blocks: [] },
+      session: { session_id: "session-id", status: "published", title: "Session", is_final: false, blocks: [] },
       homework: { version_id: "draft-id", status: "draft", version_number: null, blocks: [] },
     }, error: null });
     const result = await saveSessionBuilderState({ ...session, status: "published" }, emptyHomework, {
@@ -60,7 +112,7 @@ describe("atomic Session and Homework RPC adapter", () => {
 
   it("publishes a saved Homework Draft with unsaved Session changes in one call", async () => {
     rpc.mockResolvedValue({ data: {
-      session: { session_id: "session-id", status: "published", title: "Updated title", blocks: [] },
+      session: { session_id: "session-id", status: "published", title: "Updated title", is_final: false, blocks: [] },
       homework: { version_id: "draft-id", status: "published", version_number: 2, blocks: [] },
     }, error: null });
     await saveSessionBuilderState({ ...session, status: "published", title: "Updated title" }, emptyHomework, {
@@ -70,6 +122,19 @@ describe("atomic Session and Homework RPC adapter", () => {
     expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
       target_session_intent: "publish_changes", save_session: true, save_homework: false, publish_homework: true,
     }));
+  });
+
+  it("saves explicit final-session intent through the existing authorized builder transaction", async () => {
+    rpc.mockResolvedValue({ data: {
+      session: { session_id: "session-id", status: "published", title: "Session", is_final: true, blocks: [] },
+      homework: { version_id: "draft-id", status: "published", version_number: 1, blocks: [] },
+    }, error: null });
+    const result = await saveSessionBuilderState({ ...session, status: "published", isFinal: true }, emptyHomework, {
+      intent: "publish_changes", saveSession: true, saveHomework: false, publishHomework: true,
+    });
+    expect(requireAccess).toHaveBeenCalledWith("/session-builder/session-id");
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({ target_is_final: true }));
+    expect(result).toMatchObject({ sessionState: { isFinal: true } });
   });
 
   it("sends staged reorder, duplicate, and delete through the existing whole-document save payload", async () => {

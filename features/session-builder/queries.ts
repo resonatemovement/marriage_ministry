@@ -6,35 +6,43 @@ import type { SessionStatus } from "./model";
 import type { SessionSummary } from "./types";
 import type { SessionMaterialBlock } from "./types";
 import type { Database } from "@/types/database.generated";
-import { withCurriculumNumbers } from "./presentation";
+import { withAuthoredSessionNumbers, withCurriculumNumbers } from "./presentation";
 import { getResourceDetail, signedResourceAccess } from "@/features/resource-library/server";
 import type { ResourceCategory } from "@/features/resource-library/policy";
 
-function summary(row: Pick<Database["public"]["Tables"]["sessions"]["Row"], "id" | "sequence_number" | "title" | "status" | "updated_at">): SessionSummary {
+type SessionSummaryRow = Pick<Database["public"]["Tables"]["sessions"]["Row"], "id" | "sequence_number" | "title" | "status" | "updated_at"> & { is_final: boolean };
+
+function summary(row: SessionSummaryRow): SessionSummary {
   return {
     id: row.id,
     sequenceNumber: row.sequence_number,
     curriculumNumber: 0,
     title: row.title,
     status: row.status,
+    isFinal: row.is_final,
     updatedAt: row.updated_at,
   };
 }
 
 export async function getSessions(status?: SessionStatus): Promise<SessionSummary[]> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.from("sessions").select("id,sequence_number,title,status,updated_at").order("sequence_number", { ascending: true });
+  const { data, error } = await supabase.from("sessions").select("id,sequence_number,title,status,is_final,updated_at").order("sequence_number", { ascending: true });
   if (error) throw new Error("Session Builder data is unavailable");
-  const sessions = withCurriculumNumbers((data ?? []).map(summary));
+  const sessions = withCurriculumNumbers(((data ?? []) as unknown as SessionSummaryRow[]).map(summary));
   return status ? sessions.filter((session) => session.status === status) : sessions;
 }
 
 export async function getSession(sessionId: string): Promise<SessionSummary | null> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.from("sessions").select("id,sequence_number,title,status,updated_at").eq("id", sessionId).maybeSingle();
-  if (error || !data) return null;
-  const { count, error: countError } = await supabase.from("sessions").select("id", { count: "exact", head: true }).lt("sequence_number", data.sequence_number);
-  return countError ? null : { ...summary(data), curriculumNumber: (count ?? 0) + 1 };
+  const [{ data, error }, { data: orderedSessions, error: orderError }] = await Promise.all([
+    supabase.from("sessions").select("id,sequence_number,title,status,is_final,updated_at").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("id,sequence_number").order("sequence_number", { ascending: true }),
+  ]);
+  if (error || orderError || !data) return null;
+  const row = data as unknown as SessionSummaryRow;
+  const ranked = withAuthoredSessionNumbers(((orderedSessions ?? []) as { id: string; sequence_number: number }[]).map((session) => ({ id: session.id, sequenceNumber: session.sequence_number })));
+  const authoredSessionNumber = ranked.find((session) => session.id === sessionId)?.authoredSessionNumber;
+  return authoredSessionNumber ? { ...summary(row), curriculumNumber: authoredSessionNumber } : null;
 }
 
 export async function getSessionMaterialBlocks(sessionId: string): Promise<SessionMaterialBlock[]> {

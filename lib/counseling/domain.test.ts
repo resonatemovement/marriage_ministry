@@ -10,7 +10,7 @@ import {
 } from "./domain";
 
 describe("counseling case rules", () => {
-  it.each([["matched", "Matched"], ["active", "In Progress"], ["pending_final", "Final Review"], ["finished", "Completed"], ["referred", "Referred"], ["inactive", "Inactive"]] as const)("presents %s as %s", (status, label) => {
+  it.each([["matched", "Matched"], ["active", "In Progress"], ["pending_final", "Final Review"], ["finished", "Completed"], ["referred", "Referred"], ["inactive", "Closed — Incomplete"]] as const)("presents %s as %s", (status, label) => {
     expect(counselingStatusLabel(status, true, true)).toBe(label);
   });
 

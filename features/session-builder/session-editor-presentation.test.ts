@@ -13,6 +13,9 @@ describe("unified Session editor presentation", () => {
   it("shows one Session-level Preview action and keeps Session Material actions in its header", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, { session: null }));
     expect(markup).toContain("Session title");
+    expect(markup).toContain("Final Session");
+    expect(markup).toContain('role="checkbox" aria-checked="false"');
+    expect(markup).toContain("Completing this Session ends the counseling program instead of scheduling another Session.");
     expect(markup).toContain("Session Material");
     expect(markup).toContain("Cancel");
     expect(markup).not.toContain("Back to Session Builder");
@@ -30,6 +33,8 @@ describe("unified Session editor presentation", () => {
     expect(markup).not.toContain(">Rich Text</span>");
     expect(markup).toContain("Save Draft");
     expect(markup).toContain("Publish Session");
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Publish Session<\/button>/);
+    expect(markup).toContain("Enter a session title.");
     expect(markup).not.toContain("Save Block");
     expect(markup).not.toContain("Session authoring workspaces");
     expect(markup).toMatch(/disabled=""[^>]*>Save Draft/);
@@ -42,7 +47,7 @@ describe("unified Session editor presentation", () => {
 
   it("keeps saved Draft actions at Session level and shows the Homework workspace", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, {
-      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
       homework: createElement("div", null, "Homework shell"),
     }));
     expect(markup).toContain("Session authoring workspaces");
@@ -57,9 +62,35 @@ describe("unified Session editor presentation", () => {
     expect(markup).not.toContain("mt-8 border-t border-border pt-6");
   });
 
+  it.each([
+    ["non-final", false],
+    ["Final", true],
+  ] as const)("allows a no-Homework %s Draft with valid Material to publish without edits", (label, isFinal) => {
+    const markup = renderToStaticMarkup(createElement(SessionEditor, {
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal, updatedAt: "" },
+      blocks: [{ id: "page-id", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Reading", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Valid Session Material" }] }] }, url: null, description: null }],
+    }));
+    const publishButton = markup.match(/<button[^>]*>Publish Session<\/button>/)?.[0];
+    expect(publishButton).toBeDefined();
+    expect(publishButton).not.toMatch(/\sdisabled=""/);
+    expect(markup).toMatch(/disabled=""[^>]*>Save Changes/);
+    expect(markup).not.toContain("Homework is required");
+    expect(markup).not.toContain("Unsaved changes");
+  });
+
+  it("explains the existing empty Session Material blocker beside Publish", () => {
+    const markup = renderToStaticMarkup(createElement(SessionEditor, {
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
+      blocks: [{ id: "page-id", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Empty page", richTextContent: { type: "doc", content: [{ type: "paragraph" }] }, url: null, description: null }],
+    }));
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Publish Session<\/button>/);
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain("Complete or remove “Empty page” before publishing.");
+  });
+
   it("keeps Published Session editable without a Publish action", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, {
-      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Published", status: "published", updatedAt: "" },
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Published", status: "published", isFinal: true, updatedAt: "" },
     }));
     expect(markup).toContain("Save Changes");
     expect(markup).toContain("Discard Changes");
@@ -68,7 +99,7 @@ describe("unified Session editor presentation", () => {
 
   it("renders Session Material Pages through the shared collapsed summary", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, {
-      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
       blocks: [{ id: "rich-1", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Reading", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "The summary body is shared." }] }] }, url: null, description: null }],
     }));
     expect(markup).toContain("Reading");
@@ -79,7 +110,7 @@ describe("unified Session editor presentation", () => {
 
   it("groups interleaved persisted Pages and Resources without showing unsaved changes", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, {
-      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
       blocks: [
         { id: "page-1", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Page one", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Page one body" }] }] }, url: null, description: null },
         { id: "resource-1", sessionId: "session-id", blockType: "video_link", position: 1, title: "Resource one", richTextContent: null, url: "https://example.com/one", description: "First resource" },
@@ -95,7 +126,7 @@ describe("unified Session editor presentation", () => {
 
   it("renders Video / Link with the shared Resource icon treatment and preserves its title summary", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, {
-      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
       blocks: [{ id: "link-1", sessionId: "session-id", blockType: "video_link", position: 0, title: "Watch together", richTextContent: null, url: "https://example.com/video", description: "A discussion video" }],
     }));
     expect(markup).toContain("Video / Link");
@@ -108,7 +139,7 @@ describe("unified Session editor presentation", () => {
     "shows MIME type and size for Session %s without the original filename",
     (category, mimeType, metadata) => {
       const markup = renderToStaticMarkup(createElement(SessionEditor, {
-        session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", updatedAt: "" },
+        session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
         blocks: [{ id: "resource-1", sessionId: "session-id", blockType: "library_resource", position: 0, title: null, richTextContent: null, url: null, description: null,
           resourceId: "resource-id", resourceCategory: category,
           resource: { id: "resource-id", title: "Session resource", description: null, category, archivedAt: null, createdAt: "", updatedAt: "", canManage: false,

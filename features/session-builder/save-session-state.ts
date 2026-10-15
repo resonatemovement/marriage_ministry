@@ -9,19 +9,76 @@ import { materialForRpc, sessionStateFromRpc, type PersistedResult, type Session
 import type { HomeworkEditorState } from "@/features/homework/homework-editor-model";
 import type { HomeworkDraftBlock } from "@/features/homework/queries";
 
-export type AuthoringIntent = "save" | "publish" | "publish_changes";
-export type SavedHomeworkResult = {
+type AuthoringIntent = "save" | "publish" | "publish_changes";
+type SavedHomeworkResult = {
   versionId: string | null;
   status: "draft" | "published" | null;
   versionNumber: number | null;
   blocks: HomeworkDraftBlock[];
 };
-export type SaveSessionResult = {
+type SaveSessionResult = {
   sessionState: PersistedResult | null;
   homework: SavedHomeworkResult;
 } | { error: string };
 
 type RpcInvoker = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+
+const userFacingRpcErrors = new Set([
+  "Not authorized",
+  "Enter a valid session title",
+  "Invalid Session save intent",
+  "Invalid authoring intent",
+  "Publish Changes requires a Published Session",
+  "Session is unavailable",
+  "Only a Draft Session can be published",
+  "Add at least one Session Material block before publishing",
+  "Invalid Session Material block",
+  "Unsupported Session Material field",
+  "Invalid Session Material text field",
+  "Unsupported Session Material type",
+  "Session Material title is too long",
+  "Invalid Rich Text material",
+  "Rich Text material cannot be empty",
+  "Enter a valid http or https URL for the Video / Link block",
+  "Invalid library Resource block",
+  "Invalid persisted Session Material ID",
+  "Duplicate Session Material ID",
+  "Session Material block does not belong to this Session",
+  "New Session Material requires a client ID",
+  "Invalid or duplicate Session Material client ID",
+  "Resource category does not match Session block",
+  "Archived Resource cannot be newly selected",
+  "Session Resource type cannot change",
+  "Homework publishing must match the Session action",
+  "Homework blocks must be an array",
+  "Homework draft is unavailable",
+  "Select a valid Homework draft or remove the unavailable Homework selection",
+  "Homework Draft changed. Reload and try again.",
+  "Invalid Homework block",
+  "Unsupported Homework block type",
+  "Homework title is too long",
+  "Invalid Homework text block",
+  "Enter a valid http or https Homework URL",
+  "Duplicate Homework block ID",
+  "Homework block does not belong to the editable version",
+  "Homework block identity does not match its version snapshot",
+  "Homework block belongs to another Homework",
+  "New Homework block requires a client ID",
+  "Invalid or duplicate Homework client ID",
+]);
+
+function errorMessage(error: unknown) {
+  if (!error || typeof error !== "object" || !("message" in error) || typeof error.message !== "string") return null;
+  return userFacingRpcErrors.has(error.message) ? error.message : null;
+}
+
+function failureMessage(intent: AuthoringIntent, error: unknown) {
+  const knownError = errorMessage(error);
+  if (knownError) return knownError;
+  if (intent === "publish") return "The Session could not be published. Please try again.";
+  if (intent === "publish_changes") return "Homework changes could not be published. Please try again.";
+  return "Changes could not be saved. Please try again.";
+}
 
 function serializeHomeworkBlocks(editor: HomeworkEditorState) {
   return editor.blocks.map((block) => ({
@@ -73,6 +130,7 @@ export async function saveSessionBuilderState(
   const { data, error } = await invoke("save_session_homework_authoring_state", {
     target_session_id: editor.sessionId,
     target_title: editor.title,
+    target_is_final: editor.isFinal,
     target_material: materialForRpc(editor.blocks),
     save_session: options.saveSession,
     target_homework_version_id: homeworkEditor.versionId,
@@ -81,14 +139,17 @@ export async function saveSessionBuilderState(
     publish_homework: options.publishHomework,
     target_session_intent: options.intent,
   });
-  if (error || !data || typeof data !== "object" || Array.isArray(data)) return { error: "The Session and Homework could not be saved. Please check the content and try again." };
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) return { error: failureMessage(options.intent, error) };
   const response = data as Record<string, unknown>;
   const sessionState = options.saveSession || options.intent === "publish"
     ? sessionStateFromRpc(response.session as never, editor.blocks)
     : null;
   const homework = parseHomeworkResult(response.homework);
   if ((options.saveSession || options.intent === "publish") && !sessionState || !homework) {
-    return { error: "The Session and Homework were saved, but the response could not be read. Reload to review it." };
+    const errorMessage = options.intent === "publish" ? "The Session publish result could not be confirmed. Reload to check its status."
+      : options.intent === "publish_changes" ? "The Homework publish result could not be confirmed. Reload to check its status."
+        : "The save result could not be confirmed. Reload to check the latest state.";
+    return { error: errorMessage };
   }
 
   revalidatePath("/session-builder");

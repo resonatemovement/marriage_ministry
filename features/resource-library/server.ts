@@ -135,9 +135,25 @@ export async function editResourceMetadata(resourceId: string, metadata: Resourc
 }
 
 export async function signedResourceAccess(resourceId: string, options: { versionId?: string; download?: boolean } = {}) {
-  const { client } = await context();
-  const resource = unwrap(await client.from("resources").select("current_version_id").eq("id", resourceId).single());
-  const versionId = options.versionId ?? resource.current_version_id;
+  const identity = await getAuthenticatedIdentity();
+  if (!identity || identity.accountStage !== "active") throw new Error("Not authorized");
+  const client = await createServerSupabaseClient();
+  const mayBrowse = canBrowseResources({ id: identity.id, roles: identity.roles });
+  let versionId = options.versionId;
+  if (!mayBrowse) {
+    if (!identity.roles.includes("couple") || !versionId) throw new Error("Not authorized");
+    const { data: teamRows, error: teamError } = await client.rpc("get_current_couple_case_team");
+    const team = teamRows?.[0];
+    if (teamError || !team) throw new Error("Not authorized");
+    const { data: sessions, error: sessionError } = await client.from("case_sessions").select("id").eq("counseling_case_id", team.counseling_case_id).in("status", ["active", "completed"]);
+    if (sessionError || !sessions?.length) throw new Error("Not authorized");
+    const { data: pinnedBlock, error: blockError } = await client.from("case_session_material_blocks").select("id").in("case_session_id", sessions.map(({ id }) => id)).eq("resource_id", resourceId).eq("resource_version_id", versionId).limit(1).maybeSingle();
+    if (blockError || !pinnedBlock) throw new Error("Not authorized");
+  } else if (!versionId) {
+    const { client: authorizedClient } = await context();
+    const resource = unwrap(await authorizedClient.from("resources").select("current_version_id").eq("id", resourceId).single());
+    versionId = resource.current_version_id ?? undefined;
+  }
   if (!versionId) throw new Error("Resource unavailable");
   const version = unwrap(await client.from("resource_versions").select("*").eq("resource_id", resourceId).eq("id", versionId).single());
   return unwrap(await client.storage.from(RESOURCE_POLICY.bucket).createSignedUrl(version.storage_path, RESOURCE_POLICY.accessSeconds,

@@ -8,9 +8,7 @@ export const counselingSessionsContentClassName = "xl:col-start-1 xl:row-start-2
 export const counselingSessionsRailClassName = "order-3 min-w-0 xl:order-none xl:col-start-2 xl:row-start-2";
 export const sessionCardContainerClassName = "relative flex h-full flex-col overflow-hidden p-5 transition-all duration-150 has-[>a:hover]:-translate-y-px has-[>a:hover]:border-brand-primary/35 has-[>a:hover]:shadow-[0_4px_10px_rgba(43,45,42,0.08),0_12px_28px_rgba(43,45,42,0.07)] has-[>a:focus-visible]:border-brand-primary/60 has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-brand-primary/35";
 export const sessionCardNavigationClassName = "absolute inset-0 z-0 cursor-pointer rounded-lg transition-colors hover:bg-info-soft/35 focus:outline-none focus-visible:bg-info-soft/45";
-export const sessionCardActionClassName = "relative z-10 mt-auto pt-5";
-
-export function counselingCaseHref(caseId: string) {
+function counselingCaseHref(caseId: string) {
   return `/workspace/cases/${caseId}`;
 }
 
@@ -20,12 +18,20 @@ export function sessionCardNavigation(caseId: string, coupleName: string) {
 
 export function counselingSessionPresentation(state: SessionCardState) {
   return {
-    statusLabel: state.kind === "session" && state.action === "close-case" ? "FINAL SESSION" : state.label,
-    homework: state.kind === "initial" ? null : state.action === "reschedule-meeting" ? "Awaiting Completion" : state.action === "schedule-next" || state.action === "close-case" ? "Completed" : null,
+    statusLabel: state.label,
+    homework: state.kind === "session" ? "Released" : null,
     action: state.action,
     sessionTitle: state.session?.title ?? state.detail,
     progress: state.progress,
   };
+}
+
+export function counselingProgressPercent(progressLabel: string, completed: boolean) {
+  const match = /^Session (\d+) of (\d+)$/.exec(progressLabel);
+  if (!match) return completed ? 100 : null;
+  const [, current, total] = match;
+  const totalSessions = Number(total);
+  return totalSessions ? Math.min(100, (Number(current) / totalSessions) * 100) : 0;
 }
 
 export function couplePhotoSlots(partners: readonly CounselingSessionPartner[]) {

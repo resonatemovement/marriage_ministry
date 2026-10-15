@@ -8,6 +8,7 @@ export interface SessionSummary {
   curriculumNumber: number;
   title: string;
   status: SessionStatus;
+  isFinal: boolean;
   updatedAt: string;
 }
 

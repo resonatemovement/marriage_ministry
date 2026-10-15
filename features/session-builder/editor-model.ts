@@ -1,6 +1,6 @@
 import type { Json } from "@/types/database.generated";
 
-import { canPublishSession, isValidMaterialUrl, normalizeSessionTitle, reorderedBlockIds, type SessionStatus } from "./model";
+import { canPublishSession, isValidMaterialUrl, normalizeSessionTitle, reorderedBlockIds, richTextHasMeaningfulContent, type SessionStatus } from "./model";
 import type { MaterialBlockType, SessionMaterialBlock, SessionSummary } from "./types";
 import type { ResourceCategory } from "@/features/resource-library/policy";
 import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
@@ -14,6 +14,7 @@ export type StagedMaterialBlock = {
   url: string;
   description: string;
   resourceId?: string | null;
+  resourceVersionId?: string | null;
   resourceCategory?: ResourceCategory | null;
   resource?: ResourceLibraryItem | null;
 };
@@ -22,6 +23,7 @@ export type SessionEditorState = {
   sessionId: string | null;
   status: SessionStatus;
   title: string;
+  isFinal: boolean;
   blocks: StagedMaterialBlock[];
 };
 
@@ -32,6 +34,7 @@ export function initialSessionEditorState(session: SessionSummary | null, blocks
     sessionId: session?.id ?? null,
     status: session?.status ?? "draft",
     title: session?.title ?? "",
+    isFinal: session?.isFinal ?? false,
     blocks: blocks.map((block) => ({
       key: block.id,
       persistedId: block.id,
@@ -57,6 +60,7 @@ export function newStagedBlock(blockType: MaterialBlockType): StagedMaterialBloc
     url: "",
     description: "",
     resourceId: null,
+    resourceVersionId: null,
     resourceCategory: null,
     resource: null,
   };
@@ -120,8 +124,8 @@ function normalizedBlock(block: StagedMaterialBlock) {
 }
 
 export function editorStateIsDirty(current: SessionEditorState, baseline: SessionEditorState) {
-  return JSON.stringify({ title: normalizeSessionTitle(current.title), blocks: current.blocks.map(normalizedBlock) })
-    !== JSON.stringify({ title: normalizeSessionTitle(baseline.title), blocks: baseline.blocks.map(normalizedBlock) });
+  return JSON.stringify({ title: normalizeSessionTitle(current.title), isFinal: current.isFinal, blocks: current.blocks.map(normalizedBlock) })
+    !== JSON.stringify({ title: normalizeSessionTitle(baseline.title), isFinal: baseline.isFinal, blocks: baseline.blocks.map(normalizedBlock) });
 }
 
 export function sessionEditorPageIsDirty(sessionDirty: boolean, homeworkDirty: boolean) {
@@ -144,6 +148,11 @@ export function sessionSaveError(state: SessionEditorState): string | null {
 export function sessionPublishError(state: SessionEditorState): string | null {
   const resourceError = sessionSaveError(state);
   if (resourceError) return resourceError;
+  const emptyPage = state.blocks.find((block) => block.blockType === "rich_text" && !richTextHasMeaningfulContent(block.richTextContent));
+  if (emptyPage) {
+    const pageTitle = normalizeSessionTitle(emptyPage.title) || "Untitled Page";
+    return `Complete or remove “${pageTitle}” before publishing.`;
+  }
   return canPublishSession(state.title, state.blocks.map((block) => ({
     blockType: block.blockType,
     richTextContent: block.richTextContent,
@@ -163,7 +172,7 @@ export function materialForRpc(blocks: StagedMaterialBlock[]): Json {
   }));
 }
 
-export type PersistedResult = { sessionId: string; status: "draft" | "published"; title: string; blocks: StagedMaterialBlock[] };
+export type PersistedResult = { sessionId: string; status: "draft" | "published"; title: string; isFinal: boolean; blocks: StagedMaterialBlock[] };
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -172,7 +181,7 @@ function record(value: unknown): Record<string, unknown> | null {
 export function sessionStateFromRpc(value: Json, previousBlocks: StagedMaterialBlock[]): PersistedResult | null {
   const result = record(value);
   if (!result || typeof result.session_id !== "string" || typeof result.title !== "string"
-    || (result.status !== "draft" && result.status !== "published") || !Array.isArray(result.blocks)) return null;
+    || (result.status !== "draft" && result.status !== "published") || typeof result.is_final !== "boolean" || !Array.isArray(result.blocks)) return null;
 
   const blocks: StagedMaterialBlock[] = [];
   for (const item of result.blocks) {
@@ -201,5 +210,5 @@ export function sessionStateFromRpc(value: Json, previousBlocks: StagedMaterialB
     });
   }
   if (new Set(blocks.map((block) => block.persistedId)).size !== blocks.length) return null;
-  return { sessionId: result.session_id, status: result.status, title: result.title, blocks };
+  return { sessionId: result.session_id, status: result.status, title: result.title, isFinal: result.is_final, blocks };
 }

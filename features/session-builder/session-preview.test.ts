@@ -46,6 +46,16 @@ describe("Session Material Preview", () => {
     if (category === "video") expect(markup).toContain("<video");
     expect(markup).not.toContain("https://private.example/signed</");
   });
+  it("uses the released Resource preview and pinned version links for Couple Session snapshots", () => {
+    const block: StagedMaterialBlock = { key: "image", persistedId: "image", blockType: "library_resource", title: "", richTextContent: null,
+      url: "", description: "", resourceId: "resource", resourceVersionId: "version-2", resourceCategory: "image",
+      resource: { id: "resource", title: "Released image", description: null, category: "image", archivedAt: null, createdAt: "", updatedAt: "", canManage: false,
+        currentVersion: { originalFilename: "released.avif", mimeType: "image/avif", sizeBytes: 2048, uploadedAt: "" }, previewUrl: "https://private.example/released" } };
+    const markup = render([block]);
+    expect(markup).toContain('src="https://private.example/released"');
+    expect(markup).toContain("/resource-library/resource/open?version=version-2");
+    expect(markup).toContain("/resource-library/resource/download?version=version-2");
+  });
   it("shows one current Page with its title, full staged content, count, and first-page navigation state", () => {
     const markup = render([page("p1", "Communication and Expectations", "Staged Page text"), page("p2", "Second Page", "Second staged text")]);
     expect(markup).toContain("Page 1 of 2");
@@ -55,6 +65,22 @@ describe("Session Material Preview", () => {
     expect(markup).not.toContain("Second Page");
     expect(markup).not.toContain("Second staged text");
     expect(markup).toMatch(/disabled=""[^>]*>Previous Page/);
+    expect(markup).toContain(">Next Page</button>");
+  });
+
+  it("keeps the Builder preview centered while allowing the participant reader to use full width", () => {
+    const blocks = [page("p1", "First", "Body")];
+    expect(render(blocks)).toContain('class="mx-auto grid max-w-3xl gap-8"');
+    const participantMarkup = renderToStaticMarkup(createElement(SessionMaterialPreviewContent, { blocks, fullWidth: true }));
+    expect(participantMarkup).toContain('class="grid w-full gap-8"');
+    expect(participantMarkup).not.toContain("max-w-3xl");
+  });
+
+  it("supports an external page-count row without changing the page navigation controls", () => {
+    const markup = renderToStaticMarkup(createElement(SessionMaterialPreviewContent, { blocks: [page("p1", "First", "Body"), page("p2", "Second", "Next")], pageCountPlacement: "external", onPageChange: vi.fn() }));
+    expect(markup).not.toContain("Page 1 of 2");
+    expect(markup).toContain('aria-label="Page navigation"');
+    expect(markup).toContain(">Previous Page</button>");
     expect(markup).toContain(">Next Page</button>");
   });
 

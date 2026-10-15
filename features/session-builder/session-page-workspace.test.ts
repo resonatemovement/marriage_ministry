@@ -28,7 +28,7 @@ function findEditor(node: ReactNode): ReactElement<{ homework?: ReactNode }> | n
 
 describe("saved Session workspace wiring", () => {
   it("keeps Material as default without constructing the Homework server component", async () => {
-    getSession.mockResolvedValue({ id: "session-id", title: "Session", status: "draft", sequenceNumber: 1, curriculumNumber: 1 });
+    getSession.mockResolvedValue({ id: "session-id", title: "Session", status: "draft", isFinal: false, sequenceNumber: 1, curriculumNumber: 1 });
     getSessionMaterialBlocks.mockResolvedValue([]);
     const page = await SessionDetailPage({ params: Promise.resolve({ sessionId: "session-id" }), searchParams: Promise.resolve({}) });
     expect(findEditor(page)?.props.homework).toBeUndefined();
@@ -49,7 +49,7 @@ describe("saved Session workspace wiring", () => {
   });
 
   it("places Published beside the page title with the positive lifecycle treatment", async () => {
-    getSession.mockResolvedValue({ id: "session-id", title: "Session", status: "published", sequenceNumber: 1, curriculumNumber: 1 });
+    getSession.mockResolvedValue({ id: "session-id", title: "Session", status: "published", isFinal: false, sequenceNumber: 1, curriculumNumber: 1 });
     getSessionMaterialBlocks.mockResolvedValue([]);
     const page = await SessionDetailPage({ params: Promise.resolve({ sessionId: "session-id" }), searchParams: Promise.resolve({}) });
     const markup = renderToStaticMarkup(page as ReactElement);

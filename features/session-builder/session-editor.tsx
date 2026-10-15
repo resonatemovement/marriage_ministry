@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { HomeworkEditorProvider, useHomeworkEditorState } from "@/features/homework/homework-editor-state";
 import { editorStateIsDirty, initialSessionEditorState, restoreSessionEditorState, sessionEditorPageIsDirty, sessionPublishError, sessionSaveError, type SessionEditorState, type StagedMaterialBlock } from "./editor-model";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { saveSessionBuilderState } from "./save-session-state";
 import { SessionMaterialEditor } from "./session-material-editor";
 import { SessionWorkspaceNavigation } from "./session-workspace-navigation";
@@ -42,6 +43,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewTab, setPreviewTab] = useState<SessionPreviewTab>("material");
+  const [publishActionError, setPublishActionError] = useState<string | null>(null);
   const [resourceAccess, setResourceAccess] = useState<Record<string, string>>({});
   const pendingDestinationRef = useRef<string | null>(null);
   const bypassDestinationRef = useRef<string | null>(null);
@@ -50,6 +52,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   const archived = editor.status === "archived";
   const saveError = editor.status === "published" ? sessionPublishError(editor) : sessionSaveError(editor);
   const publishError = sessionPublishError(editor);
+  const publishMessage = publishError ?? publishActionError;
   const firstSave = editor.sessionId === null;
 
   useEffect(() => {
@@ -94,14 +97,20 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
     return () => document.removeEventListener("click", interceptInternalNavigation, true);
   }, [pageDirty, editor.sessionId, session?.id]);
 
+  function updateEditor(update: (current: SessionEditorState) => SessionEditorState) {
+    setPublishActionError(null);
+    setEditor(update);
+  }
+
   function updateBlocks(update: (current: StagedMaterialBlock[]) => StagedMaterialBlock[]) {
-    setEditor((current) => ({ ...current, blocks: update(current.blocks) }));
+    updateEditor((current) => ({ ...current, blocks: update(current.blocks) }));
   }
 
   function save(intent: "save" | "publish" | "publish_changes") {
     if (pendingRef.current || archived) return;
     const validation = intent === "publish" ? publishError : intent === "publish_changes" || (!dirty && !firstSave) ? null : saveError;
     if (validation) { toast.error(validation); return; }
+    setPublishActionError(null);
     pendingRef.current = true;
     const submitted = editor;
     startTransition(async () => {
@@ -112,21 +121,30 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
           saveHomework: homeworkDirty,
           publishHomework: intent === "publish" || intent === "publish_changes",
         });
-        if ("error" in result) { toast.error(result.error); return; }
+        if ("error" in result) {
+          if (intent === "publish") setPublishActionError(result.error);
+          else toast.error(result.error);
+          return;
+        }
         const next = result.sessionState ? {
           sessionId: result.sessionState.sessionId,
           status: result.sessionState.status,
           title: result.sessionState.title,
+          isFinal: result.sessionState.isFinal,
           blocks: result.sessionState.blocks,
         } satisfies SessionEditorState : null;
-        if (next) { setEditor(next); setBaseline(next); }
+        if (next) { updateEditor(() => next); setBaseline(next); }
         if ((homeworkDirty || intent !== "save") && result.homework.versionId) {
           homeworkEditor.acceptPersisted(result.homework.versionId, result.homework.blocks, result.homework.status ?? "draft");
         }
         toast.success(intent === "publish" ? "Session published" : intent === "publish_changes" ? "Homework changes published" : firstSave ? "Session draft saved" : "Session changes saved");
         if (firstSave && next) router.replace(`/session-builder/${next.sessionId}`);
       } catch {
-        toast.error("The Session could not be saved. Please try again.");
+        const message = intent === "publish" ? "The Session could not be published. Please try again."
+          : intent === "publish_changes" ? "Homework changes could not be published. Please try again."
+            : "Changes could not be saved. Please try again.";
+        if (intent === "publish") setPublishActionError(message);
+        else toast.error(message);
       } finally {
         pendingRef.current = false;
       }
@@ -134,7 +152,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   }
 
   function discardLocalChanges() {
-    setEditor(restoreSessionEditorState(baseline));
+    updateEditor(() => restoreSessionEditorState(baseline));
   }
 
   function openPreview(tab: SessionPreviewTab) {
@@ -148,8 +166,15 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   return <div inert={pending} aria-busy={pending}>
     <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <label className="grid min-w-0 flex-1 basis-64 gap-1.5 text-sm font-medium text-text-primary">Session title
-        <input value={editor.title} onChange={(event) => setEditor((current) => ({ ...current, title: event.target.value }))} autoFocus={firstSave} maxLength={180} disabled={archived} className="min-h-10 rounded-md border border-border bg-white px-3 text-sm text-text-primary outline-none focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" />
+        <input value={editor.title} onChange={(event) => updateEditor((current) => ({ ...current, title: event.target.value }))} autoFocus={firstSave} maxLength={180} disabled={archived} className="min-h-10 rounded-md border border-border bg-white px-3 text-sm text-text-primary outline-none focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" />
       </label>
+      <div className="grid basis-full gap-1.5 sm:basis-auto sm:pb-1">
+        <label className="flex min-h-10 items-center gap-2 text-sm font-medium text-text-primary">
+          <Checkbox checked={editor.isFinal} onCheckedChange={(checked) => updateEditor((current) => ({ ...current, isFinal: checked === true }))} disabled={archived} />
+          Final Session
+        </label>
+        <p className="text-xs text-text-muted">Completing this Session ends the counseling program instead of scheduling another Session.</p>
+      </div>
       <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace(activeWorkspace))} className="min-h-10 shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Preview</button>
     </div>
 
@@ -169,6 +194,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
           {pending ? "Saving..." : firstSave ? "Save Draft" : "Save Changes"}
         </button>
         {editor.status === "draft" ? <button type="button" onClick={() => save("publish")} disabled={pending || Boolean(publishError)} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Session</button> : homeworkEditor.state.versionStatus === "draft" && homeworkEditor.state.baseline.length > 0 ? <button type="button" onClick={() => save("publish_changes")} disabled={pending} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Changes</button> : null}
+        {editor.status === "draft" && publishMessage ? <p role="status" className="basis-full text-right text-xs text-text-muted">{publishMessage}</p> : null}
       </> : null}
     </div>
 

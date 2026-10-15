@@ -28,7 +28,7 @@ export type CaseStatus = (typeof CASE_STATUSES)[number];
 export function counselingStatusLabel(status: CaseStatus | string | null, hasActiveCounselor: boolean, otherwiseReady: boolean) {
   if (!hasActiveCounselor && otherwiseReady) return "Awaiting Counselor Assignment";
   if (!status) return null;
-  return ({ requested: "Requested", assessment: "Assessment", interviewed: "Interviewed", matched: "Matched", active: "In Progress", pending_final: "Final Review", finished: "Completed", referred: "Referred", inactive: "Inactive" } as Record<string, string>)[status] ?? status;
+  return ({ requested: "Requested", assessment: "Assessment", interviewed: "Interviewed", matched: "Matched", active: "In Progress", pending_final: "Final Review", finished: "Completed", referred: "Referred", inactive: "Closed — Incomplete" } as Record<string, string>)[status] ?? status;
 }
 
 const ADMIN_ROLES = new Set<AppRole>(["super_admin", "admin"]);
