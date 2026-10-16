@@ -2,9 +2,20 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("reminder scheduling and lifecycle integration", () => {
-  it("uses the existing Vercel cron and CRON_SECRET protection with server-only service-role delivery", () => {
+  it("uses one Supabase Cron job with Vault-backed endpoint authorization and no Vercel reminder schedule", () => {
     const cron = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
-    expect(cron.crons).toContainEqual({ path: "/api/cron/meeting-reminders", schedule: "0 * * * *" });
+    expect(cron.crons).not.toContainEqual({ path: "/api/cron/meeting-reminders", schedule: "0 * * * *" });
+    expect(cron.crons).toContainEqual({ path: "/api/cron/keep-alive", schedule: "0 6 * * *" });
+    const scheduler = readFileSync("supabase/migrations/20261016100000_schedule_meeting_reminders.sql", "utf8");
+    expect(scheduler).toContain("create extension if not exists pg_cron");
+    expect(scheduler).toContain("create extension if not exists pg_net");
+    expect(scheduler).toContain("'meeting-reminders-hourly'");
+    expect(scheduler).toContain("'0 * * * *'");
+    expect(scheduler).toContain("net.http_get");
+    expect(scheduler).toContain("vault.decrypted_secrets");
+    expect(scheduler).toContain("meeting_reminder_endpoint_url");
+    expect(scheduler).toContain("meeting_reminder_cron_secret");
+    expect(scheduler).not.toContain("vercel.app");
     const route = readFileSync("app/api/cron/meeting-reminders/route.ts", "utf8");
     expect(route).toContain("authorization") ;
     expect(route).toContain("Bearer ${secret}");

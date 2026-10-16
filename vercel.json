@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/keep-alive",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/meeting-reminders",
-      "schedule": "0 * * * *"
     }
   ]
 }
