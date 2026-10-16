@@ -714,6 +714,44 @@ export type Database = {
           },
         ]
       }
+      global_reminder_settings: {
+        Row: {
+          homework_enabled: boolean
+          homework_hours_before: number
+          id: string
+          meeting_enabled: boolean
+          meeting_hours_before: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          homework_enabled?: boolean
+          homework_hours_before?: number
+          id?: string
+          meeting_enabled?: boolean
+          meeting_hours_before?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          homework_enabled?: boolean
+          homework_hours_before?: number
+          id?: string
+          meeting_enabled?: boolean
+          meeting_hours_before?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_reminder_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           created_at: string
@@ -2702,6 +2740,29 @@ export type Database = {
       unassign_homework: {
         Args: { target_assignment_id: string }
         Returns: undefined
+      }
+      update_global_reminder_settings: {
+        Args: {
+          next_homework_enabled: boolean
+          next_homework_hours_before: number
+          next_meeting_enabled: boolean
+          next_meeting_hours_before: number
+        }
+        Returns: {
+          homework_enabled: boolean
+          homework_hours_before: number
+          id: string
+          meeting_enabled: boolean
+          meeting_hours_before: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_reminder_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_intake_request_status: {
         Args: {

@@ -3,7 +3,7 @@ import "server-only";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 
 import { deliverMeetingReminder } from "./meeting-notifications";
-import { reminderDeliveryKey, reminderIsDue, shouldSendReminder, type HomeworkState, type ReminderKind, type ReminderMeeting } from "./reminder-rules";
+import { configuredReminderRules, reminderDeliveryKey, reminderIsDue, shouldSendReminder, type HomeworkState, type ReminderMeeting } from "./reminder-rules";
 
 type MeetingRow = { id: string; counseling_case_id: string; case_session_id: string | null; session_id: string | null; starts_at: string; updated_at: string; completed_at: string | null };
 type PartnerRow = { id: string; first_name: string; email: string | null };
@@ -40,28 +40,49 @@ async function caseContext(client: ReturnType<typeof createServiceRoleSupabaseCl
   return { partners, active: session.status === "active", hasHomework, title: session.title, homework };
 }
 
+async function upcomingMeetings(client: ReturnType<typeof createServiceRoleSupabaseClient>, nowIso: string, latest: string) {
+  const pageSize = 500;
+  const meetings: MeetingRow[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client.from("case_session_meetings")
+      .select("id,counseling_case_id,case_session_id,session_id,starts_at,updated_at,completed_at")
+      .gt("starts_at", nowIso).lte("starts_at", latest).is("completed_at", null).order("starts_at").range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as MeetingRow[];
+    meetings.push(...page);
+    if (page.length < pageSize) return meetings;
+  }
+}
+
 export async function processDueMeetingReminders(now = new Date()) {
   const client = createServiceRoleSupabaseClient();
+  const { data: settings, error: settingsError } = await client.from("global_reminder_settings")
+    .select("meeting_enabled,meeting_hours_before,homework_enabled,homework_hours_before,updated_at").eq("id", "global").maybeSingle();
+  if (settingsError || !settings) throw new Error(settingsError?.message ?? "Global reminder settings are unavailable.");
+  const activeRules = configuredReminderRules({
+    meetingEnabled: settings.meeting_enabled,
+    meetingHoursBefore: settings.meeting_hours_before,
+    homeworkEnabled: settings.homework_enabled,
+    homeworkHoursBefore: settings.homework_hours_before,
+    updatedAt: settings.updated_at,
+  });
+  if (!activeRules.length) return { scanned: 0, attempted: 0, skipped: 0 };
   const nowIso = now.toISOString();
-  const latest = new Date(now.getTime() + 72 * 60 * 60 * 1000).toISOString();
-  const { data: meetings, error } = await client.from("case_session_meetings")
-    .select("id,counseling_case_id,case_session_id,session_id,starts_at,updated_at,completed_at")
-    .gt("starts_at", nowIso).lte("starts_at", latest).is("completed_at", null).order("starts_at").limit(500);
-  if (error) throw new Error(error.message);
+  const latest = new Date(now.getTime() + Math.max(...activeRules.map((rule) => rule.timing.hoursBefore)) * 60 * 60 * 1000).toISOString();
+  const meetings = await upcomingMeetings(client, nowIso, latest);
 
   let attempted = 0;
   let skipped = 0;
-  for (const meeting of (meetings ?? []) as MeetingRow[]) {
+  for (const meeting of meetings) {
     const context = await caseContext(client, meeting);
     if (!context) { skipped++; continue; }
     const state: ReminderMeeting = { id: meeting.id, startsAt: meeting.starts_at, updatedAt: meeting.updated_at, completedAt: meeting.completed_at, caseActive: true, sessionActive: context.active, hasHomework: context.hasHomework };
-    const dueKinds: ReminderKind[] = ["homework.reminder.72h", "meeting.reminder.24h"];
-    for (const kind of dueKinds) {
+    for (const { kind, timing } of activeRules) {
       if (kind === "homework.reminder.72h" && (!meeting.case_session_id || !context.hasHomework)) continue;
-      if (!reminderIsDue(state, kind, now.getTime())) continue;
+      if (!reminderIsDue(state, kind, now.getTime(), timing)) continue;
       await Promise.all(context.partners.map(async (partner) => {
         const homeworkStatus = context.homework.get(partner.id) ?? null;
-        if (!shouldSendReminder(state, kind, homeworkStatus, now.getTime())) return;
+        if (!shouldSendReminder(state, kind, homeworkStatus, now.getTime(), timing)) return;
         const result = await deliverMeetingReminder({
           meetingId: meeting.id,
           profileId: partner.id,
@@ -75,5 +96,5 @@ export async function processDueMeetingReminders(now = new Date()) {
       }));
     }
   }
-  return { scanned: meetings?.length ?? 0, attempted, skipped };
+  return { scanned: meetings.length, attempted, skipped };
 }

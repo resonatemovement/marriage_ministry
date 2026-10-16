@@ -21,6 +21,10 @@ describe("reminder scheduling and lifecycle integration", () => {
     expect(route).toContain("Bearer ${secret}");
     expect(route).toContain("processDueMeetingReminders");
     const service = readFileSync("features/notifications/homework-reminders.ts", "utf8");
+    expect(service).toContain('from("global_reminder_settings")');
+    expect(service).toContain("configuredReminderRules");
+    expect(service).toContain("Math.max(...activeRules.map");
+    expect(service).toContain(".range(from, from + pageSize - 1)");
     expect(service).toContain('from("case_session_meetings")');
     expect(service).toContain('from("homework_participant_progress")');
     expect(service).toContain("meeting.case_session_id");
@@ -68,7 +72,7 @@ describe("reminder scheduling and lifecycle integration", () => {
     const delivery = readFileSync("features/notifications/meeting-notifications.ts", "utf8");
     expect(service).toContain(`if (!session.homework_assignment_revision_id) return { partners, active: session.status === "active", hasHomework: false`);
     expect(delivery).toContain("if (!session.homework_assignment_revision_id) return { hasHomework: false");
-    expect(service).toContain('"meeting.reminder.24h"');
+    expect(readFileSync("features/notifications/reminder-rules.ts", "utf8")).toContain('kind: "meeting.reminder.24h"');
     expect(service).toContain('kind === "homework.reminder.72h" && (!meeting.case_session_id || !context.hasHomework)');
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reminderDeliveryKey, reminderIsDue, renderReminderEmail, shouldSendReminder, type ReminderMeeting } from "./reminder-rules";
+import { configuredReminderRules, reminderDeliveryKey, reminderIsDue, renderReminderEmail, shouldSendReminder, type ReminderMeeting } from "./reminder-rules";
 
 const startsAt = "2026-11-20T18:00:00.000Z";
 const meeting: ReminderMeeting = { id: "meeting-1", startsAt, updatedAt: "2026-11-01T00:00:00.000Z", completedAt: null, caseActive: true, sessionActive: true, hasHomework: true };
@@ -50,5 +50,33 @@ describe("meeting reminder rules", () => {
     expect(reminderIsDue({ ...meeting, sessionActive: false }, "meeting.reminder.24h", due24)).toBe(false);
     expect(reminderIsDue(meeting, "meeting.reminder.24h", Date.parse(startsAt))).toBe(false);
     expect(reminderDeliveryKey(meeting.id, startsAt, "meeting.reminder.24h", "partner-1")).not.toBe(reminderDeliveryKey(meeting.id, "2026-11-21T18:00:00.000Z", "meeting.reminder.24h", "partner-1"));
+  });
+
+  it("uses configurable Meeting and Homework lead times with the existing Meeting-time anchor", () => {
+    const effectiveAt = "2026-11-01T00:00:00.000Z";
+    const due48 = Date.parse(startsAt) - 48 * 60 * 60 * 1000;
+    const due96 = Date.parse(startsAt) - 96 * 60 * 60 * 1000;
+    expect(reminderIsDue(meeting, "meeting.reminder.24h", due48, { hoursBefore: 48, effectiveAt })).toBe(true);
+    expect(reminderIsDue(meeting, "homework.reminder.72h", due96, { hoursBefore: 96, effectiveAt })).toBe(true);
+  });
+
+  it("skips disabled rules and restores the saved timing when re-enabled", () => {
+    const base = { meetingHoursBefore: 36, homeworkHoursBefore: 84, updatedAt: "2026-11-01T00:00:00.000Z" };
+    expect(configuredReminderRules({ ...base, meetingEnabled: false, homeworkEnabled: false })).toEqual([]);
+    expect(configuredReminderRules({ ...base, meetingEnabled: true, homeworkEnabled: false })).toEqual([
+      { kind: "meeting.reminder.24h", enabled: true, timing: { hoursBefore: 36, effectiveAt: base.updatedAt } },
+    ]);
+  });
+
+  it("does not create a retroactive reminder burst when configuration changes after a trigger", () => {
+    const due48 = Date.parse(startsAt) - 48 * 60 * 60 * 1000;
+    expect(reminderIsDue(meeting, "meeting.reminder.24h", due48 + 2 * 60 * 60 * 1000, {
+      hoursBefore: 48,
+      effectiveAt: new Date(due48 + 60 * 60 * 1000).toISOString(),
+    })).toBe(false);
+    expect(reminderIsDue(meeting, "meeting.reminder.24h", due48 + 30 * 60 * 1000, {
+      hoursBefore: 48,
+      effectiveAt: new Date(due48 - 60 * 60 * 1000).toISOString(),
+    })).toBe(true);
   });
 });

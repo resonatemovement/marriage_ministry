@@ -3,6 +3,26 @@ import type { EmailMessage } from "./types";
 export type ReminderKind = "homework.reminder.72h" | "meeting.reminder.24h";
 export type HomeworkState = "not_started" | "in_progress" | "submitted" | "reviewed" | null;
 
+export type ReminderTiming = {
+  hoursBefore: number;
+  effectiveAt: string;
+};
+
+export type ReminderConfiguration = {
+  meetingEnabled: boolean;
+  meetingHoursBefore: number;
+  homeworkEnabled: boolean;
+  homeworkHoursBefore: number;
+  updatedAt: string;
+};
+
+export function configuredReminderRules(settings: ReminderConfiguration) {
+  return [
+    { kind: "homework.reminder.72h" as const, enabled: settings.homeworkEnabled, timing: { hoursBefore: settings.homeworkHoursBefore, effectiveAt: settings.updatedAt } },
+    { kind: "meeting.reminder.24h" as const, enabled: settings.meetingEnabled, timing: { hoursBefore: settings.meetingHoursBefore, effectiveAt: settings.updatedAt } },
+  ].filter((rule) => rule.enabled);
+}
+
 export type ReminderMeeting = {
   id: string;
   startsAt: string;
@@ -13,18 +33,24 @@ export type ReminderMeeting = {
   hasHomework: boolean;
 };
 
-function reminderDueAt(meeting: ReminderMeeting, kind: ReminderKind) {
-  return Date.parse(meeting.startsAt) - (kind === "homework.reminder.72h" ? 72 : 24) * 60 * 60 * 1000;
+function defaultHours(kind: ReminderKind) {
+  return kind === "homework.reminder.72h" ? 72 : 24;
 }
 
-export function reminderIsDue(meeting: ReminderMeeting, kind: ReminderKind, now: number) {
-  const target = reminderDueAt(meeting, kind);
+function reminderDueAt(meeting: ReminderMeeting, kind: ReminderKind, timing?: ReminderTiming) {
+  return Date.parse(meeting.startsAt) - (timing?.hoursBefore ?? defaultHours(kind)) * 60 * 60 * 1000;
+}
+
+export function reminderIsDue(meeting: ReminderMeeting, kind: ReminderKind, now: number, timing?: ReminderTiming) {
+  const target = reminderDueAt(meeting, kind, timing);
+  const settingsEffectiveAt = timing ? Date.parse(timing.effectiveAt) : Number.NEGATIVE_INFINITY;
   return meeting.caseActive && meeting.sessionActive && !meeting.completedAt && Number.isFinite(target)
-    && now >= target && now < Date.parse(meeting.startsAt) && Date.parse(meeting.updatedAt) <= target;
+    && (!timing || Number.isFinite(settingsEffectiveAt)) && now >= target && now < Date.parse(meeting.startsAt)
+    && Date.parse(meeting.updatedAt) <= target && settingsEffectiveAt <= target;
 }
 
-export function shouldSendReminder(meeting: ReminderMeeting, kind: ReminderKind, homeworkStatus: HomeworkState, now: number) {
-  if (!reminderIsDue(meeting, kind, now)) return false;
+export function shouldSendReminder(meeting: ReminderMeeting, kind: ReminderKind, homeworkStatus: HomeworkState, now: number, timing?: ReminderTiming) {
+  if (!reminderIsDue(meeting, kind, now, timing)) return false;
   if (kind === "homework.reminder.72h") return meeting.hasHomework && homeworkStatus !== "submitted" && homeworkStatus !== "reviewed";
   return true;
 }
