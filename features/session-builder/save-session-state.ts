@@ -19,18 +19,12 @@ type SavedHomeworkResult = {
 type SaveSessionResult = {
   sessionState: PersistedResult | null;
   homework: SavedHomeworkResult;
-} | { error: string };
+} | { error: string; errorKind: "validation" | "operation" };
 
 type RpcInvoker = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
 
 const userFacingRpcErrors = new Set([
-  "Not authorized",
   "Enter a valid session title",
-  "Invalid Session save intent",
-  "Invalid authoring intent",
-  "Publish Changes requires a Published Session",
-  "Session is unavailable",
-  "Only a Draft Session can be published",
   "Add at least one Session Material block before publishing",
   "Invalid Session Material block",
   "Unsupported Session Material field",
@@ -74,10 +68,14 @@ function errorMessage(error: unknown) {
 
 function failureMessage(intent: AuthoringIntent, error: unknown) {
   const knownError = errorMessage(error);
-  if (knownError) return knownError;
-  if (intent === "publish") return "The Session could not be published. Please try again.";
-  if (intent === "publish_changes") return "Homework changes could not be published. Please try again.";
-  return "Changes could not be saved. Please try again.";
+  if (knownError) return { error: knownError, errorKind: "validation" as const };
+  return operationFailure(intent);
+}
+
+function operationFailure(intent: AuthoringIntent) {
+  if (intent === "publish") return { error: "The Session could not be published. Please try again.", errorKind: "operation" as const };
+  if (intent === "publish_changes") return { error: "Homework changes could not be published. Please try again.", errorKind: "operation" as const };
+  return { error: "Changes could not be saved. Please try again.", errorKind: "operation" as const };
 }
 
 function serializeHomeworkBlocks(editor: HomeworkEditorState) {
@@ -139,7 +137,8 @@ export async function saveSessionBuilderState(
     publish_homework: options.publishHomework,
     target_session_intent: options.intent,
   });
-  if (error || !data || typeof data !== "object" || Array.isArray(data)) return { error: failureMessage(options.intent, error) };
+  if (error) return failureMessage(options.intent, error);
+  if (!data || typeof data !== "object" || Array.isArray(data)) return operationFailure(options.intent);
   const response = data as Record<string, unknown>;
   const sessionState = options.saveSession || options.intent === "publish"
     ? sessionStateFromRpc(response.session as never, editor.blocks)
@@ -149,7 +148,7 @@ export async function saveSessionBuilderState(
     const errorMessage = options.intent === "publish" ? "The Session publish result could not be confirmed. Reload to check its status."
       : options.intent === "publish_changes" ? "The Homework publish result could not be confirmed. Reload to check its status."
         : "The save result could not be confirmed. Reload to check the latest state.";
-    return { error: errorMessage };
+    return { error: errorMessage, errorKind: "operation" };
   }
 
   revalidatePath("/session-builder");

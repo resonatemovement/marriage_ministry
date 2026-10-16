@@ -11,6 +11,7 @@ import { reloadResourceLibrary } from "./actions";
 import { ResourceDetailSheet } from "./resource-detail-sheet";
 import { ResourceUploadSheet } from "./resource-upload-sheet";
 import { ResourceThumbnail } from "./resource-thumbnail";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 function ResourceCard({ item, archived, onOpen }: { item: ResourceLibraryItem; archived: boolean; onOpen: () => void }) {
   return (
@@ -60,7 +61,7 @@ export function ResourceLibrary({ initialResources, initialCount, initialError, 
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("downloadError") !== "1") return;
-    toast.error("A secure Resource download could not be started.");
+    showErrorToast("A secure Resource download could not be started.");
     url.searchParams.delete("downloadError");
     window.history.replaceState(window.history.state, "", url);
   }, []);
@@ -85,7 +86,7 @@ export function ResourceLibrary({ initialResources, initialCount, initialError, 
     setSearch("");
     setCategory("all");
     setLoading(true);
-    if (!(await refreshLibrary(nextArchived))) toast.error("Resource Library could not be loaded.");
+    await refreshLibrary(nextArchived);
     setLoading(false);
   }
 
@@ -95,7 +96,7 @@ export function ResourceLibrary({ initialResources, initialCount, initialError, 
     setReplacement(null);
     if (await refreshLibrary()) {
       if (cleanupWarning) toast.warning("The file is available, but older file cleanup needs administrator attention.");
-      else toast.success(wasReplacement ? "Resource file replaced" : "Resource uploaded");
+      else showSuccessToast(wasReplacement ? "Resource file replaced successfully." : "Resource uploaded successfully.");
     }
     else toast.warning("The upload succeeded, but the library could not refresh.");
     setSelected(null);

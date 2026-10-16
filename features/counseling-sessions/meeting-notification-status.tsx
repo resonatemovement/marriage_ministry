@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { resendMeetingNotification } from "./actions";
 import { formatMeetingNotificationTime } from "./meeting-date-time";
 
@@ -20,6 +21,16 @@ const eventLabels: Record<string, string> = {
 const resendBlockedStatuses = ["bounced", "complained", "suppressed", "no_email"];
 const isDevSink = (delivery: MeetingNotificationDelivery) => delivery.template_key.endsWith("_dev_sink");
 const partnerFirstName = (partner: MeetingNotificationPartner) => partner.firstName?.trim() || partner.name?.trim().split(/\s+/)[0] || "Partner";
+
+function safeResendError(error: string) {
+  if (error.includes("bounced, complained, or suppressed")) return "Resend is blocked because this address is bounced, complained, or suppressed.";
+  if (error.includes("Homework is already complete")) return "Homework is already complete or unavailable; no reminder was resent.";
+  if (error.includes("Meeting is no longer upcoming")) return "This Meeting is no longer upcoming, so its invite cannot be resent.";
+  if (error.includes("Counseling case is no longer active") || error.includes("Session is no longer active")) return "This counseling journey is no longer active, so the notification cannot be resent.";
+  if (error.includes("Only a current scheduled Meeting")) return "Only a current scheduled Meeting invite can be resent.";
+  if (error.includes("unavailable")) return "This Meeting notification is no longer available to resend.";
+  return "Unable to resend Meeting invite. Please try again.";
+}
 
 export function deliveryTime(delivery: MeetingNotificationDelivery) {
   return formatMeetingNotificationTime(delivery.created_at);
@@ -42,6 +53,12 @@ function ResendMenuItem({ caseId, meetingId, partner, delivery }: { caseId: stri
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(async (_previous: State, formData: FormData) => await resendMeetingNotification(formData) as State, {} as State);
   const firstName = partnerFirstName(partner);
+  useEffect(() => {
+    if (state.error) showErrorToast(safeResendError(state.error));
+    else if (state.success && state.deliveryStatus === "sent") showSuccessToast("Meeting invite resend initiated.");
+    else if (state.success && state.deliveryStatus === "duplicate") showSuccessToast("A matching Meeting invite attempt was already recorded.");
+    else if (state.success) showErrorToast("The resend attempt was recorded, but the email could not be sent. Review delivery history.");
+  }, [state]);
   return <>
     <form ref={formRef} action={action} className="hidden" aria-hidden="true">
       <input type="hidden" name="caseId" value={caseId} />
@@ -50,7 +67,7 @@ function ResendMenuItem({ caseId, meetingId, partner, delivery }: { caseId: stri
       <input type="hidden" name="profileId" value={partner.id} />
     </form>
     <DropdownMenuItem onSelect={(event) => { event.preventDefault(); formRef.current?.requestSubmit(); }} disabled={pending} className="h-auto min-h-10 whitespace-normal py-2">
-      <span className="grid gap-0.5"><span>Resend meeting invite to {firstName}</span>{state.error ? <span className="text-xs text-danger-strong">{state.error}</span> : state.success ? <span className="text-xs text-text-muted">New attempt {state.deliveryStatus ?? "recorded"}.</span> : null}</span>
+      <span>Resend meeting invite to {firstName}</span>
     </DropdownMenuItem>
   </>;
 }

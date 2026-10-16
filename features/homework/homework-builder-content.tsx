@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import { FileText, GripVertical, Link2, MoreHorizontal, Plus, TextCursorInput } from "lucide-react";
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -33,22 +32,12 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   const router = useRouter();
   const homeworkEditor = useHomeworkEditorState();
   const { initialize } = homeworkEditor;
-  const [retryCount, setRetryCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [urlMessage, setUrlMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const lastToastKey = useRef<string | null>(null);
   const error = "error" in result ? result.error : null;
   const message = error ? errorMessage(error) : null;
-
-  useEffect(() => {
-    if (!message) return;
-    const key = `${retryCount}:${message}`;
-    if (lastToastKey.current === key) return;
-    lastToastKey.current = key;
-    toast.error(message);
-  }, [message, retryCount]);
 
   useEffect(() => {
     if ("draft" in result && result.draft.id) initialize(result.draft.id, result.draft.blocks, result.draft.status);
@@ -59,7 +48,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
       <h2 id="homework-builder-heading" className="font-heading text-xl font-bold text-text-primary">Homework</h2>
       <div role="alert" className="mt-5 rounded-md border border-danger-strong/30 bg-white p-6">
         <p className="text-sm text-danger-strong">{message}</p>
-        {error === "unavailable" ? <button type="button" onClick={() => { setRetryCount((count) => count + 1); router.refresh(); }} className="mt-4 min-h-10 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Try again</button> : null}
+        {error === "unavailable" ? <button type="button" onClick={() => router.refresh()} className="mt-4 min-h-10 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Try again</button> : null}
       </div>
     </section>;
   }

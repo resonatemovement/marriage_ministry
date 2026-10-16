@@ -72,7 +72,7 @@ describe("atomic Session and Homework RPC adapter", () => {
       intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
     });
 
-    expect(result).toEqual({ error: "Rich Text material cannot be empty" });
+    expect(result).toEqual({ error: "Rich Text material cannot be empty", errorKind: "validation" });
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc.mock.calls[0][1]).toMatchObject({ target_session_intent: "publish", save_session: true });
   });
@@ -82,7 +82,7 @@ describe("atomic Session and Homework RPC adapter", () => {
     const result = await saveSessionBuilderState(session, emptyHomework, {
       intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
     });
-    expect(result).toEqual({ error: "Select a valid Homework draft or remove the unavailable Homework selection" });
+    expect(result).toEqual({ error: "Select a valid Homework draft or remove the unavailable Homework selection", errorKind: "validation" });
     expect(rpc).toHaveBeenCalledTimes(1);
   });
 
@@ -91,7 +91,7 @@ describe("atomic Session and Homework RPC adapter", () => {
     const result = await saveSessionBuilderState(session, emptyHomework, {
       intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
     });
-    expect(result).toEqual({ error: "The Session could not be published. Please try again." });
+    expect(result).toEqual({ error: "The Session could not be published. Please try again.", errorKind: "operation" });
     expect(JSON.stringify(result)).not.toContain("Homework could not be saved");
     expect(rpc).toHaveBeenCalledTimes(1);
   });

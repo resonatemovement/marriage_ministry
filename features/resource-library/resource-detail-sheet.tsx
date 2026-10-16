@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Download, ExternalLink, FileAudio, FileText, Pencil, RotateCcw, Save, Trash2, Upload } from "lucide-react";
-import { toast } from "sonner";
 
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -11,6 +10,7 @@ import { isDeleteConfirmation } from "@/components/shared/destructive-confirmati
 import { formatResourceFileSize } from "./policy";
 import type { ResourceLibraryItem } from "./presentation";
 import { loadResourceDetail, removeResource, saveResourceMetadata, setResourceArchived } from "./actions";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 type Detail = {
   title: string;
@@ -47,11 +47,9 @@ export function ResourceDetailSheet({ item, isAdmin, onClose, onChanged, onRepla
   const [detailError, setDetailError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [pendingAction, setPendingAction] = useState<"archive" | "restore" | "delete" | null>(null);
   const [confirmation, setConfirmation] = useState("");
-  const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const resourceId = item?.id;
 
@@ -67,28 +65,35 @@ export function ResourceDetailSheet({ item, isAdmin, onClose, onChanged, onRepla
 
   function openAction(action: "archive" | "restore" | "delete") {
     setConfirmation("");
-    setActionError(null);
     setPendingAction(action);
   }
 
   async function confirmAction() {
     if (!item || !pendingAction || actionPending) return;
     setActionPending(true);
-    const result = pendingAction === "delete"
-      ? await removeResource(item.id, confirmation)
-      : await setResourceArchived(item.id, pendingAction === "archive");
-    setActionPending(false);
-    if ("error" in result) { setActionError(result.error); return; }
     const action = pendingAction;
-    setPendingAction(null);
-    if (action === "delete") {
-      toast.success("Resource permanently deleted");
-      onDeleted();
-      return;
+    try {
+      const result = action === "delete"
+        ? await removeResource(item.id, confirmation)
+        : await setResourceArchived(item.id, action === "archive");
+      if ("error" in result) {
+        showErrorToast(action === "delete" ? "Unable to delete Resource. Confirm it is unused and try again." : `Unable to ${action} Resource. Please try again.`);
+        return;
+      }
+      setPendingAction(null);
+      if (action === "delete") {
+        showSuccessToast("Resource deleted successfully.");
+        onDeleted();
+        return;
+      }
+      showSuccessToast(action === "archive" ? "Resource archived successfully." : "Resource restored successfully.");
+      onClose();
+      await onChanged(action === "restore");
+    } catch {
+      showErrorToast(action === "delete" ? "Unable to delete Resource. Confirm it is unused and try again." : `Unable to ${action} Resource. Please try again.`);
+    } finally {
+      setActionPending(false);
     }
-    toast.success(action === "archive" ? "Resource archived" : "Resource restored");
-    onClose();
-    await onChanged(action === "restore");
   }
 
   async function saveDetails(event: React.FormEvent<HTMLFormElement>) {
@@ -96,15 +101,19 @@ export function ResourceDetailSheet({ item, isAdmin, onClose, onChanged, onRepla
     if (!item || !detail || saving) return;
     const form = new FormData(event.currentTarget);
     setSaving(true);
-    setEditError(null);
-    const result = await saveResourceMetadata(item.id, { title: String(form.get("title") ?? ""), description: String(form.get("description") ?? "") });
-    setSaving(false);
-    if ("error" in result) { setEditError(result.error); return; }
-    toast.success("Resource details saved");
-    setEditing(false);
-    await onChanged();
-    const refreshed = await loadResourceDetail(item.id);
-    if ("data" in refreshed) setDetail(refreshed.data as Detail);
+    try {
+      const result = await saveResourceMetadata(item.id, { title: String(form.get("title") ?? ""), description: String(form.get("description") ?? "") });
+      if ("error" in result) { showErrorToast("Unable to save Resource details. Please try again."); return; }
+      showSuccessToast("Resource details saved successfully.");
+      setEditing(false);
+      await onChanged();
+      const refreshed = await loadResourceDetail(item.id);
+      if ("data" in refreshed) setDetail(refreshed.data as Detail);
+    } catch {
+      showErrorToast("Unable to save Resource details. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function startDownload() {
@@ -155,10 +164,9 @@ export function ResourceDetailSheet({ item, isAdmin, onClose, onChanged, onRepla
               {editing ? <form onSubmit={(event) => void saveDetails(event)} className="grid gap-3">
                 <label className="grid gap-1.5 text-sm font-medium">Title<input name="title" required maxLength={180} defaultValue={activeDetail.title} className="min-h-10 rounded-md border border-border bg-white px-3 outline-none focus:border-brand-primary" /></label>
                 <label className="grid gap-1.5 text-sm font-medium">Description<textarea name="description" maxLength={4000} rows={4} defaultValue={activeDetail.description ?? ""} className="resize-y rounded-md border border-border bg-white px-3 py-2 outline-none focus:border-brand-primary" /></label>
-                {editError ? <p role="alert" className="text-sm text-danger-strong">{editError}</p> : null}
                 <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={() => setEditing(false)} className="min-h-10 rounded-md px-3 text-sm font-semibold text-text-muted">Cancel</button><button type="submit" disabled={saving} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-3.5 text-sm font-semibold text-white disabled:opacity-60"><Save className="size-4" aria-hidden="true" />{saving ? "Saving..." : "Save details"}</button></div>
               </form> : <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => { setEditError(null); setEditing(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-sidebar-accent px-3.5 text-sm font-semibold text-sidebar-active focus-visible:bg-surface-muted"><Pencil className="size-4" aria-hidden="true" />Edit details</button>
+                <button type="button" onClick={() => setEditing(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-sidebar-accent px-3.5 text-sm font-semibold text-sidebar-active focus-visible:bg-surface-muted"><Pencil className="size-4" aria-hidden="true" />Edit details</button>
                 {!activeDetail.archivedAt && item ? <button type="button" onClick={() => onReplace(item)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-sidebar-accent px-3.5 text-sm font-semibold text-sidebar-active focus-visible:bg-surface-muted"><Upload className="size-4" aria-hidden="true" />Replace file</button> : null}
               </div>}
               {isAdmin ? <div className="flex flex-wrap gap-2 border-t border-border pt-3">
@@ -171,14 +179,13 @@ export function ResourceDetailSheet({ item, isAdmin, onClose, onChanged, onRepla
       </SheetContent>
     </Sheet>
 
-    <AlertDialog open={pendingAction !== null} onOpenChange={(open) => { if (!open && !actionPending) { setPendingAction(null); setActionError(null); } }}>
+    <AlertDialog open={pendingAction !== null} onOpenChange={(open) => { if (!open && !actionPending) setPendingAction(null); }}>
       <AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle>{pendingAction === "delete" ? "Permanently delete Resource?" : pendingAction === "archive" ? "Archive Resource?" : "Restore Resource?"}</AlertDialogTitle>
           <AlertDialogDescription>{pendingAction === "delete" ? "Permanent deletion is available only for unused Resources. Referenced Resources are protected and remain unchanged." : pendingAction === "archive" ? "This Resource and its versions will be preserved and hidden from the active library." : "This Resource will return to the active library."}</AlertDialogDescription>
         </AlertDialogHeader>
         {pendingAction === "delete" ? <label className="grid gap-2 text-sm font-medium" htmlFor="resource-delete-confirmation">Type <span className="font-mono font-bold text-danger-strong">DELETE</span> to confirm<input id="resource-delete-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" className="min-h-10 rounded-md border border-border bg-white px-3 font-mono text-sm outline-none focus:border-brand-primary" /></label> : pendingAction === "archive" ? <p className="flex items-start gap-2 rounded-md bg-surface-muted p-3 text-sm leading-5 text-text-muted"><AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />You can restore it later from the Archived view.</p> : null}
-        {actionError ? <p role="alert" className="text-sm text-danger-strong">{actionError}</p> : null}
         <div className="mt-2 flex justify-end gap-2"><button type="button" disabled={actionPending} onClick={() => setPendingAction(null)} className="min-h-10 rounded-md px-3 text-sm font-semibold text-text-muted">Cancel</button><button type="button" disabled={actionPending || (pendingAction === "delete" && !isDeleteConfirmation(confirmation))} onClick={() => void confirmAction()} className={`min-h-10 rounded-md px-4 text-sm font-semibold text-white disabled:opacity-50 ${pendingAction === "delete" ? "bg-danger-strong" : "bg-brand-primary"}`}>{actionPending ? "Working..." : pendingAction === "delete" ? "Delete permanently" : pendingAction === "archive" ? "Archive Resource" : "Restore Resource"}</button></div>
       </AlertDialogContent>
     </AlertDialog>

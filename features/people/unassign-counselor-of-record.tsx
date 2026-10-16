@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { UserMinus } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -9,7 +11,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { unassignCoachCaseAssignment, unassignCounselorOfRecord } from "./detail-actions";
 
 export function UnassignCounselorOfRecord({ coupleId, caseId, coupleName, teamName, providerId, providerSide = false, assignmentType = "counselor", open = false, onOpenChange, menuOnly = false }: { coupleId: string; caseId?: string; coupleName: string; teamName: string; providerId?: string; providerSide?: boolean; assignmentType?: "counselor" | "coach"; open?: boolean; onOpenChange?: (open: boolean) => void; menuOnly?: boolean }) {
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   if (menuOnly) return <DropdownMenuItem variant="destructive" onSelect={() => onOpenChange?.(true)}>
@@ -26,19 +28,18 @@ export function UnassignCounselorOfRecord({ coupleId, caseId, coupleName, teamNa
         </SheetHeader>
         <form className="grid gap-5 p-6" onSubmit={(event) => {
           event.preventDefault();
-          setError(null);
           startTransition(async () => {
             const action = assignmentType === "coach" ? unassignCoachCaseAssignment : unassignCounselorOfRecord;
             const result = await action(new FormData(event.currentTarget));
-            if ("error" in result) { setError(result.error); return; }
+            if ("error" in result) { showErrorToast(result.error); return; }
+            showSuccessToast(assignmentType === "coach" ? "Coach unassigned successfully." : "Counselor unassigned successfully.");
             onOpenChange?.(false);
-            window.location.reload();
+            router.refresh();
           });
         }}>
           <input type="hidden" name="coupleGroupId" value={coupleId} />
           {providerId ? <input type="hidden" name="providerGroupId" value={providerId} /> : null}
           {assignmentType === "coach" && caseId ? <input type="hidden" name="caseId" value={caseId} /> : null}
-          {error ? <p role="alert" className="text-sm text-danger-strong">{error}</p> : null}
           <div className="flex justify-end gap-3">
             <button type="button" onClick={() => onOpenChange?.(false)} disabled={pending} className="min-h-10 rounded-md px-3 text-sm font-semibold text-text-muted hover:bg-surface-muted disabled:opacity-60">Cancel</button>
             <button type="submit" disabled={pending} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-danger-strong px-4 py-2 text-sm font-semibold text-white hover:bg-danger-strong/90 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Unassigning..." : "Unassign"}</button>

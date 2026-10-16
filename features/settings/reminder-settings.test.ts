@@ -33,4 +33,23 @@ describe("Admin reminder settings integration", () => {
     expect(migration).toContain("grant execute on function public.update_global_reminder_settings");
     expect(migration).toContain("check (id = 'global')");
   });
+
+  it("shows one success toast only after persistence succeeds and removes inline success copy", () => {
+    const component = readFileSync("features/settings/reminder-settings.tsx", "utf8");
+    expect(component.match(/showSuccessToast\(/g)).toHaveLength(1);
+    expect(component).toContain('showSuccessToast("Reminder settings saved successfully.")');
+    expect(component).toContain("setSaved(next)");
+    expect(component).not.toContain("setMessage");
+    expect(component).not.toContain("Reminder settings saved.");
+  });
+
+  it("uses a safe error toast for operation failures while keeping validation inline and values intact", () => {
+    const component = readFileSync("features/settings/reminder-settings.tsx", "utf8");
+    expect(component).toContain('showErrorToast("Unable to save reminder settings. Please try again.")');
+    expect(component).toContain("if (result.fieldErrors) setErrors(result.fieldErrors)");
+    expect(component).toContain('role="alert"');
+    expect(component).toContain("value={hours}");
+    expect(component).toContain("disabled={!dirty || pending}");
+    expect(component).toContain('pending ? "Saving..."');
+  });
 });

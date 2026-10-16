@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 import { Card } from "@/components/ui/card";
 
@@ -8,18 +9,16 @@ import { resetCounselingJourney } from "./actions";
 
 export function DevResetControl({ caseId }: { caseId: string }) {
   const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const submit = (formData: FormData) => startTransition(async () => {
-    setError(null);
-    setSuccess(false);
     const result = await resetCounselingJourney(formData);
-    if (result.error) setError(result.error);
+    if (result.error) {
+      if (result.error !== "Type exact uppercase RESET to continue.") showErrorToast("Unable to reset counseling case. Please try again.");
+    }
     else {
       setConfirmation("");
-      setSuccess(true);
+      showSuccessToast("DEV counseling case reset successfully.");
     }
   });
 
@@ -32,8 +31,6 @@ export function DevResetControl({ caseId }: { caseId: string }) {
       <label htmlFor="reset-confirmation" className="text-sm font-medium text-text-primary">Type RESET to restore the case to Matched before Session 0.</label>
       <input id="reset-confirmation" name="confirmation" type="text" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" className="min-h-11 rounded-md border border-border bg-white px-3" />
       <button type="submit" disabled={pending || confirmation !== "RESET"} className="min-h-11 w-fit rounded-md bg-danger-strong px-4 text-sm font-bold text-white hover:bg-danger-strong/90 focus-visible:bg-danger-strong/80 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Resetting…" : "Reset Counseling Journey"}</button>
-      {error ? <p role="alert" className="text-sm text-danger-strong">{error}</p> : null}
-      {success ? <p role="status" className="text-sm text-success-strong">Journey reset. The case is ready to schedule the Initial Meeting.</p> : null}
     </form>
   </Card>;
 }

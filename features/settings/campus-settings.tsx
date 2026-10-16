@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Plus, RotateCcw, ToggleLeft } from "lucide-react";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 import { addCampus, renameCampus, setCampusActive } from "./campus-actions";
 import type { CampusListItem } from "./campus-queries";
@@ -11,11 +13,13 @@ import type { CampusListItem } from "./campus-queries";
 type Mode = "add" | "rename";
 
 export function CampusSettings({ initialCampuses }: { initialCampuses: CampusListItem[] }) {
+  const router = useRouter();
   const [campuses, setCampuses] = useState(initialCampuses);
   const [mode, setMode] = useState<Mode | null>(null);
   const [editing, setEditing] = useState<CampusListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const pendingRef = useRef(false);
 
   function open(modeValue: Mode, campus?: CampusListItem) {
     setError(null);
@@ -24,35 +28,60 @@ export function CampusSettings({ initialCampuses }: { initialCampuses: CampusLis
   }
 
   function close() {
-    if (!pending) setMode(null);
+    if (!pending && !pendingRef.current) setMode(null);
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending || pendingRef.current) return;
+    pendingRef.current = true;
     setError(null);
     const formData = new FormData(event.currentTarget);
     const action = mode === "rename" ? renameCampus : addCampus;
     startTransition(async () => {
-      const result = await action(formData);
-      if ("error" in result) {
-        setError(result.error);
+      let result: Awaited<ReturnType<typeof addCampus>>;
+      try {
+        result = await action(formData);
+      } catch {
+        pendingRef.current = false;
+        showErrorToast("Unable to save settings. Please try again.");
         return;
       }
-      window.location.reload();
+      pendingRef.current = false;
+      if ("error" in result) {
+        if (result.validation) setError(result.error);
+        else showErrorToast("Unable to save settings. Please try again.");
+        return;
+      }
+      setMode(null);
+      setEditing(null);
+      showSuccessToast("Settings saved successfully.");
+      router.refresh();
     });
   }
 
   function toggle(campus: CampusListItem) {
+    if (pending || pendingRef.current) return;
+    pendingRef.current = true;
     const formData = new FormData();
     formData.set("id", campus.id);
     formData.set("active", String(!campus.active));
     startTransition(async () => {
-      const result = await setCampusActive(formData);
+      let result: Awaited<ReturnType<typeof setCampusActive>>;
+      try {
+        result = await setCampusActive(formData);
+      } catch {
+        pendingRef.current = false;
+        showErrorToast("Unable to save settings. Please try again.");
+        return;
+      }
+      pendingRef.current = false;
       if ("error" in result) {
-        setError(result.error);
+        showErrorToast("Unable to save settings. Please try again.");
         return;
       }
       setCampuses((current) => current.map((item) => item.id === campus.id ? { ...item, active: !item.active } : item));
+      showSuccessToast("Settings saved successfully.");
     });
   }
 

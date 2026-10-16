@@ -64,7 +64,10 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain("period={meetingPeriod}");
     expect(controls).toContain("setMeetingTime(value)");
     expect(controls).toContain("validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod)");
-    expect(controls).toContain("if (result?.error) setError(result.error);\n      else close();");
+    expect(controls).toContain("if (result?.error) {\n        const domainError = inlineDomainError(result.error);");
+    expect(controls).toContain("if (domainError) setError(domainError);");
+    expect(controls).toContain("showErrorToast(failureMessage(open!));");
+    expect(controls).toContain("showSuccessToast(successMessage(open!));");
     expect(controls).toContain('formData.set("time", validation.time)');
     expect(controls).toContain("setTimeError(validation.timeError ?? \"Meeting time is required.\")");
   });
@@ -143,6 +146,33 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).not.toContain("DEV Reset");
     expect(controls).toContain('w-[min(20rem,calc(100vw-2rem))]');
     expect(controls).toContain('className="mt-4 flex w-full"');
+  });
+
+  it("shows one success toast only after lifecycle action confirmation and keeps known validation inline", () => {
+    expect(controls).toContain('mode === "schedule-initial" ? "Initial meeting scheduled successfully."');
+    expect(controls).toContain('mode === "complete-session" ? "Session completed and next Session scheduled."');
+    expect(controls).toContain('mode === "complete-program" ? "Counseling program completed successfully."');
+    expect(controls).toContain('mode === "close-case" ? "Counseling case closed."');
+    expect(controls).toContain('"Follow-up meeting scheduled successfully."');
+    expect(controls).toContain('"Both partners must submit Homework. Admin or Super Admin may type OVERRIDE to continue."');
+    expect(controls).toContain('"OVERRIDE is only accepted when required Homework is incomplete."');
+    expect(controls).toContain('"Choose a published next Session."');
+    expect(controls).toContain('"Select a valid reason for closing this counseling case."');
+    expect(controls).toContain('else {\n        showSuccessToast(successMessage(open!));\n        close();');
+  });
+
+  it("does not toast when a sheet is canceled and retains validation and pending guards", () => {
+    const close = controls.slice(controls.indexOf("const close = () =>"), controls.indexOf("const openMode ="));
+    expect(close).not.toContain("showSuccessToast");
+    expect(controls).toContain("if (validation.dateError || validation.timeError || !validation.time) {");
+    expect(controls).toContain("return;\n      }\n      formData.set(\"date\", validation.date)");
+    expect(controls).toContain("disabled={pending || ((open === \"complete-initial\"");
+  });
+
+  it("retains explicit final-session completion and server lifecycle action selection", () => {
+    expect(controls).toContain('isAuthored ? isFinalSession ? "complete-program" : "complete-session"');
+    expect(controls).toContain("completeCounselingProgram");
+    expect(controls).toContain("completeSessionScheduleNext");
   });
 
   it("shows an unscheduled Initial Meeting as a full-width standalone primary action", () => {

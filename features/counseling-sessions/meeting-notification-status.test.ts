@@ -94,6 +94,17 @@ describe("MeetingNotificationStatus", () => {
     expect(actions.slice(actions.indexOf("export async function resendMeetingNotification"), actions.indexOf("export async function resetCounselingJourney"))).toContain("revalidateCase(caseId)");
   });
 
+  it("reports resend attempt outcomes through one safe toast without claiming delivery", () => {
+    expect(source).toContain("useEffect(() => {");
+    expect(source).toContain('showSuccessToast("Meeting invite resend initiated.")');
+    expect(source).toContain('showErrorToast("The resend attempt was recorded, but the email could not be sent. Review delivery history.")');
+    expect(source).toContain("safeResendError(state.error)");
+    expect(source).toContain('disabled={pending}');
+    expect(source).not.toContain("New attempt {");
+    expect(source).not.toContain("{state.error}");
+    expect(source).not.toContain('showSuccessToast("Meeting invite delivered.")');
+  });
+
   it("selects each eligible partner once using that partner’s latest attempt", () => {
     const partners = [partner("james", "James"), partner("gina", "Gina")];
     const eligible = resendableMeetingNotificationPartners(partners, [

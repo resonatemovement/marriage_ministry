@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { ChevronDown } from "lucide-react";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -31,6 +32,40 @@ const title: Record<Mode, string> = {
   "schedule-followup": "Schedule Follow-up Meeting",
   "reschedule-meeting": "Reschedule Meeting",
 };
+
+function successMessage(mode: Mode) {
+  return mode === "schedule-initial" ? "Initial meeting scheduled successfully."
+    : mode === "reschedule-initial" || mode === "reschedule-meeting" ? "Meeting rescheduled successfully."
+    : mode === "complete-initial" ? "Initial meeting completed and first Session scheduled successfully."
+    : mode === "complete-session" ? "Session completed and next Session scheduled."
+    : mode === "complete-program" ? "Counseling program completed successfully."
+    : mode === "close-case" ? "Counseling case closed."
+    : "Follow-up meeting scheduled successfully.";
+}
+
+function inlineDomainError(error: string) {
+  if (error.includes("Both partners must submit Homework")) return "Both partners must submit Homework. Admin or Super Admin may type OVERRIDE to continue.";
+  if (error.includes("OVERRIDE is only accepted")) return "OVERRIDE is only accepted when required Homework is incomplete.";
+  if (error.includes("Required Homework progress") || error.includes("Current Session Homework is unavailable")) return "Homework status is unavailable. Refresh the case and try again.";
+  if (error.includes("Select a published Session")) return "Choose a published next Session.";
+  if (error.includes("This Session needs published Material")) return "The selected Session needs published Material before it can be scheduled.";
+  if (error.includes("A Session Resource is unavailable")) return "A selected Session Resource is unavailable. Choose another Session or contact an Admin.";
+  if (error.includes("Select a reason for closing") || error.includes("Select a valid counseling case closure reason")) return "Select a valid reason for closing this counseling case.";
+  if (error.includes("Add notes when the closure reason is Other")) return "Add notes when the closure reason is Other.";
+  if (error.includes("valid meeting time") || error.includes("Meeting date") || error.includes("Meeting time")) return "Choose a valid future Meeting date and time.";
+  if (error.includes("Schedule the Initial Meeting first")) return "Schedule the Initial Meeting before activating the first Session.";
+  if (error.includes("already complete") || error.includes("already active") || error.includes("no longer active") || error.includes("closed or unavailable")) return "This counseling step is no longer available. Refresh the case and try again.";
+  return null;
+}
+
+function failureMessage(mode: Mode) {
+  return mode === "complete-session" || mode === "complete-initial" ? "Unable to complete Session. Please try again."
+    : mode === "complete-program" ? "Unable to complete the counseling program. Please try again."
+    : mode === "close-case" ? "Unable to close counseling case. Please try again."
+    : mode === "reschedule-initial" || mode === "reschedule-meeting" ? "Unable to reschedule Meeting. Please try again."
+    : mode === "schedule-followup" ? "Unable to schedule follow-up Meeting. Please try again."
+    : "Unable to schedule Meeting. Please try again.";
+}
 
 function localMeetingValue(value: string | undefined, part: "date" | "time") {
   if (!value) return "";
@@ -137,8 +172,14 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
           ? rescheduleSessionMeeting
           : scheduleInitialMeeting;
       const result = await action(formData);
-      if (result?.error) setError(result.error);
-      else close();
+      if (result?.error) {
+        const domainError = inlineDomainError(result.error);
+        if (domainError) setError(domainError);
+        else showErrorToast(failureMessage(open!));
+      } else {
+        showSuccessToast(successMessage(open!));
+        close();
+      }
     });
   };
 

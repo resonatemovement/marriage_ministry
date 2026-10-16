@@ -18,6 +18,16 @@ describe("DEV counseling journey reset", () => {
     expect(action).toContain('await requireOneOfRoles(["super_admin"], "/workspace")');
     expect(action).toContain('confirmation !== "RESET"');
     expect(action).toContain("if (!isDevCounselingProject())");
+    expect(control).toContain('confirmation !== "RESET"');
+  });
+
+  it("reports reset success/failure with one safe toast and preserves reset confirmation safeguards", () => {
+    expect(control).toContain('showErrorToast("Unable to reset counseling case. Please try again.")');
+    expect(control).toContain('showSuccessToast("DEV counseling case reset successfully.")');
+    expect(control).toContain("disabled={pending || confirmation !== \"RESET\"}");
+    expect(control).not.toContain("Journey reset.");
+    expect(control).not.toContain("role=\"alert\"");
+    expect(control).not.toContain("role=\"status\"");
   });
 
   it("limits the database capability to DEV-issued Super Admin calls with exact RESET", () => {

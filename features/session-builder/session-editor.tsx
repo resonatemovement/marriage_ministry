@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { toast } from "sonner";
 
 import { HomeworkEditorProvider, useHomeworkEditorState } from "@/features/homework/homework-editor-state";
 import { editorStateIsDirty, initialSessionEditorState, restoreSessionEditorState, sessionEditorPageIsDirty, sessionPublishError, sessionSaveError, type SessionEditorState, type StagedMaterialBlock } from "./editor-model";
@@ -17,6 +16,7 @@ import { SessionPreview } from "./session-preview";
 import { sessionPreviewTabForWorkspace, type SessionWorkspace } from "./workspace";
 import type { SessionMaterialBlock, SessionSummary } from "./types";
 import { refreshSessionResourceAccess } from "./resource-actions";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 export function SessionEditor({ session, blocks = [], activeWorkspace = "material", homework }: {
   session: SessionSummary | null;
@@ -109,7 +109,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
   function save(intent: "save" | "publish" | "publish_changes") {
     if (pendingRef.current || archived) return;
     const validation = intent === "publish" ? publishError : intent === "publish_changes" || (!dirty && !firstSave) ? null : saveError;
-    if (validation) { toast.error(validation); return; }
+    if (validation) { setPublishActionError(validation); return; }
     setPublishActionError(null);
     pendingRef.current = true;
     const submitted = editor;
@@ -122,8 +122,8 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
           publishHomework: intent === "publish" || intent === "publish_changes",
         });
         if ("error" in result) {
-          if (intent === "publish") setPublishActionError(result.error);
-          else toast.error(result.error);
+          if (result.errorKind === "validation") setPublishActionError(result.error);
+          else showErrorToast(result.error);
           return;
         }
         const next = result.sessionState ? {
@@ -137,14 +137,18 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
         if ((homeworkDirty || intent !== "save") && result.homework.versionId) {
           homeworkEditor.acceptPersisted(result.homework.versionId, result.homework.blocks, result.homework.status ?? "draft");
         }
-        toast.success(intent === "publish" ? "Session published" : intent === "publish_changes" ? "Homework changes published" : firstSave ? "Session draft saved" : "Session changes saved");
+        const successMessage = intent === "publish" ? "Session published successfully."
+          : intent === "publish_changes" ? "Homework published successfully."
+            : homeworkDirty && dirty ? "Session and Homework changes saved successfully."
+              : homeworkDirty ? "Homework saved successfully."
+                : firstSave ? "Session draft saved successfully." : "Session changes saved successfully.";
+        showSuccessToast(successMessage);
         if (firstSave && next) router.replace(`/session-builder/${next.sessionId}`);
       } catch {
         const message = intent === "publish" ? "The Session could not be published. Please try again."
           : intent === "publish_changes" ? "Homework changes could not be published. Please try again."
             : "Changes could not be saved. Please try again.";
-        if (intent === "publish") setPublishActionError(message);
-        else toast.error(message);
+        showErrorToast(message);
       } finally {
         pendingRef.current = false;
       }
@@ -160,7 +164,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
     setPreviewOpen(true);
     const ids = editor.blocks.flatMap((block) => block.blockType === "library_resource" && block.resourceId ? [block.resourceId] : []);
     if (ids.length) refreshSessionResourceAccess(ids).then(setResourceAccess)
-      .catch(() => toast.error("Resource preview could not be loaded. Please try again."));
+      .catch(() => showErrorToast("Resource preview could not be loaded. Please try again."));
   }
 
   return <div inert={pending} aria-busy={pending}>
@@ -194,7 +198,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
           {pending ? "Saving..." : firstSave ? "Save Draft" : "Save Changes"}
         </button>
         {editor.status === "draft" ? <button type="button" onClick={() => save("publish")} disabled={pending || Boolean(publishError)} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Session</button> : homeworkEditor.state.versionStatus === "draft" && homeworkEditor.state.baseline.length > 0 ? <button type="button" onClick={() => save("publish_changes")} disabled={pending} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Changes</button> : null}
-        {editor.status === "draft" && publishMessage ? <p role="status" className="basis-full text-right text-xs text-text-muted">{publishMessage}</p> : null}
+        {editor.status === "draft" && publishMessage || editor.status !== "draft" && publishActionError ? <p role="status" className="basis-full text-right text-xs text-text-muted">{editor.status === "draft" ? publishMessage : publishActionError}</p> : null}
       </> : null}
     </div>
 

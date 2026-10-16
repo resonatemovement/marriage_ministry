@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { FileUp } from "lucide-react";
 
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { showErrorToast } from "@/lib/toast";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { RESOURCE_POLICY, formatResourceFileSize, resourceCategoryForMime, resourceFileAccept, resourceTitleFromFilename, validateResourceFile, validateResourceMetadata } from "./policy";
 import type { ResourceLibraryItem } from "./presentation";
@@ -86,8 +87,8 @@ export function ResourceUploadSheet({ open, onOpenChange, replacement, onFinishe
       }
       reset();
       await onFinished();
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "The Resource could not be uploaded. Please try again.");
+    } catch {
+      showErrorToast("Unable to upload Resource. Please try again.");
       setStage("idle");
     }
   }
