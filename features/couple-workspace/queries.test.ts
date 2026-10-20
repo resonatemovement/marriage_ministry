@@ -103,6 +103,7 @@ describe("Couple Workspace query diagnostics", () => {
 
   it("returns a Session overview without fetching Material blocks", async () => {
     const data = await getCoupleWorkspaceData("partner-one");
+    expect(data?.caseId).toBe("case-id");
     expect(data?.currentSession).toEqual({ id: "session-id", caseSessionId: "case-session-id", number: 2, actualSequence: 1, title: "Connection" });
     expect(JSON.stringify(data)).not.toContain("case_session_material_blocks");
   });

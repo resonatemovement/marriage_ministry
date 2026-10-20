@@ -6,6 +6,7 @@ vi.mock("next/image", () => ({ default: ({ unoptimized, ...props }: Record<strin
 vi.mock("next/link", () => ({ default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => createElement("a", props, children) }));
 vi.mock("./actions", () => ({ scheduleInitialMeeting: vi.fn(), completeInitialMeeting: vi.fn(), completeSessionScheduleNext: vi.fn(), completeCounselingProgram: vi.fn(), closeCounselingCaseIncomplete: vi.fn(), scheduleFollowupMeeting: vi.fn(), rescheduleSessionMeeting: vi.fn(), resetCounselingJourney: vi.fn() }));
 vi.mock("./homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ assignmentRevisionId }: { assignmentRevisionId: string }) => createElement("i", { "data-homework-revision": assignmentRevisionId }) }));
+vi.mock("./meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
 import type { CounselingSessionCard } from "./queries";
@@ -39,6 +40,7 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain("Church");
     expect(markup).toContain("Meeting 1 · Completed");
     expect(markup).toContain("Session 2 of 6");
+    expect(markup).toContain('data-meeting-case="case-1"');
   });
 
   it("uses the Schedule Next Session label for Session 0 while retaining its existing completion flow", () => {

@@ -15,6 +15,7 @@ const rows = (value: unknown): Row[] => Array.isArray(value) ? value as Row[] : 
 const string = (row: Row | null | undefined, key: string) => typeof row?.[key] === "string" ? row[key] : null;
 
 export type CoupleWorkspaceData = {
+  caseId: string;
   coupleName: string;
   partners: { id: string; name: string; photoUrl: string | null }[];
   status: string;
@@ -89,6 +90,7 @@ export async function getCoupleWorkspaceData(authenticatedProfileId: string): Pr
     throw new Error("Couple Workspace is unavailable");
   }
   return {
+    caseId: string(counselingCase, "id")!,
     coupleName,
     partners,
     status: string(counselingCase, "status") ?? "active",
