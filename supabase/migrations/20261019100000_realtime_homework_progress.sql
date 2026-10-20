@@ -1,0 +1,2 @@
+alter publication supabase_realtime
+add table public.homework_participant_progress;

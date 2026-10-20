@@ -15,6 +15,7 @@ import { SessionLifecycleControls } from "./session-lifecycle-controls";
 import { DevResetControl } from "./dev-reset-control";
 import { MeetingNotificationStatus, type MeetingNotificationDelivery } from "./meeting-notification-status";
 import { formatCounselingMeetingDateTime } from "./meeting-date-time";
+import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
   return <GroupedAvatars people={couplePhotoSlots(card.partners)} label={`${card.coupleName} partner photos`} />;
@@ -49,8 +50,12 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin
   const sessionStatusClass = card.state.kind === "completed"
     ? "bg-success-soft text-success-strong"
     : card.state.meeting ? "bg-info-soft text-info-strong" : "bg-surface-muted text-text-muted";
+  const activeHomeworkRevisionId = card.state.caseSession?.status === "active"
+    ? card.state.caseSession.homeworkAssignmentRevisionId
+    : null;
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
+    {activeHomeworkRevisionId ? <HomeworkProgressRealtime assignmentRevisionId={activeHomeworkRevisionId} /> : null}
     <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href="/workspace">Sessions</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{card.coupleName}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="space-y-6">

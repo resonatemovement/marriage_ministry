@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/image", () => ({ default: ({ unoptimized, ...props }: Record<string, unknown>) => { void unoptimized; return createElement("img", props as ImgHTMLAttributes<HTMLImageElement>); } }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => createElement("a", props, children) }));
 vi.mock("./actions", () => ({ scheduleInitialMeeting: vi.fn(), completeInitialMeeting: vi.fn(), completeSessionScheduleNext: vi.fn(), completeCounselingProgram: vi.fn(), closeCounselingCaseIncomplete: vi.fn(), scheduleFollowupMeeting: vi.fn(), rescheduleSessionMeeting: vi.fn(), resetCounselingJourney: vi.fn() }));
+vi.mock("./homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ assignmentRevisionId }: { assignmentRevisionId: string }) => createElement("i", { "data-homework-revision": assignmentRevisionId }) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
 import type { CounselingSessionCard } from "./queries";
@@ -98,6 +99,28 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).not.toContain("homework response");
     expect(markup.indexOf("Upcoming Meeting")).toBeLessThan(markup.indexOf(">Homework</p>"));
     expect(markup).not.toContain("Current Homework");
+    expect(markup).toContain('data-homework-revision="homework-revision"');
+  });
+
+  it("shows both Not Started statuses from the active pinned revision and keeps partner rows scoped", () => {
+    const notStarted = {
+      ...card,
+      homework: {
+        title: "Session 2 Homework",
+        complete: false,
+        partners: [
+          { profileId: "anthony", name: "Anthony Jones", status: "not_started" as const },
+          { profileId: "amy", name: "Amy Lee", status: "not_started" as const },
+        ],
+      },
+    };
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card: notStarted }));
+
+    expect(markup).toContain('data-homework-revision="homework-revision"');
+    expect(markup.match(/>Not Started<\/span>/g)).toHaveLength(2);
+    expect(markup).toContain(">Anthony</p>");
+    expect(markup).toContain(">Amy</p>");
+    expect(markup).not.toContain("Homework status unavailable.");
   });
 
   it.each([
@@ -116,6 +139,7 @@ describe("Counseling couple detail foundation", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card: noHomework }));
     expect(markup).toContain("No Homework for this Session");
     expect(markup).not.toContain("Not Started");
+    expect(markup).not.toContain("data-homework-revision");
   });
 
   it("does not call missing assigned Homework a definitive no-Homework state", () => {
@@ -123,6 +147,12 @@ describe("Counseling couple detail foundation", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card: unavailable }));
     expect(markup).toContain("Homework status unavailable.");
     expect(markup).not.toContain("No Homework for this Session");
+  });
+
+  it("does not mount live Homework invalidation for a completed Session", () => {
+    const completed = { ...card, state: { ...card.state, caseSession: { ...card.state.caseSession!, status: "completed" as const } } };
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card: completed }));
+    expect(markup).not.toContain("data-homework-revision");
   });
 
   it("uses the shared breadcrumb components for Workspace, Sessions, and the current couple", () => {
