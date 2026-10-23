@@ -835,6 +835,7 @@ export type Database = {
       homework_answers: {
         Row: {
           answer_text: string
+          answer_value: Json | null
           created_at: string
           homework_version_block_id: string
           id: string
@@ -843,6 +844,7 @@ export type Database = {
         }
         Insert: {
           answer_text?: string
+          answer_value?: Json | null
           created_at?: string
           homework_version_block_id: string
           id?: string
@@ -851,6 +853,7 @@ export type Database = {
         }
         Update: {
           answer_text?: string
+          answer_value?: Json | null
           created_at?: string
           homework_version_block_id?: string
           id?: string
@@ -1148,7 +1151,9 @@ export type Database = {
           homework_block_id: string
           homework_version_id: string
           id: string
+          is_required: boolean
           position: number
+          question_choices: Json | null
           rich_text_content: Json | null
           title: string | null
           updated_at: string
@@ -1161,7 +1166,9 @@ export type Database = {
           homework_block_id: string
           homework_version_id: string
           id?: string
+          is_required?: boolean
           position: number
+          question_choices?: Json | null
           rich_text_content?: Json | null
           title?: string | null
           updated_at?: string
@@ -1174,7 +1181,9 @@ export type Database = {
           homework_block_id?: string
           homework_version_id?: string
           id?: string
+          is_required?: boolean
           position?: number
+          question_choices?: Json | null
           rich_text_content?: Json | null
           title?: string | null
           updated_at?: string
