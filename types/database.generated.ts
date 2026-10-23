@@ -1576,6 +1576,39 @@ export type Database = {
           },
         ]
       }
+      meeting_notification_update_signals: {
+        Row: {
+          counseling_case_id: string
+          meeting_id: string
+          revision: number
+        }
+        Insert: {
+          counseling_case_id: string
+          meeting_id: string
+          revision?: number
+        }
+        Update: {
+          counseling_case_id?: string
+          meeting_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_notification_update_signals_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_notification_update_signals_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: true
+            referencedRelation: "case_session_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_deliveries: {
         Row: {
           attempt_number: number

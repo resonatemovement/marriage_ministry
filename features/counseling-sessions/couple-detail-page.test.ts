@@ -8,6 +8,7 @@ vi.mock("./actions", () => ({ scheduleInitialMeeting: vi.fn(), completeInitialMe
 vi.mock("./homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ assignmentRevisionId }: { assignmentRevisionId: string }) => createElement("i", { "data-homework-revision": assignmentRevisionId }) }));
 vi.mock("./meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 vi.mock("./case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
+vi.mock("./meeting-notification-realtime", () => ({ MeetingNotificationRealtime: ({ meetingId }: { meetingId: string }) => createElement("i", { "data-notification-meeting": meetingId }) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
 import type { CounselingSessionCard } from "./queries";

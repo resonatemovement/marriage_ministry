@@ -170,7 +170,7 @@ export async function deliverMeetingReminder(input: { meetingId: string; profile
 
 export async function getMeetingNotificationRows(caseId: string, meetingId: string) {
   const client = await import("@/lib/supabase/server").then(({ createServerSupabaseClient }) => createServerSupabaseClient());
-  const { data, error } = await client.from("notification_deliveries").select("id,event_type,template_key,recipient_profile_id,recipient_email,status,error_category,error_message,created_at,attempt_number").eq("counseling_case_id", caseId).eq("meeting_id", meetingId).order("created_at");
+  const { data, error } = await client.from("notification_deliveries").select("id,event_type,template_key,recipient_profile_id,status,error_category,error_message,created_at,attempt_number").eq("counseling_case_id", caseId).eq("meeting_id", meetingId).order("created_at");
   if (error) return [];
   return data ?? [];
 }

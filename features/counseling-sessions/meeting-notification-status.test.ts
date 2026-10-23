@@ -15,7 +15,7 @@ const actions = readFileSync("features/counseling-sessions/actions.ts", "utf8");
 const partner = (id: string, firstName: string) => ({ id, firstName, name: `${firstName} Profile` });
 
 function delivery(overrides: Partial<Parameters<typeof MeetingNotificationStatus>[0]["deliveries"][number]> & Pick<Parameters<typeof MeetingNotificationStatus>[0]["deliveries"][number], "id" | "recipient_profile_id" | "event_type" | "status" | "created_at" | "attempt_number">) {
-  return { template_key: "meeting_email", recipient_email: "partner@example.test", error_category: null, error_message: null, ...overrides };
+  return { template_key: "meeting_email", error_category: null, error_message: null, ...overrides };
 }
 
 describe("MeetingNotificationStatus", () => {

@@ -14,6 +14,7 @@ import { counselingProgressPercent, counselingSessionPresentation, couplePhotoSl
 import { SessionLifecycleControls } from "./session-lifecycle-controls";
 import { DevResetControl } from "./dev-reset-control";
 import { MeetingNotificationStatus, type MeetingNotificationDelivery } from "./meeting-notification-status";
+import { MeetingNotificationRealtime } from "./meeting-notification-realtime";
 import { formatCounselingMeetingDateTime } from "./meeting-date-time";
 import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 import { MeetingRealtime } from "./meeting-realtime";
@@ -101,7 +102,10 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin
             </> : <p className="mt-1 text-sm text-text-muted">{card.state.caseSession ? card.state.caseSession.homeworkAssignmentRevisionId ? "Homework status unavailable." : "No Homework for this Session" : "No homework assigned yet."}</p>}
           </section>
 
-          {card.state.meeting ? <MeetingNotificationStatus partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} /> : null}
+          {card.state.meeting ? <>
+            <MeetingNotificationRealtime meetingId={card.state.meeting.id} />
+            <MeetingNotificationStatus partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
+          </> : null}
         </Card>
       </div>
 

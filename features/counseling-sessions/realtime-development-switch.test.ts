@@ -7,6 +7,7 @@ const featureComponents = [
   "homework-progress-realtime.tsx",
   "meeting-realtime.tsx",
   "case-lifecycle-realtime.tsx",
+  "meeting-notification-realtime.tsx",
 ];
 
 describe("development Realtime subscription switch", () => {

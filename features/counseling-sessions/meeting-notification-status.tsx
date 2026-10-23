@@ -8,7 +8,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { resendMeetingNotification } from "./actions";
 import { formatMeetingNotificationTime } from "./meeting-date-time";
 
-export type MeetingNotificationDelivery = { id: string; event_type: string; template_key: string; recipient_profile_id: string | null; recipient_email: string | null; status: string; error_category: string | null; error_message: string | null; created_at: string; attempt_number: number };
+export type MeetingNotificationDelivery = { id: string; event_type: string; template_key: string; recipient_profile_id: string | null; status: string; error_category: string | null; error_message: string | null; created_at: string; attempt_number: number };
 export type MeetingNotificationPartner = { id: string; firstName?: string | null; name?: string };
 type State = { error?: string; success?: boolean; deliveryStatus?: string; deliveryError?: string | null };
 
