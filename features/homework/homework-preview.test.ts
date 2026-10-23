@@ -45,6 +45,8 @@ describe("Homework Preview content", () => {
       richTextContent: null,
       url: "https://example.com/added",
       description: "Added without saving",
+      questionChoices: [],
+      isRequired: true,
     });
     const duplicated = duplicateHomeworkBlock(withAdded.blocks, "long-id", "local:duplicate");
     const reordered = reorderHomeworkBlocks(duplicated.blocks, "local:added", "rich-id");
@@ -76,7 +78,7 @@ describe("Homework Preview content", () => {
     const block: StagedHomeworkBlock = {
       key: "video", persistedId: null, homeworkBlockId: null, blockType: "video_link", position: 0,
       title: "Watch together", richTextContent: null, url: "https://example.com/video?topic=care",
-      description: "Discuss this video afterward.",
+      description: "Discuss this video afterward.", questionChoices: [], isRequired: true,
     };
     const original = structuredClone(block);
     const markup = render([block]);
@@ -94,7 +96,7 @@ describe("Homework Preview content", () => {
   it("renders Long Answer prompt with a read-only, non-submittable response sample", () => {
     const block: StagedHomeworkBlock = {
       key: "question", persistedId: null, homeworkBlockId: null, blockType: "long_answer", position: 0,
-      title: null, richTextContent: documentWithText("What would help you reconnect?"), url: null, description: null,
+      title: null, richTextContent: documentWithText("What would help you reconnect?"), url: null, description: null, questionChoices: [], isRequired: true,
     };
     const markup = render([block]);
 
@@ -113,7 +115,7 @@ describe("Homework Preview content", () => {
 
     const incomplete: StagedHomeworkBlock = {
       key: "empty", persistedId: null, homeworkBlockId: null, blockType: "rich_text", position: 0,
-      title: "Half-finished", richTextContent: { type: "doc", content: [{ type: "paragraph" }] }, url: null, description: null,
+      title: "Half-finished", richTextContent: { type: "doc", content: [{ type: "paragraph" }] }, url: null, description: null, questionChoices: [], isRequired: true,
     };
     const unknown = { ...incomplete, key: "future", blockType: "future_content", title: null };
     const markup = render([incomplete, unknown]);
@@ -122,5 +124,39 @@ describe("Homework Preview content", () => {
     expect(markup).not.toContain("Half-finished");
     expect(markup).toContain("Complete this block in the editor to preview it.");
     expect(markup).toContain("This content type cannot currently be previewed.");
+  });
+
+  it("previews Checkbox and Radio questions with prompt before ordered, disabled choices", () => {
+    const choices = [
+      { id: "choice-1", label: "First option" },
+      { id: "choice-2", label: "Second option" },
+    ];
+    const checkbox: StagedHomeworkBlock = {
+      key: "checkbox", persistedId: null, homeworkBlockId: null, blockType: "checkbox_question", position: 0,
+      title: null, richTextContent: documentWithText("Choose all that apply"), url: null, description: null, questionChoices: choices, isRequired: true,
+    };
+    const radio: StagedHomeworkBlock = { ...checkbox, key: "radio", blockType: "radio_question", position: 1, isRequired: false };
+    const markup = render([checkbox, radio]);
+
+    expect(markup.indexOf("Choose all that apply")).toBeLessThan(markup.indexOf("First option"));
+    expect(markup.indexOf("First option")).toBeLessThan(markup.indexOf("Second option"));
+    expect(markup).toContain('aria-labelledby="homework-preview-question-checkbox"');
+    expect(markup).toContain('aria-labelledby="homework-preview-question-radio"');
+    expect(markup).toMatch(/role="checkbox"[^>]*disabled=""/);
+    expect(markup).toMatch(/role="radio"[^>]*disabled=""/);
+    expect(markup.match(/data-slot="checkbox"/g)).toHaveLength(2);
+    expect(markup).toContain("Required");
+    expect(markup).toContain("Optional");
+    expect(markup).not.toContain("<form");
+    expect(markup).not.toContain("name=");
+  });
+
+  it("keeps incomplete selection questions in the author preview placeholder", () => {
+    const incomplete: StagedHomeworkBlock = {
+      key: "incomplete", persistedId: null, homeworkBlockId: null, blockType: "checkbox_question", position: 0,
+      title: null, richTextContent: documentWithText("Question"), url: null, description: null,
+      questionChoices: [{ id: "one", label: "Only one" }], isRequired: true,
+    };
+    expect(render([incomplete])).toContain("Incomplete content");
   });
 });

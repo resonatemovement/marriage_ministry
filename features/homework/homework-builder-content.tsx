@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FileText, GripVertical, Link2, MoreHorizontal, Plus, TextCursorInput } from "lucide-react";
+import { ArrowDown, ArrowUp, Circle, FileText, GripVertical, Link2, MoreHorizontal, Plus, Square, TextCursorInput, Trash2 } from "lucide-react";
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -15,6 +15,9 @@ import { RichTextSummary } from "@/components/shared/rich-text-summary";
 import { VideoLinkFields } from "@/components/shared/video-link-fields";
 import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
 import { RichTextBlockAuthoring } from "@/features/session-builder/rich-text-block-authoring";
+import { RichTextEditor } from "@/features/session-builder/rich-text-editor";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 import type { Json } from "@/types/database.generated";
 import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkMoveTarget } from "./homework-editor-model";
@@ -115,7 +118,27 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
           onTitleChange={(title) => patchEditing({ title: title || null })} onUrlChange={(url) => patchEditing({ url })}
           onDescriptionChange={(description) => patchEditing({ description: description || null })} urlError={urlMessage} />
         <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!videoLinkIsComplete({ title: editing.title ?? "", url: editing.url ?? "", description: editing.description ?? "" }, isValidHomeworkVideoUrl)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div></>
-          : <RichTextBlockAuthoring title={editing.blockType === "rich_text" ? editing.title : null} content={richText as Record<string, unknown>}
+          : editing.blockType === "checkbox_question" || editing.blockType === "radio_question" ? <>
+            <div className="grid gap-1.5 text-sm font-medium text-text-primary"><p>Question</p>
+              <RichTextEditor content={richText as Record<string, unknown>} onChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })} />
+            </div>
+            <fieldset className="grid gap-3">
+              <legend className="text-sm font-semibold text-text-primary">Answer Choices</legend>
+              {editing.questionChoices.map((choice, index) => <div key={choice.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-2">
+                {editing.blockType === "checkbox_question" ? <Square className="size-4 shrink-0 text-text-muted" aria-hidden="true" /> : <Circle className="size-4 shrink-0 text-text-muted" aria-hidden="true" />}
+                <Input aria-label={`Answer choice ${index + 1}`} value={choice.label} onChange={(event) => homeworkEditor.updateQuestionChoice(editing.key, choice.id, event.target.value)} />
+                <button type="button" aria-label={`Move answer choice ${index + 1} up`} onClick={() => homeworkEditor.reorderQuestionChoices(editing.key, choice.id, -1)} disabled={index === 0} className="grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40"><ArrowUp className="size-4" aria-hidden="true" /></button>
+                <button type="button" aria-label={`Move answer choice ${index + 1} down`} onClick={() => homeworkEditor.reorderQuestionChoices(editing.key, choice.id, 1)} disabled={index === editing.questionChoices.length - 1} className="grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40"><ArrowDown className="size-4" aria-hidden="true" /></button>
+                <button type="button" aria-label={`Remove answer choice ${index + 1}`} onClick={() => homeworkEditor.deleteQuestionChoice(editing.key, choice.id)} className="grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-muted hover:text-danger-strong"><Trash2 className="size-4" aria-hidden="true" /></button>
+              </div>)}
+              <button type="button" onClick={() => homeworkEditor.addQuestionChoice(editing.key)} className="inline-flex min-h-10 w-fit items-center gap-2 rounded-md px-3 text-sm font-semibold text-brand-primary hover:bg-surface-muted"><Plus className="size-4" aria-hidden="true" />Add Choice</button>
+            </fieldset>
+            <label htmlFor={`homework-required-${editing.key}`} className="flex min-h-10 items-center gap-2 text-sm font-medium text-text-primary">
+              <Checkbox id={`homework-required-${editing.key}`} checked={editing.isRequired} onCheckedChange={(checked) => patchEditing({ isRequired: checked === true })} />
+              Required question
+            </label>
+            <div className="flex justify-end"><button type="button" onClick={finishEditing} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90">Done</button></div>
+          </> : <RichTextBlockAuthoring title={editing.blockType === "rich_text" ? editing.title : null} content={richText as Record<string, unknown>}
             onTitleChange={editing.blockType === "rich_text" ? (title) => patchEditing({ title: title || null }) : undefined}
             onContentChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })}
             onDone={finishEditing} requireTitle={editing.blockType === "rich_text"} doneLabel="Done" />}
@@ -125,7 +148,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
         requestDelete={requestDelete}
         reorder={homeworkEditor.reorderBlocks} /> : null}
     </div>
-    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0"><SheetHeader className="border-b border-border px-6 py-5"><SheetTitle>Add Content</SheetTitle><SheetDescription>Choose the type of Homework content to add.</SheetDescription></SheetHeader><div className="grid gap-3 p-6">{HOMEWORK_AUTHORING_BLOCK_TYPES.map((type) => <button key={type} type="button" onClick={() => addBlock(type)} className="flex items-center gap-3 rounded-md border border-border p-4 text-left hover:bg-surface-muted">{type === "rich_text" ? <FileText className="size-5 text-brand-primary" aria-hidden="true" /> : type === "video_link" ? <Link2 className="size-5 text-brand-primary" aria-hidden="true" /> : <TextCursorInput className="size-5 text-brand-primary" aria-hidden="true" />}<span className="text-sm font-semibold text-text-primary">{blockTypeLabel(type)}</span></button>)}</div></SheetContent></Sheet>
+    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0"><SheetHeader className="border-b border-border px-6 py-5"><SheetTitle>Add Content</SheetTitle><SheetDescription>Choose the type of Homework content to add.</SheetDescription></SheetHeader><div className="grid gap-3 p-6">{HOMEWORK_AUTHORING_BLOCK_TYPES.map((type) => <button key={type} type="button" onClick={() => addBlock(type)} className="flex items-center gap-3 rounded-md border border-border p-4 text-left hover:bg-surface-muted">{blockTypeIcon(type)}<span className="grid gap-1"><span className="text-sm font-semibold text-text-primary">{blockTypeLabel(type)}</span>{type === "checkbox_question" ? <span className="text-xs text-text-muted">Allow multiple answers.</span> : type === "radio_question" ? <span className="text-xs text-text-muted">Allow one answer.</span> : null}</span></button>)}</div></SheetContent></Sheet>
     <AlertDialog open={deleteTarget !== null} onOpenChange={closeDeleteDialog}>
       <AlertDialogContent>
         <AlertDialogHeader><AlertDialogTitle>Delete this Homework block?</AlertDialogTitle><AlertDialogDescription>This removal is staged until you save the authoring changes.</AlertDialogDescription></AlertDialogHeader>
@@ -178,6 +201,7 @@ function HomeworkRow({ block, blocks, reorder, edit, duplicate, requestDelete }:
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(block.blockType)}</p>
       {block.blockType === "rich_text" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Rich Text block" />
         : block.blockType === "long_answer" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Long Answer prompt" />
+          : (block.blockType === "checkbox_question" || block.blockType === "radio_question") && isRichTextContent(block.richTextContent) ? <><RichTextSummary content={block.richTextContent} title={null} emptyText="Empty question" /><p className="mt-2 text-xs text-text-muted">{block.questionChoices.length} choices · {block.isRequired ? "Required" : "Optional"}</p></>
           : block.blockType === "video_link" ? <><h4 className="mt-1 truncate text-sm font-semibold text-text-primary">{block.title || "Untitled Video / Link"}</h4><div className="mt-3 grid gap-1 text-sm text-text-muted">{block.url ? <p className="break-all">{block.url}</p> : <p>Video / Link URL not set</p>}{block.description ? <p>{block.description}</p> : null}</div></>
             : <p className="mt-3 text-sm text-text-muted">This block is preserved and is not editable in this pass.</p>}
     </div>
@@ -195,7 +219,17 @@ function blockTypeLabel(blockType: string) {
   if (blockType === "rich_text") return "Rich Text";
   if (blockType === "video_link") return "Video / Link";
   if (blockType === "long_answer") return "Long Answer";
+  if (blockType === "checkbox_question") return "Checkbox Question";
+  if (blockType === "radio_question") return "Radio Question";
   return blockType;
+}
+
+function blockTypeIcon(blockType: string) {
+  if (blockType === "rich_text") return <FileText className="size-5 text-brand-primary" aria-hidden="true" />;
+  if (blockType === "video_link") return <Link2 className="size-5 text-brand-primary" aria-hidden="true" />;
+  if (blockType === "checkbox_question") return <Square className="size-5 text-brand-primary" aria-hidden="true" />;
+  if (blockType === "radio_question") return <Circle className="size-5 text-brand-primary" aria-hidden="true" />;
+  return <TextCursorInput className="size-5 text-brand-primary" aria-hidden="true" />;
 }
 
 function isRichTextContent(value: unknown): value is Record<string, unknown> {

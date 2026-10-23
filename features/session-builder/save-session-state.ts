@@ -59,6 +59,8 @@ const userFacingRpcErrors = new Set([
   "Homework block belongs to another Homework",
   "New Homework block requires a client ID",
   "Invalid or duplicate Homework client ID",
+  "Invalid Homework selection question",
+  "Complete each selection question before publishing",
 ]);
 
 function errorMessage(error: unknown) {
@@ -87,6 +89,9 @@ function serializeHomeworkBlocks(editor: HomeworkEditorState) {
     rich_text_content: block.richTextContent,
     url: block.url,
     description: block.description,
+    ...(block.blockType === "checkbox_question" || block.blockType === "radio_question"
+      ? { question_choices: block.questionChoices, is_required: block.isRequired }
+      : {}),
   }));
 }
 
@@ -101,15 +106,19 @@ function parseHomeworkResult(value: unknown): SavedHomeworkResult | null {
   for (const value of data.blocks) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const block = value as Record<string, unknown>;
+    const isSelectionQuestion = block.block_type === "checkbox_question" || block.block_type === "radio_question";
     if (typeof block.id !== "string" || typeof block.homework_block_id !== "string"
       || typeof block.block_type !== "string" || typeof block.position !== "number"
       || block.title !== null && typeof block.title !== "string"
       || block.url !== null && typeof block.url !== "string"
       || block.description !== null && typeof block.description !== "string"
-      || block.client_id !== undefined && block.client_id !== null && typeof block.client_id !== "string") return null;
+      || block.client_id !== undefined && block.client_id !== null && typeof block.client_id !== "string"
+      || isSelectionQuestion && (!Array.isArray(block.question_choices) || typeof block.is_required !== "boolean")) return null;
     blocks.push({ id: block.id, homeworkBlockId: block.homework_block_id, blockType: block.block_type,
       position: block.position, title: block.title as string | null, richTextContent: (block.rich_text_content ?? null) as HomeworkDraftBlock["richTextContent"],
       url: block.url as string | null, description: block.description as string | null,
+      questionChoices: (block.question_choices ?? null) as HomeworkDraftBlock["questionChoices"],
+      isRequired: typeof block.is_required === "boolean" ? block.is_required : true,
       clientId: block.client_id as string | null | undefined });
   }
   return { versionId: data.version_id as string | null, status: data.status as "draft" | "published" | null,

@@ -14,7 +14,11 @@ export type StagedHomeworkBlock = {
   richTextContent: Json | null;
   url: string | null;
   description: string | null;
+  questionChoices: HomeworkAnswerChoice[];
+  isRequired: boolean;
 };
+
+export type HomeworkAnswerChoice = { id: string; label: string };
 
 export type HomeworkEditorState = {
   versionId: string | null;
@@ -24,7 +28,16 @@ export type HomeworkEditorState = {
   editingKey: string | null;
 };
 
-export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer"] as const;
+export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question"] as const;
+
+function questionChoicesFromJson(value: Json | null): HomeworkAnswerChoice[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((choice): choice is { id: string; label: string } =>
+    Boolean(choice && typeof choice === "object" && !Array.isArray(choice)
+      && "id" in choice && typeof choice.id === "string"
+      && "label" in choice && typeof choice.label === "string"),
+  ).map(({ id, label }) => ({ id, label }));
+}
 
 export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDraftBlock[], versionStatus: "draft" | "published" = "draft"): HomeworkEditorState {
   const blocks = rows.map((row) => ({
@@ -37,6 +50,8 @@ export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDra
     richTextContent: row.richTextContent,
     url: row.url,
     description: row.description,
+    questionChoices: questionChoicesFromJson(row.questionChoices ?? null),
+    isRequired: row.isRequired ?? true,
   }));
   return { versionId, versionStatus, blocks, baseline: structuredClone(blocks), editingKey: null };
 }
@@ -57,6 +72,7 @@ export function initializeHomeworkEditorState(current: HomeworkEditorState, vers
 }
 
 export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number], position: number): StagedHomeworkBlock {
+  const isSelectionQuestion = blockType === "checkbox_question" || blockType === "radio_question";
   return {
     key: `local:${crypto.randomUUID()}`,
     persistedId: null,
@@ -67,6 +83,10 @@ export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPE
     richTextContent: blockType === "video_link" ? null : { type: "doc", content: [{ type: "paragraph" }] },
     url: blockType === "video_link" ? "" : null,
     description: null,
+    questionChoices: isSelectionQuestion
+      ? [{ id: crypto.randomUUID(), label: "" }, { id: crypto.randomUUID(), label: "" }]
+      : [],
+    isRequired: true,
   };
 }
 
@@ -102,6 +122,7 @@ export function duplicateHomeworkBlock(blocks: StagedHomeworkBlock[], key: strin
     homeworkBlockId: null,
     position: index + 1,
     richTextContent: source.richTextContent ? structuredClone(source.richTextContent) : null,
+    questionChoices: source.questionChoices.map((choice) => ({ ...choice, id: crypto.randomUUID() })),
   };
   return { blocks: normalizeHomeworkBlockPositions([...blocks.slice(0, index + 1), duplicate, ...blocks.slice(index + 1)]), editingKey: duplicate.key };
 }
@@ -115,6 +136,35 @@ export function deleteHomeworkBlock(blocks: StagedHomeworkBlock[], key: string, 
 
 export function updateHomeworkBlock(state: HomeworkEditorState, key: string, update: Partial<StagedHomeworkBlock>) {
   return { ...state, blocks: state.blocks.map((block) => block.key === key ? { ...block, ...update } : block) };
+}
+
+export function addHomeworkQuestionChoice(state: HomeworkEditorState, key: string) {
+  return updateHomeworkBlock(state, key, {
+    questionChoices: [...(state.blocks.find((block) => block.key === key)?.questionChoices ?? []), { id: crypto.randomUUID(), label: "" }],
+  });
+}
+
+export function updateHomeworkQuestionChoice(state: HomeworkEditorState, key: string, choiceId: string, label: string) {
+  return updateHomeworkBlock(state, key, {
+    questionChoices: (state.blocks.find((block) => block.key === key)?.questionChoices ?? []).map((choice) => choice.id === choiceId ? { ...choice, label } : choice),
+  });
+}
+
+export function deleteHomeworkQuestionChoice(state: HomeworkEditorState, key: string, choiceId: string) {
+  return updateHomeworkBlock(state, key, {
+    questionChoices: (state.blocks.find((block) => block.key === key)?.questionChoices ?? []).filter((choice) => choice.id !== choiceId),
+  });
+}
+
+export function reorderHomeworkQuestionChoices(state: HomeworkEditorState, key: string, choiceId: string, direction: -1 | 1) {
+  const block = state.blocks.find((item) => item.key === key);
+  if (!block) return state;
+  const index = block.questionChoices.findIndex((choice) => choice.id === choiceId);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= block.questionChoices.length) return state;
+  const questionChoices = [...block.questionChoices];
+  [questionChoices[index], questionChoices[target]] = [questionChoices[target]!, questionChoices[index]!];
+  return updateHomeworkBlock(state, key, { questionChoices });
 }
 
 export function finishHomeworkBlockEditing(state: HomeworkEditorState) {
@@ -131,6 +181,8 @@ function comparable(block: StagedHomeworkBlock) {
     richTextContent: block.richTextContent,
     url: block.url,
     description: block.description,
+    questionChoices: block.questionChoices,
+    isRequired: block.isRequired,
   };
 }
 

@@ -110,6 +110,41 @@ describe("atomic Session and Homework RPC adapter", () => {
     }));
   });
 
+  it("saves ordered selection-question choices and requiredness through the existing RPC payload", async () => {
+    const question = newHomeworkBlock("radio_question", 0);
+    const choices = [
+      { id: "a8c2aa25-80e6-4bd0-b4f9-9a4f04bd79d2", label: "Choice A" },
+      { id: "c79dc958-ea2a-47f2-9a4e-0c0e40dcc94c", label: "Choice B" },
+    ];
+    const staged = updateHomeworkBlock(addHomeworkBlock(emptyHomework, question), question.key, {
+      richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Select one" }] }] },
+      questionChoices: choices,
+      isRequired: false,
+    });
+    rpc.mockResolvedValue({ data: { session: null, homework: { version_id: "draft-id", status: "draft", version_number: null, blocks: [
+      { id: "snapshot", homework_block_id: "logical", client_id: question.key, block_type: "radio_question", position: 0,
+        title: null, rich_text_content: staged.blocks[0]!.richTextContent, url: null, description: null,
+        question_choices: choices, is_required: false },
+    ] } }, error: null });
+
+    const result = await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
+
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+      target_homework_blocks: [{ client_id: question.key, block_type: "radio_question", title: null,
+        rich_text_content: staged.blocks[0]!.richTextContent, url: null, description: null,
+        question_choices: choices, is_required: false }],
+    }));
+    expect(result).toMatchObject({ homework: { blocks: [{ questionChoices: choices, isRequired: false, clientId: question.key }] } });
+  });
+
+  it("surfaces the database's authoritative selection-question publish validation", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "Complete each selection question before publishing" } });
+    const result = await saveSessionBuilderState(session, emptyHomework, {
+      intent: "publish_changes", saveSession: false, saveHomework: true, publishHomework: true,
+    });
+    expect(result).toEqual({ error: "Complete each selection question before publishing", errorKind: "validation" });
+  });
+
   it("publishes a saved Homework Draft with unsaved Session changes in one call", async () => {
     rpc.mockResolvedValue({ data: {
       session: { session_id: "session-id", status: "published", title: "Updated title", is_final: false, blocks: [] },

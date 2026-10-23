@@ -26,14 +26,17 @@ describe("Homework version initialization", () => {
         { id: "vb-rich", homework_block_id: "block-rich", block_type: "rich_text", position: 0, title: "Reading", rich_text_content: { type: "doc", content: [] }, url: null, description: null },
         { id: "vb-video", homework_block_id: "block-video", block_type: "video_link", position: 1, title: "Video", rich_text_content: null, url: "https://example.com/video", description: "Watch" },
         { id: "vb-long", homework_block_id: "block-long", block_type: "long_answer", position: 2, title: "Question", rich_text_content: { type: "doc", content: [] }, url: null, description: null },
+        { id: "vb-radio", homework_block_id: "block-radio", block_type: "radio_question", position: 3, title: null, rich_text_content: { type: "doc", content: [] }, url: null, description: null, question_choices: [{ id: "c1", label: "One" }, { id: "c2", label: "Two" }], is_required: false },
       ], error: null });
     await expect(initializeHomeworkDraftForSession("session-id", "published")).resolves.toMatchObject({
       draft: { id: "draft-id", status: "draft", basedOnVersionNumber: 1, blocks: [
         { id: "vb-rich", homeworkBlockId: "block-rich", blockType: "rich_text" },
         { id: "vb-video", homeworkBlockId: "block-video", blockType: "video_link" },
         { id: "vb-long", homeworkBlockId: "block-long", blockType: "long_answer" },
+        { id: "vb-radio", homeworkBlockId: "block-radio", blockType: "radio_question", questionChoices: [{ id: "c1", label: "One" }, { id: "c2", label: "Two" }], isRequired: false },
       ] },
     });
+    expect(select).toHaveBeenCalledWith("id,homework_block_id,block_type,position,title,rich_text_content,url,description,question_choices,is_required");
     expect(rpc).not.toHaveBeenCalled();
   });
 

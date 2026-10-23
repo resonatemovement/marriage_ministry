@@ -20,6 +20,8 @@ export type HomeworkDraftBlock = {
   richTextContent: Json | null;
   url: string | null;
   description: string | null;
+  questionChoices?: Json | null;
+  isRequired?: boolean;
   clientId?: string | null;
 };
 
@@ -66,7 +68,7 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
 
     const [{ data: blocks, error: blocksError }, sourceResult] = await Promise.all([
       supabase.from("homework_version_blocks")
-        .select("id,homework_block_id,block_type,position,title,rich_text_content,url,description")
+        .select("id,homework_block_id,block_type,position,title,rich_text_content,url,description,question_choices,is_required")
         .eq("homework_version_id", selectedVersion.id)
         .order("position", { ascending: true }),
       selectedVersion.based_on_version_id
@@ -90,6 +92,8 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
           richTextContent: block.rich_text_content,
           url: block.url,
           description: block.description,
+          questionChoices: block.question_choices,
+          isRequired: block.is_required,
         })),
       },
     };

@@ -33,13 +33,15 @@ describe("Homework Builder shell", () => {
     expect(markup).not.toContain("border-t border-border");
   });
 
-  it("renders loaded Rich Text, Video / Link, and Long Answer blocks", () => {
+  it("renders loaded legacy and selection-question blocks with their saved authoring summary", () => {
     const loadedDraft = {
       ...emptyDraft,
       blocks: [
         { id: "vb-rich", homeworkBlockId: "block-rich", blockType: "rich_text", position: 0, title: "Reading", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Persisted reading" }] }] }, url: null, description: null },
         { id: "vb-video", homeworkBlockId: "block-video", blockType: "video_link", position: 1, title: "Watch", richTextContent: null, url: "https://example.com/video", description: "Watch this first" },
         { id: "vb-long", homeworkBlockId: "block-long", blockType: "long_answer", position: 2, title: "Question", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Explain your answer" }] }] }, url: null, description: null },
+        { id: "vb-checkbox", homeworkBlockId: "block-checkbox", blockType: "checkbox_question", position: 3, title: null, richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Select all" }] }] }, url: null, description: null, questionChoices: [{ id: "c1", label: "Choice A" }, { id: "c2", label: "Choice B" }], isRequired: true },
+        { id: "vb-radio", homeworkBlockId: "block-radio", blockType: "radio_question", position: 4, title: null, richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Select one" }] }] }, url: null, description: null, questionChoices: [{ id: "c3", label: "Choice C" }, { id: "c4", label: "Choice D" }], isRequired: false },
       ],
     };
     const markup = renderToStaticMarkup(createElement(HomeworkEditorProvider, { initialDraft: loadedDraft }, createElement(HomeworkBuilderContent, { result: { draft: loadedDraft } })));
@@ -48,12 +50,18 @@ describe("Homework Builder shell", () => {
     expect(markup).toContain("Watch this first");
     expect(markup).toContain("Long Answer");
     expect(markup).toContain("Explain your answer");
+    expect(markup).toContain("Checkbox Question");
+    expect(markup).toContain("Select all");
+    expect(markup).toContain("2 choices · Required");
+    expect(markup).toContain("Radio Question");
+    expect(markup).toContain("Select one");
+    expect(markup).toContain("2 choices · Optional");
     expect(markup).toContain("line-clamp-2");
     expect(markup).not.toContain("This block is preserved and is not editable in this pass.");
     expect(markup).toMatch(/Rich Text<\/p><div><h4/);
-    expect(markup.match(/aria-label="Reorder /g)).toHaveLength(3);
-    expect(markup.match(/aria-label="Actions for /g)).toHaveLength(3);
-    expect(markup.match(/>Edit<\/button>/g)).toHaveLength(3);
+    expect(markup.match(/aria-label="Reorder /g)).toHaveLength(5);
+    expect(markup.match(/aria-label="Actions for /g)).toHaveLength(5);
+    expect(markup.match(/>Edit<\/button>/g)).toHaveLength(5);
   });
 
   it("preserves unsupported block types without exposing editing, duplicate, delete, or reorder actions", () => {

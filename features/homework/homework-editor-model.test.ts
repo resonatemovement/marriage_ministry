@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addHomeworkBlock, deleteHomeworkBlock, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, restoreHomeworkEditorState, updateHomeworkBlock } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
 
 describe("staged Homework Rich Text model", () => {
   it("loads persisted block IDs and retains unsupported future block types", () => {
@@ -13,7 +13,8 @@ describe("staged Homework Rich Text model", () => {
     ]);
     expect(state.blocks).toEqual(state.baseline);
     expect(homeworkEditorIsDirty(state)).toBe(false);
-    expect(HOMEWORK_AUTHORING_BLOCK_TYPES).toEqual(["rich_text", "video_link", "long_answer"]);
+    expect(HOMEWORK_AUTHORING_BLOCK_TYPES).toEqual(["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question"]);
+    expect(state.blocks[0]?.isRequired).toBe(true);
   });
 
   it.each(HOMEWORK_AUTHORING_BLOCK_TYPES)("adds a local %s block with the database-compatible shape", (type) => {
@@ -27,8 +28,68 @@ describe("staged Homework Rich Text model", () => {
     expect(staged.blocks[0]?.blockType).toBe(type);
     expect(staged.blocks[0]?.richTextContent !== null).toBe(type !== "video_link");
     expect(staged.blocks[0]?.url).toBe(type === "video_link" ? "" : null);
+    if (type === "checkbox_question" || type === "radio_question") {
+      expect(staged.blocks[0]?.questionChoices).toHaveLength(2);
+      expect(staged.blocks[0]?.questionChoices.every(({ label }) => label === "")).toBe(true);
+      expect(new Set(staged.blocks[0]?.questionChoices.map(({ id }) => id)).size).toBe(2);
+      expect(staged.blocks[0]?.isRequired).toBe(true);
+    }
     expect(staged.editingKey).toBe(staged.blocks[0]?.key);
     expect(homeworkEditorIsDirty(staged)).toBe(true);
+  });
+
+  it("manages choice labels/order immutably with stable IDs and tracks required changes as dirty", () => {
+    const initial = homeworkEditorStateFromRows("draft-id", []);
+    const created = newHomeworkBlock("checkbox_question", 0);
+    const baseline = addHomeworkBlock(initial, created);
+    const questionText = updateHomeworkBlock(baseline, created.key, { richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Question text" }] }] } });
+    const originalIds = baseline.blocks[0]!.questionChoices.map(({ id }) => id);
+    const withChoice = addHomeworkQuestionChoice(questionText, created.key);
+    const thirdId = withChoice.blocks[0]!.questionChoices[2]!.id;
+    expect(thirdId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(withChoice.blocks[0]!.questionChoices.slice(0, 2).map(({ id }) => id)).toEqual(originalIds);
+
+    const labeled = updateHomeworkQuestionChoice(withChoice, created.key, originalIds[0]!, "First answer");
+    expect(labeled.blocks[0]!.questionChoices[0]).toEqual({ id: originalIds[0], label: "First answer" });
+    const reordered = reorderHomeworkQuestionChoices(labeled, created.key, originalIds[0]!, 1);
+    expect(reordered.blocks[0]!.questionChoices.map(({ id }) => id)).toEqual([originalIds[1], originalIds[0], thirdId]);
+    const removed = deleteHomeworkQuestionChoice(reordered, created.key, thirdId);
+    expect(removed.blocks[0]!.questionChoices.map(({ id }) => id)).toEqual([originalIds[1], originalIds[0]]);
+    expect(homeworkEditorIsDirty(removed)).toBe(true);
+    const optional = updateHomeworkBlock(removed, created.key, { isRequired: false });
+    expect(optional.blocks[0]!.isRequired).toBe(false);
+    expect(homeworkEditorIsDirty(optional)).toBe(true);
+    expect(baseline.blocks[0]!.questionChoices.map(({ id }) => id)).toEqual(originalIds);
+    expect(baseline.blocks[0]!.questionChoices.every(({ label }) => label === "")).toBe(true);
+    expect(questionText.blocks[0]!.richTextContent).toMatchObject({ content: [{ content: [{ text: "Question text" }] }] });
+  });
+
+  it("duplicates selection-question copy and order with new choice IDs while leaving the source untouched", () => {
+    const source = newHomeworkBlock("checkbox_question", 0);
+    const state = addHomeworkBlock(homeworkEditorStateFromRows("draft-id", []), source);
+    const choices = source.questionChoices.map((choice, index) => ({ ...choice, label: `Choice ${index + 1}` }));
+    const prepared = updateHomeworkBlock(state, source.key, { richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Choose all" }] }] }, questionChoices: choices, isRequired: false });
+    const duplicated = duplicateHomeworkBlock(prepared.blocks, source.key);
+    const original = duplicated.blocks[0]!;
+    const copy = duplicated.blocks[1]!;
+
+    expect(copy).toMatchObject({ blockType: "checkbox_question", isRequired: false, richTextContent: original.richTextContent });
+    expect(copy.questionChoices.map(({ label }) => label)).toEqual(["Choice 1", "Choice 2"]);
+    expect(copy.questionChoices.map(({ id }) => id)).not.toEqual(choices.map(({ id }) => id));
+    expect(new Set(copy.questionChoices.map(({ id }) => id)).size).toBe(2);
+    expect(original.questionChoices).toEqual(choices);
+  });
+
+  it.each(["checkbox_question", "radio_question"] as const)("rehydrates saved %s choices and requiredness without marking the editor dirty", (blockType) => {
+    const choices = [{ id: "a8c2aa25-80e6-4bd0-b4f9-9a4f04bd79d2", label: "Choice A" }, { id: "c79dc958-ea2a-47f2-9a4e-0c0e40dcc94c", label: "Choice B" }];
+    const saved = homeworkEditorStateFromRows("draft-id", [{ id: "snapshot", homeworkBlockId: "logical", blockType, position: 0,
+      title: null, richTextContent: { type: "doc", content: [] }, url: null, description: null, questionChoices: choices, isRequired: false }]);
+    expect(saved.blocks[0]).toMatchObject({ questionChoices: choices, isRequired: false });
+    expect(homeworkEditorIsDirty(saved)).toBe(false);
+    const next = persistHomeworkEditorState(saved, [{ id: "snapshot", homeworkBlockId: "logical", blockType, position: 0,
+      title: null, richTextContent: { type: "doc", content: [] }, url: null, description: null, questionChoices: choices, isRequired: false }], "draft-id", "draft");
+    expect(next.blocks[0]).toMatchObject({ questionChoices: choices, isRequired: false });
+    expect(homeworkEditorIsDirty(next)).toBe(false);
   });
 
   it("stages edits locally, allows one active editor, and Done exits editing without clearing dirty state", () => {
