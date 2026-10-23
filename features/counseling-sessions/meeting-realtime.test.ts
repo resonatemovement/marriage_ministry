@@ -125,6 +125,18 @@ describe("Meeting Realtime invalidation", () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
+  it("refreshes after recovering from an initial timeout", () => {
+    const test = harness();
+    const refresh = vi.fn();
+    subscribeToCaseMeetings({ caseId: "case-a", client: test.client, refresh });
+
+    test.status("TIMED_OUT");
+    test.status("SUBSCRIBED");
+    vi.runAllTimers();
+
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
   it("removes the channel and cancels pending work on unmount", () => {
     const test = harness();
     const refresh = vi.fn();

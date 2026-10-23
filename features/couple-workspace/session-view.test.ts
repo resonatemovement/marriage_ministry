@@ -7,15 +7,17 @@ import { CoupleSessionView } from "./session-view";
 import type { CoupleSessionViewData } from "./queries";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/features/counseling-sessions/case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
 
 const session: CoupleSessionViewData = {
-  id: "case-session-1", number: 2, title: "Testing", status: "active", caseCompleted: false, homeworkRequired: false, homework: null,
+  id: "case-session-1", caseId: "case-1", number: 2, title: "Testing", status: "active", caseCompleted: false, homeworkRequired: false, homework: null,
   materials: [1, 2, 3].map((number) => ({ key: `page-${number}`, persistedId: `page-${number}`, blockType: "rich_text" as const, title: `Welcome ${number}`, richTextContent: { type: "doc", content: [] }, url: "", description: "", resourceId: null, resourceVersionId: null, resourceCategory: null, resource: null })),
 };
 
 describe("Couple Session View", () => {
   it("renders released Session breadcrumbs, two tabs, and a no-Homework empty state", () => {
     const html = renderToStaticMarkup(createElement(CoupleSessionView, { session, initialTab: "homework" }));
+    expect(html).toContain('data-lifecycle-case="case-1"');
     expect(html).toContain('href="/workspace">Workspace</a>');
     expect(html).toContain('aria-label="Breadcrumb"');
     expect(html).toMatch(/aria-current="page" class="[^"]+">Session 2<\/span>/);

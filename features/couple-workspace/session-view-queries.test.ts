@@ -37,7 +37,7 @@ describe("Couple Session view data boundary", () => {
 
   it("loads only a released snapshot belonging to the signed-in Couple's case", async () => {
     const result = await getCoupleSessionViewData("partner-a", "case-session-1");
-    expect(result).toMatchObject({ id: "case-session-1", number: 2, title: "Pinned title", caseCompleted: false, homeworkRequired: false, materials: [{ title: "Released page" }] });
+    expect(result).toMatchObject({ id: "case-session-1", caseId: "couple-case", number: 2, title: "Pinned title", caseCompleted: false, homeworkRequired: false, materials: [{ title: "Released page" }] });
     expect(mock.queries[0]).toMatchObject({ table: "case_sessions", filters: [["id", "case-session-1"], ["counseling_case_id", "couple-case"], ["status", ["active", "completed"]]] });
   });
 

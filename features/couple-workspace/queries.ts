@@ -32,6 +32,7 @@ export type Meeting = { startsAt: string; location: string };
 
 export type CoupleSessionViewData = {
   id: string;
+  caseId: string;
   number: number;
   title: string;
   status: "active" | "completed";
@@ -190,6 +191,7 @@ export async function getCoupleSessionViewData(authenticatedProfileId: string, c
   if (caseError) throw new Error("Session is unavailable.");
   return {
     id: string(sessionRow, "id")!,
+    caseId: string(sessionRow, "counseling_case_id")!,
     number: Number(sessionRow.template_sequence_number),
     title: string(sessionRow, "title")!,
     status,

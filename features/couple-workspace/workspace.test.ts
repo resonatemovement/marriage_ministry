@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => createElement("img", props) }));
 vi.mock("@/features/counseling-sessions/meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
+vi.mock("@/features/counseling-sessions/case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
 
 import { CoupleWorkspace } from "./workspace";
 import { homeworkProgressBadgeClass } from "@/features/homework/presentation";
@@ -75,6 +76,7 @@ describe("CoupleWorkspace", () => {
     expect(html).toContain('href="/workspace/sessions/case-session-1?tab=homework"');
     expect(html).toContain("Next Meeting");
     expect(html).toContain('data-meeting-case="case-1"');
+    expect(html).toContain('data-lifecycle-case="case-1"');
     expect(html).toContain(formattedMeeting(data.nextMeeting.startsAt));
     expect(html).toContain("Counseling Progress");
     expect(html).toContain('class="grid items-stretch gap-4 sm:grid-cols-2"');

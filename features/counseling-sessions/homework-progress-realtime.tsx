@@ -7,6 +7,12 @@ import type { RealtimeChannel, RealtimePostgresUpdatePayload } from "@supabase/s
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.generated";
 
+import {
+  createRealtimeStatusHandler,
+  startFeatureRealtimeSubscription,
+  startAuthReadyRealtimeSubscription,
+} from "./auth-ready-realtime";
+
 type HomeworkProgressRow = Database["public"]["Tables"]["homework_participant_progress"]["Row"];
 type HomeworkRealtimeClient = {
   channel(name: string): RealtimeChannel;
@@ -27,8 +33,6 @@ export function subscribeToHomeworkProgress({
   refreshDelayMs?: number;
 }) {
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  let connected = false;
-  let disconnectedAfterConnection = false;
   let disposed = false;
 
   const scheduleRefresh = () => {
@@ -39,6 +43,7 @@ export function subscribeToHomeworkProgress({
     }, refreshDelayMs);
   };
 
+  const handleStatus = createRealtimeStatusHandler({ feature: "homework_progress", scheduleRefresh });
   const channel = client
     .channel(`homework-progress:${assignmentRevisionId}`)
     .on<HomeworkProgressRow>(
@@ -53,15 +58,9 @@ export function subscribeToHomeworkProgress({
         if (payload.new.assignment_revision_id === assignmentRevisionId) scheduleRefresh();
       },
     )
-    .subscribe((status) => {
+    .subscribe((status, error) => {
       if (disposed) return;
-      if (status === "SUBSCRIBED") {
-        if (connected && disconnectedAfterConnection) scheduleRefresh();
-        connected = true;
-        disconnectedAfterConnection = false;
-        return;
-      }
-      if (connected) disconnectedAfterConnection = true;
+      handleStatus(status, error);
     });
 
   return () => {
@@ -75,11 +74,22 @@ export function subscribeToHomeworkProgress({
 export function HomeworkProgressRealtime({ assignmentRevisionId }: { assignmentRevisionId: string }) {
   const router = useRouter();
 
-  useEffect(() => subscribeToHomeworkProgress({
-    assignmentRevisionId,
-    client: createBrowserSupabaseClient(),
-    refresh: () => router.refresh(),
-  }), [assignmentRevisionId, router]);
+  useEffect(() => {
+    return startFeatureRealtimeSubscription(() => {
+      const client = createBrowserSupabaseClient();
+      const subscription = startAuthReadyRealtimeSubscription({
+        client,
+        feature: "homework_progress",
+        subscribe: () => subscribeToHomeworkProgress({
+          assignmentRevisionId,
+          client,
+          refresh: () => router.refresh(),
+        }),
+      });
+
+      return subscription.dispose;
+    });
+  }, [assignmentRevisionId, router]);
 
   return null;
 }

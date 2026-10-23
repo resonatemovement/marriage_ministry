@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CaseLifecycleRealtime } from "@/features/counseling-sessions/case-lifecycle-realtime";
 import { homeworkProgressBadgeClass, homeworkProgressLabel, participantHomeworkTitle } from "@/features/homework/presentation";
 import { SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
 import { ParticipantHomeworkContent } from "./homework-participant";
@@ -26,6 +27,7 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
     : completed ? "bg-surface-muted text-text-muted" : "bg-info-soft text-info-strong";
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
+    <CaseLifecycleRealtime caseId={session.caseId} />
     <CoupleBreadcrumb parent="Workspace" current={`Session ${session.number}`} sessionsHref={session.caseCompleted ? "/workspace/sessions" : undefined} />
     <header className="mb-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{eyebrow}</p>

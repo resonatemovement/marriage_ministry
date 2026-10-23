@@ -93,14 +93,10 @@ describe("Counselor Homework progress Realtime invalidation", () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
-  it("refreshes once after a connected channel recovers without refreshing on initial subscribe", () => {
+  it("refreshes once after initial failures or a connected channel recovers", () => {
     const test = harness();
     const refresh = vi.fn();
     subscribeToHomeworkProgress({ assignmentRevisionId: "revision-a", client: test.client, refresh });
-
-    test.status("SUBSCRIBED");
-    vi.runAllTimers();
-    expect(refresh).not.toHaveBeenCalled();
 
     test.status("CHANNEL_ERROR");
     test.status("TIMED_OUT");
@@ -110,6 +106,11 @@ describe("Counselor Homework progress Realtime invalidation", () => {
     test.status("SUBSCRIBED");
     vi.runAllTimers();
     expect(refresh).toHaveBeenCalledOnce();
+
+    test.status("CLOSED");
+    test.status("SUBSCRIBED");
+    vi.runAllTimers();
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 
   it("removes the channel and cancels a pending refresh on cleanup", () => {

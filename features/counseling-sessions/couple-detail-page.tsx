@@ -17,6 +17,7 @@ import { MeetingNotificationStatus, type MeetingNotificationDelivery } from "./m
 import { formatCounselingMeetingDateTime } from "./meeting-date-time";
 import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 import { MeetingRealtime } from "./meeting-realtime";
+import { CaseLifecycleRealtime } from "./case-lifecycle-realtime";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
   return <GroupedAvatars people={couplePhotoSlots(card.partners)} label={`${card.coupleName} partner photos`} />;
@@ -57,6 +58,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <MeetingRealtime caseId={card.caseId} />
+    <CaseLifecycleRealtime caseId={card.caseId} />
     {activeHomeworkRevisionId ? <HomeworkProgressRealtime assignmentRevisionId={activeHomeworkRevisionId} /> : null}
     <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href="/workspace">Sessions</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{card.coupleName}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">

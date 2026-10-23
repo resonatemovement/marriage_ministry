@@ -11,6 +11,12 @@ import type {
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.generated";
 
+import {
+  createRealtimeStatusHandler,
+  startFeatureRealtimeSubscription,
+  startAuthReadyRealtimeSubscription,
+} from "./auth-ready-realtime";
+
 type MeetingRow = Database["public"]["Tables"]["case_session_meetings"]["Row"];
 type MeetingRealtimeClient = {
   channel(name: string): RealtimeChannel;
@@ -31,8 +37,6 @@ export function subscribeToCaseMeetings({
   refreshDelayMs?: number;
 }) {
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  let connected = false;
-  let disconnectedAfterConnection = false;
   let disposed = false;
 
   const scheduleRefresh = () => {
@@ -52,20 +56,15 @@ export function subscribeToCaseMeetings({
     table: "case_session_meetings",
     filter: `counseling_case_id=eq.${caseId}`,
   } as const;
+  const handleStatus = createRealtimeStatusHandler({ feature: "meetings", scheduleRefresh });
 
   const channel = client
     .channel(`case-meetings:${caseId}`)
     .on<MeetingRow>("postgres_changes", { ...filter, event: "INSERT" }, refreshForCase)
     .on<MeetingRow>("postgres_changes", { ...filter, event: "UPDATE" }, refreshForCase)
-    .subscribe((status) => {
+    .subscribe((status, error) => {
       if (disposed) return;
-      if (status === "SUBSCRIBED") {
-        if (connected && disconnectedAfterConnection) scheduleRefresh();
-        connected = true;
-        disconnectedAfterConnection = false;
-        return;
-      }
-      if (connected) disconnectedAfterConnection = true;
+      handleStatus(status, error);
     });
 
   return () => {
@@ -79,11 +78,22 @@ export function subscribeToCaseMeetings({
 export function MeetingRealtime({ caseId }: { caseId: string }) {
   const router = useRouter();
 
-  useEffect(() => subscribeToCaseMeetings({
-    caseId,
-    client: createBrowserSupabaseClient(),
-    refresh: () => router.refresh(),
-  }), [caseId, router]);
+  useEffect(() => {
+    return startFeatureRealtimeSubscription(() => {
+      const client = createBrowserSupabaseClient();
+      const subscription = startAuthReadyRealtimeSubscription({
+        client,
+        feature: "meetings",
+        subscribe: () => subscribeToCaseMeetings({
+          caseId,
+          client,
+          refresh: () => router.refresh(),
+        }),
+      });
+
+      return subscription.dispose;
+    });
+  }, [caseId, router]);
 
   return null;
 }
