@@ -61,12 +61,32 @@ describe("Couple Session view data boundary", () => {
     mock.session = { ...mock.session, homework_assignment_revision_id: "pinned-revision" };
     mock.results.homework_assignment_revisions = { id: "pinned-revision", homework_version_id: "pinned-homework-version" };
     mock.results.homework_participant_progress = { id: "own-progress", status: "in_progress" };
-    mock.results.homework_version_blocks = [{ id: "answer-block", position: 0, block_type: "long_answer", title: "Your answer", rich_text_content: { type: "doc", content: [] } }];
-    mock.results.homework_answers = [{ homework_version_block_id: "answer-block", answer_text: "Private answer" }];
+    mock.results.homework_version_blocks = [{ id: "answer-block", position: 0, block_type: "long_answer", title: "Your answer", rich_text_content: { type: "doc", content: [] }, question_choices: null, is_required: true }];
+    mock.results.homework_answers = [{ homework_version_block_id: "answer-block", answer_text: "Private answer", answer_value: null }];
     const result = await getCoupleSessionViewData("partner-a", "case-session-1");
     expect(result?.homework).toMatchObject({ status: "in_progress", progressId: "own-progress", blocks: [{ answer: "Private answer" }] });
     expect(mock.queries.find(({ table }) => table === "homework_participant_progress")?.filters).toContainEqual(["profile_id", "partner-a"]);
     expect(mock.queries.find(({ table }) => table === "homework_answers")?.filters).toContainEqual(["participant_progress_id", "own-progress"]);
+  });
+
+  it("restores only valid choice IDs from the exact pinned Homework version", async () => {
+    mock.session = { ...mock.session, homework_assignment_revision_id: "pinned-revision" };
+    mock.results.homework_assignment_revisions = { id: "pinned-revision", homework_version_id: "pinned-homework-version" };
+    mock.results.homework_participant_progress = { id: "own-progress", status: "in_progress" };
+    mock.results.homework_version_blocks = [
+      { id: "checkbox", position: 0, block_type: "checkbox_question", rich_text_content: { type: "doc", content: [] }, question_choices: [{ id: "one", label: "First" }, { id: "two", label: "Second" }], is_required: true },
+      { id: "radio", position: 1, block_type: "radio_question", rich_text_content: { type: "doc", content: [] }, question_choices: [{ id: "three", label: "Third" }, { id: "four", label: "Fourth" }], is_required: false },
+    ];
+    mock.results.homework_answers = [
+      { homework_version_block_id: "checkbox", answer_text: "", answer_value: ["two", "stale", "two"] },
+      { homework_version_block_id: "radio", answer_text: "", answer_value: "four" },
+    ];
+    const result = await getCoupleSessionViewData("partner-a", "case-session-1");
+    expect(result?.homework?.blocks).toMatchObject([
+      { id: "checkbox", answer: ["two"], questionChoices: [{ id: "one", label: "First" }, { id: "two", label: "Second" }], isRequired: true },
+      { id: "radio", answer: "four", questionChoices: [{ id: "three", label: "Third" }, { id: "four", label: "Fourth" }], isRequired: false },
+    ]);
+    expect(mock.queries.find(({ table }) => table === "homework_participant_progress")?.filters).toContainEqual(["profile_id", "partner-a"]);
   });
 
   it("loads resource metadata and signed access from the snapshot's pinned version", async () => {

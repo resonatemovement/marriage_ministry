@@ -1,6 +1,7 @@
 import type { Json } from "@/types/database.generated";
 
 import type { HomeworkDraftBlock } from "./queries";
+import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "./selection-question";
 import { reorderedBlockIds } from "@/features/session-builder/model";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 
@@ -18,7 +19,7 @@ export type StagedHomeworkBlock = {
   isRequired: boolean;
 };
 
-export type HomeworkAnswerChoice = { id: string; label: string };
+export type { HomeworkAnswerChoice } from "./selection-question";
 
 export type HomeworkEditorState = {
   versionId: string | null;
@@ -29,15 +30,6 @@ export type HomeworkEditorState = {
 };
 
 export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question"] as const;
-
-function questionChoicesFromJson(value: Json | null): HomeworkAnswerChoice[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((choice): choice is { id: string; label: string } =>
-    Boolean(choice && typeof choice === "object" && !Array.isArray(choice)
-      && "id" in choice && typeof choice.id === "string"
-      && "label" in choice && typeof choice.label === "string"),
-  ).map(({ id, label }) => ({ id, label }));
-}
 
 export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDraftBlock[], versionStatus: "draft" | "published" = "draft"): HomeworkEditorState {
   const blocks = rows.map((row) => ({
@@ -50,7 +42,7 @@ export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDra
     richTextContent: row.richTextContent,
     url: row.url,
     description: row.description,
-    questionChoices: questionChoicesFromJson(row.questionChoices ?? null),
+    questionChoices: homeworkAnswerChoicesFromJson(row.questionChoices ?? null),
     isRequired: row.isRequired ?? true,
   }));
   return { versionId, versionStatus, blocks, baseline: structuredClone(blocks), editingKey: null };

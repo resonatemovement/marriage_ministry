@@ -122,7 +122,7 @@ describe("Couple Session View", () => {
       status: "completed" as const,
       homeworkRequired: true,
       homework: { title: "Testing Homework", status: "submitted" as const, progressId: "own-progress", blocks: [
-        { id: "answer", type: "long_answer", title: null, content: { type: "doc", content: [] }, url: null, description: null, answer: "My submitted answer" },
+        { id: "answer", type: "long_answer", title: null, content: { type: "doc", content: [] }, url: null, description: null, answer: "My submitted answer", questionChoices: [], isRequired: true },
       ] },
     };
     const html = renderToStaticMarkup(createElement(CoupleSessionView, { session: completedSession, initialTab: "homework" }));

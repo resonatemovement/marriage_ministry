@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { HomeworkResponseValue } from "@/features/homework/selection-question";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type ParticipantHomeworkIntent = "save" | "submit";
 type ParticipantHomeworkActionInput = {
   progressId: string;
-  answers: Record<string, string>;
+  answers: Record<string, HomeworkResponseValue>;
   intent: ParticipantHomeworkIntent;
 };
 type ParticipantHomeworkActionResult = {
@@ -20,16 +21,14 @@ type ParticipantHomeworkActionResult = {
 export async function persistParticipantHomework(input: ParticipantHomeworkActionInput): Promise<ParticipantHomeworkActionResult> {
   const progressId = input.progressId.trim();
   const answersAreValid = input.answers && typeof input.answers === "object"
-    && Object.entries(input.answers).every(([blockId, answer]) => blockId.trim() && typeof answer === "string");
+    && !Array.isArray(input.answers)
+    && Object.entries(input.answers).every(([blockId, answer]) => blockId.trim()
+      && (typeof answer === "string"
+        || (Array.isArray(answer)
+          && answer.every((choiceId) => typeof choiceId === "string" && choiceId.length > 0)
+          && new Set(answer).size === answer.length)));
   if (!progressId || !answersAreValid || !["save", "submit"].includes(input.intent)) {
     return { success: false, error: "Homework assignment is unavailable.", fieldErrors: {}, status: null };
-  }
-
-  const fieldErrors = input.intent === "submit"
-    ? Object.fromEntries(Object.entries(input.answers).filter(([, answer]) => !answer.trim()).map(([blockId]) => [blockId, "A response is required."]))
-    : {};
-  if (Object.keys(fieldErrors).length > 0) {
-    return { success: false, error: "Please complete each required response before submitting.", fieldErrors, status: null };
   }
 
   const supabase = await createServerSupabaseClient();
@@ -47,6 +46,9 @@ export async function persistParticipantHomework(input: ParticipantHomeworkActio
       fieldErrors: {},
       status: null,
     };
+  }
+  if (!["not_started", "in_progress", "submitted", "reviewed"].includes(data)) {
+    return { success: false, error: input.intent === "save" ? "Your draft could not be saved." : "Homework could not be submitted.", fieldErrors: {}, status: null };
   }
   revalidatePath("/workspace/homework");
   revalidatePath("/workspace/sessions/[caseSessionId]", "page");

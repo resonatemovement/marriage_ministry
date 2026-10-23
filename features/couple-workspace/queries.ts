@@ -4,11 +4,13 @@ import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { coupleDisplayName } from "@/features/people/types";
 import type { StagedMaterialBlock } from "@/features/session-builder/editor-model";
 import { participantHomeworkTitle, type HomeworkProgressStatus } from "@/features/homework/presentation";
+import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "@/features/homework/selection-question";
 import { getCurrentCoupleCounselor } from "@/features/counseling-contacts/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { signedResourceAccess } from "@/features/resource-library/server";
 import type { ResourceCategory } from "@/features/resource-library/policy";
-import type { ParticipantHomework } from "./homework-participant";
+import type { Json } from "@/types/database.generated";
+import type { ParticipantHomework, ParticipantHomeworkAnswer } from "./homework-participant";
 
 type Row = Record<string, unknown>;
 const rows = (value: unknown): Row[] => Array.isArray(value) ? value as Row[] : [];
@@ -207,19 +209,49 @@ async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof creat
   if (revisionError || !revision) return null;
   const [{ data: progress, error: progressError }, { data: content, error: contentError }] = await Promise.all([
     supabase.from("homework_participant_progress").select("id,status").eq("assignment_revision_id", revision.id).eq("profile_id", authenticatedProfileId).maybeSingle(),
-    supabase.from("homework_version_blocks").select("id,block_type,position,title,rich_text_content,url,description").eq("homework_version_id", revision.homework_version_id).order("position"),
+    supabase.from("homework_version_blocks").select("id,block_type,position,title,rich_text_content,url,description,question_choices,is_required").eq("homework_version_id", revision.homework_version_id).order("position"),
   ]);
   if (progressError || contentError) throw new Error("Homework is unavailable.");
   if (!progress || !content?.length) return null;
-  const { data: answers, error: answersError } = await supabase.from("homework_answers").select("homework_version_block_id,answer_text").eq("participant_progress_id", progress.id);
+  const { data: answers, error: answersError } = await supabase.from("homework_answers").select("homework_version_block_id,answer_text,answer_value").eq("participant_progress_id", progress.id);
   if (answersError) throw new Error("Homework responses are unavailable.");
-  const answerMap = new Map((answers ?? []).map((answer) => [answer.homework_version_block_id, answer.answer_text]));
+  const answerMap = new Map((answers ?? []).map((answer) => [answer.homework_version_block_id, answer]));
   return {
     title,
     status: progress.status,
     progressId: progress.id,
-    blocks: content.map((block) => ({ id: block.id, type: block.block_type, title: block.title, content: block.rich_text_content, url: block.url, description: block.description, answer: answerMap.get(block.id) ?? "" })),
+    blocks: content.map((block) => {
+      const questionChoices = homeworkAnswerChoicesFromJson(block.question_choices);
+      return {
+        id: block.id,
+        type: block.block_type,
+        title: block.title,
+        content: block.rich_text_content,
+        url: block.url,
+        description: block.description,
+        answer: participantAnswerFromRow(block.block_type, answerMap.get(block.id), questionChoices),
+        questionChoices,
+        isRequired: block.is_required,
+      };
+    }),
   };
+}
+
+function participantAnswerFromRow(
+  blockType: string,
+  answer: { answer_text: string; answer_value: Json | null } | undefined,
+  questionChoices: HomeworkAnswerChoice[],
+): ParticipantHomeworkAnswer {
+  if (blockType === "long_answer") return answer?.answer_text ?? "";
+  const validChoiceIds = new Set(questionChoices.map((choice) => choice.id));
+  if (blockType === "radio_question") {
+    return typeof answer?.answer_value === "string" && validChoiceIds.has(answer.answer_value) ? answer.answer_value : "";
+  }
+  if (blockType === "checkbox_question") {
+    if (!Array.isArray(answer?.answer_value)) return [];
+    return [...new Set(answer.answer_value.filter((choiceId): choiceId is string => typeof choiceId === "string" && validChoiceIds.has(choiceId)))];
+  }
+  return "";
 }
 
 export async function getCurrentParticipantHomework(authenticatedProfileId: string): Promise<ParticipantHomework | null> {
