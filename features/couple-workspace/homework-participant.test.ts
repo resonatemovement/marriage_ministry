@@ -72,6 +72,7 @@ describe("participant Homework presentation", () => {
     expect(rendered).toContain('role="group"');
     expect(rendered).toContain('name="answer-radio"');
     expect(participantSource).toContain('className="mt-3 grid gap-3"');
+    expect(participantSource).toContain('compact contentClassName="p-0"');
   });
 
   it("adds and removes independent Checkbox selections in published choice order", () => {
@@ -143,6 +144,9 @@ describe("participant Homework presentation", () => {
     expect(rendered.match(/Submit Homework/g)).toHaveLength(1);
     expect(participantSource).toContain("persistParticipantHomework({ progressId: homework.progressId, answers, intent })");
     expect(participantSource).toContain("setSavedAnswers(cloneAnswers(answers))");
+    expect(participantSource).toContain('showSuccessToast(intent === "save" ? "Homework draft saved." : "Homework submitted successfully.")');
+    expect(participantSource).toContain("showErrorToast(result.error");
+    expect(participantSource).not.toContain('text: intent === "save" ? "Draft saved"');
   });
 
   it("warns only while assignment answers are dirty", () => {

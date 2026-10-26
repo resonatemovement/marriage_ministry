@@ -9,6 +9,7 @@ import { VideoLinkPreview } from "@/features/homework/homework-preview";
 import { homeworkProgressLabel, type HomeworkProgressStatus } from "@/features/homework/presentation";
 import type { HomeworkAnswerChoice, HomeworkResponseValue } from "@/features/homework/selection-question";
 import { eligibleInternalNavigation } from "@/features/session-builder/navigation-guard";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import type { Json } from "@/types/database.generated";
 
@@ -87,7 +88,7 @@ function HomeworkSelectionQuestion({ block, answer, locked, error, onChange }: {
   const selectedRadio = typeof answer === "string" ? answer : "";
 
   return <>
-    <div id={questionId}><RichTextReadOnly content={block.content as Record<string, unknown>} compact /></div>
+    <div id={questionId}><RichTextReadOnly content={block.content as Record<string, unknown>} compact contentClassName="p-0" /></div>
     <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-semibold text-text-primary">Answer choices</p>
       <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-text-muted">{block.isRequired ? "Required" : "Optional"}</span>
@@ -174,7 +175,11 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
       const result = await persistParticipantHomework({ progressId: homework.progressId, answers, intent });
       if (!result.success) {
         setFieldErrors(result.fieldErrors);
-        setMessage({ kind: "error", text: result.error ?? "Homework could not be saved." });
+        if (Object.keys(result.fieldErrors).length > 0) {
+          setMessage({ kind: "error", text: result.error ?? "Please correct the highlighted responses." });
+        } else {
+          showErrorToast(result.error ?? (intent === "save" ? "Your draft could not be saved." : "Homework could not be submitted."));
+        }
         return;
       }
       setSavedAnswers(cloneAnswers(answers));
@@ -182,7 +187,7 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
         setStatus(result.status);
         onStatusChange?.(result.status);
       }
-      setMessage({ kind: "success", text: intent === "save" ? "Draft saved" : "Homework submitted successfully" });
+      showSuccessToast(intent === "save" ? "Homework draft saved." : "Homework submitted successfully.");
     });
   }
 
@@ -190,7 +195,7 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
     {showHeader ? <header className="mb-6"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Session Homework</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{homework.title}</h2><p className="mt-2 text-sm text-text-muted">Status: <span className="font-medium text-text-primary">{homeworkProgressLabel(status)}</span></p></header> : null}
     <form noValidate onSubmit={(event) => event.preventDefault()}>
       <div className="grid gap-4">{homework.blocks.map((block) => <Card key={block.id} className="p-5 sm:p-7">
-        {block.type === "rich_text" && block.content && typeof block.content === "object" && !Array.isArray(block.content) ? <><h3 className="font-heading text-lg font-bold text-text-primary">{block.title}</h3><RichTextReadOnly content={block.content as Record<string, unknown>} compact /></> : block.type === "video_link" && block.title && block.url && block.description ? <VideoLinkPreview title={block.title} url={block.url} description={block.description} /> : block.type === "long_answer" && block.content && typeof block.content === "object" && !Array.isArray(block.content) ? <><RichTextReadOnly content={block.content as Record<string, unknown>} compact /><div className="mt-5 border-t border-border pt-4"><label htmlFor={`answer-${block.id}`} className="text-sm font-semibold text-text-primary">Your response <span className="font-normal text-text-muted">(required)</span></label><textarea id={`answer-${block.id}`} name={`answer-${block.id}`} value={typeof answers[block.id] === "string" ? answers[block.id] : ""} onChange={(event) => updateAnswer(block.id, event.currentTarget.value)} readOnly={locked} rows={5} aria-invalid={Boolean(fieldErrors[block.id])} aria-describedby={fieldErrors[block.id] ? `answer-error-${block.id}` : undefined} className="mt-2 min-h-32 w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary read-only:bg-surface-muted" />{fieldErrors[block.id] ? <p id={`answer-error-${block.id}`} role="alert" className="mt-2 text-sm text-danger">{fieldErrors[block.id]}</p> : null}</div></> : block.type === "checkbox_question" || block.type === "radio_question" ? <HomeworkSelectionQuestion block={block} answer={answers[block.id]} locked={locked} error={fieldErrors[block.id]} onChange={(answer) => updateAnswer(block.id, answer)} /> : <p className="text-sm text-text-muted">This Homework content is unavailable.</p>}
+        {block.type === "rich_text" && block.content && typeof block.content === "object" && !Array.isArray(block.content) ? <><h3 className="font-heading text-lg font-bold text-text-primary">{block.title}</h3><RichTextReadOnly content={block.content as Record<string, unknown>} compact /></> : block.type === "video_link" && block.title && block.url && block.description ? <VideoLinkPreview title={block.title} url={block.url} description={block.description} /> : block.type === "long_answer" && block.content && typeof block.content === "object" && !Array.isArray(block.content) ? <><RichTextReadOnly content={block.content as Record<string, unknown>} compact contentClassName="p-0" /><div className="mt-5 border-t border-border pt-4"><label htmlFor={`answer-${block.id}`} className="text-sm font-semibold text-text-primary">Your response <span className="font-normal text-text-muted">(required)</span></label><textarea id={`answer-${block.id}`} name={`answer-${block.id}`} value={typeof answers[block.id] === "string" ? answers[block.id] : ""} onChange={(event) => updateAnswer(block.id, event.currentTarget.value)} readOnly={locked} rows={5} aria-invalid={Boolean(fieldErrors[block.id])} aria-describedby={fieldErrors[block.id] ? `answer-error-${block.id}` : undefined} className="mt-2 min-h-32 w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary read-only:bg-surface-muted" />{fieldErrors[block.id] ? <p id={`answer-error-${block.id}`} role="alert" className="mt-2 text-sm text-danger">{fieldErrors[block.id]}</p> : null}</div></> : block.type === "checkbox_question" || block.type === "radio_question" ? <HomeworkSelectionQuestion block={block} answer={answers[block.id]} locked={locked} error={fieldErrors[block.id]} onChange={(answer) => updateAnswer(block.id, answer)} /> : <p className="text-sm text-text-muted">This Homework content is unavailable.</p>}
       </Card>)}</div>
       {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <div className="mt-5 flex flex-wrap items-center gap-3"><button type="button" onClick={() => persist("save")} disabled={pending || !dirty} className="min-h-10 cursor-pointer rounded-md border border-border bg-surface px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Saving…" : "Save Draft"}</button><button type="button" onClick={() => persist("submit")} disabled={pending} className="min-h-10 cursor-pointer rounded-md bg-brand-primary px-4 text-sm font-semibold text-white hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Submitting…" : "Submit Homework"}</button></div>}
       {message ? <p role={message.kind === "error" ? "alert" : "status"} className={`mt-3 text-sm ${message.kind === "error" ? "text-danger" : "text-success-strong"}`}>{message.text}</p> : null}
