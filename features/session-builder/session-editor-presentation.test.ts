@@ -106,6 +106,18 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain(">Page</p>");
     expect(markup).toContain("The summary body is shared.");
     expect(markup).toContain("line-clamp-2");
+    expect(markup).toContain("Include by Default");
+    expect(markup).toMatch(/role="checkbox"[^>]*disabled=""/);
+  });
+
+  it("allows Admins to edit default recommendations while Authors see them read-only", () => {
+    const block = { id: "rich-1", sessionId: "session-id", blockType: "rich_text" as const, position: 0, title: "Reading", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Reading body" }] }] }, url: null, description: null, isRecommended: true };
+    const session = { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft" as const, isFinal: false, updatedAt: "" };
+    const adminMarkup = renderToStaticMarkup(createElement(SessionEditor, { session, blocks: [block], canManageRecommendations: true }));
+    const authorMarkup = renderToStaticMarkup(createElement(SessionEditor, { session, blocks: [block], canManageRecommendations: false }));
+    expect(adminMarkup).toMatch(/role="checkbox" aria-checked="true"/);
+    expect(adminMarkup).not.toMatch(/role="checkbox" aria-checked="true"[^>]*disabled=""/);
+    expect(authorMarkup).toMatch(/role="checkbox" aria-checked="true"[^>]*disabled=""/);
   });
 
   it("groups interleaved persisted Pages and Resources without showing unsaved changes", () => {

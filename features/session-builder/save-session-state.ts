@@ -29,6 +29,8 @@ const userFacingRpcErrors = new Set([
   "Invalid Session Material block",
   "Unsupported Session Material field",
   "Invalid Session Material text field",
+  "Invalid Session recommendation setting",
+  "Only Admins can change Session content recommendations",
   "Unsupported Session Material type",
   "Session Material title is too long",
   "Invalid Rich Text material",

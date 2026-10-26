@@ -18,20 +18,22 @@ import type { SessionMaterialBlock, SessionSummary } from "./types";
 import { refreshSessionResourceAccess } from "./resource-actions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
-export function SessionEditor({ session, blocks = [], activeWorkspace = "material", homework }: {
+export function SessionEditor({ session, blocks = [], activeWorkspace = "material", homework, canManageRecommendations = false }: {
   session: SessionSummary | null;
   blocks?: SessionMaterialBlock[];
   activeWorkspace?: SessionWorkspace;
   homework?: ReactNode;
+  canManageRecommendations?: boolean;
 }) {
-  return <HomeworkEditorProvider key={session?.id ?? "new-session"}><SessionEditorContent session={session} blocks={blocks} activeWorkspace={activeWorkspace} homework={homework} /></HomeworkEditorProvider>;
+  return <HomeworkEditorProvider key={session?.id ?? "new-session"}><SessionEditorContent session={session} blocks={blocks} activeWorkspace={activeWorkspace} homework={homework} canManageRecommendations={canManageRecommendations} /></HomeworkEditorProvider>;
 }
 
-function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
+function SessionEditorContent({ session, blocks, activeWorkspace, homework, canManageRecommendations }: {
   session: SessionSummary | null;
   blocks: SessionMaterialBlock[];
   activeWorkspace: SessionWorkspace;
   homework?: ReactNode;
+  canManageRecommendations: boolean;
 }) {
   const router = useRouter();
   const homeworkEditor = useHomeworkEditorState();
@@ -185,7 +187,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework }: {
     <SessionPreviewProvider value={openPreview}>
       {editor.sessionId ? <SessionWorkspaceNavigation sessionId={editor.sessionId} activeWorkspace={activeWorkspace} /> : null}
       {activeWorkspace === "material" || !editor.sessionId
-        ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} updateBlocks={updateBlocks} />
+        ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} />
         : homework}
     </SessionPreviewProvider>
     <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} resourceAccess={resourceAccess} />

@@ -13,6 +13,7 @@ export type StagedMaterialBlock = {
   richTextContent: Record<string, unknown> | null;
   url: string;
   description: string;
+  isRecommended?: boolean;
   resourceId?: string | null;
   resourceVersionId?: string | null;
   resourceCategory?: ResourceCategory | null;
@@ -43,6 +44,7 @@ export function initialSessionEditorState(session: SessionSummary | null, blocks
       richTextContent: block.richTextContent,
       url: block.url ?? "",
       description: block.description ?? "",
+      isRecommended: block.isRecommended ?? false,
       resourceId: block.resourceId ?? null,
       resourceCategory: block.resourceCategory ?? null,
       resource: block.resource ?? null,
@@ -59,6 +61,7 @@ export function newStagedBlock(blockType: MaterialBlockType): StagedMaterialBloc
     richTextContent: blockType === "rich_text" ? structuredClone(emptyRichText) : null,
     url: "",
     description: "",
+    isRecommended: false,
     resourceId: null,
     resourceVersionId: null,
     resourceCategory: null,
@@ -90,6 +93,7 @@ export function duplicateStagedBlock(blocks: StagedMaterialBlock[], key: string)
   if (index < 0) return blocks;
   const source = blocks[index];
   const copy = { ...source, key: `local:${crypto.randomUUID()}`, persistedId: null,
+    isRecommended: false,
     richTextContent: source.richTextContent ? structuredClone(source.richTextContent) : null };
   return [...blocks.slice(0, index + 1), copy, ...blocks.slice(index + 1)];
 }
@@ -118,6 +122,7 @@ function normalizedBlock(block: StagedMaterialBlock) {
     richTextContent: block.blockType === "rich_text" ? block.richTextContent : null,
     url: block.blockType === "video_link" ? block.url.trim() : "",
     description: normalizeSessionTitle(block.description),
+    isRecommended: block.isRecommended === true,
     resourceId: block.blockType === "library_resource" ? block.resourceId : null,
     resourceCategory: block.blockType === "library_resource" ? block.resourceCategory : null,
   };
@@ -168,6 +173,7 @@ export function materialForRpc(blocks: StagedMaterialBlock[]): Json {
     rich_text_content: block.blockType === "rich_text" ? block.richTextContent as Json : null,
     url: block.blockType === "video_link" ? block.url.trim() : null,
     description: normalizeSessionTitle(block.description) || null,
+    is_recommended: block.isRecommended === true,
     ...(block.blockType === "library_resource" ? { resource_id: block.resourceId, resource_category: block.resourceCategory } : {}),
   }));
 }
@@ -189,7 +195,8 @@ export function sessionStateFromRpc(value: Json, previousBlocks: StagedMaterialB
     if (!block || typeof block.id !== "string" || (block.block_type !== "rich_text" && block.block_type !== "video_link" && block.block_type !== "library_resource")
       || typeof block.position !== "number" || typeof block.title !== "string" && block.title !== null
       || typeof block.url !== "string" && block.url !== null
-      || typeof block.description !== "string" && block.description !== null) return null;
+      || typeof block.description !== "string" && block.description !== null
+      || typeof block.is_recommended !== "boolean") return null;
     const matched = previousBlocks.find((existing) => existing.persistedId === block.id || existing.key === block.client_id);
     const richTextContent = record(block.rich_text_content);
     if (block.block_type === "rich_text" && !richTextContent) return null;
@@ -204,6 +211,7 @@ export function sessionStateFromRpc(value: Json, previousBlocks: StagedMaterialB
       richTextContent,
       url: block.url ?? "",
       description: block.description ?? "",
+      isRecommended: block.is_recommended,
       resourceId: block.block_type === "library_resource" ? block.resource_id as string : null,
       resourceCategory: block.block_type === "library_resource" ? block.resource_category as ResourceCategory : null,
       resource: block.block_type === "library_resource" && matched?.resourceId === block.resource_id ? matched?.resource : null,

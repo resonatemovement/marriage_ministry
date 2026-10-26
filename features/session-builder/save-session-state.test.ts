@@ -59,7 +59,7 @@ describe("atomic Session and Homework RPC adapter", () => {
     expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
       target_session_intent: "publish", target_is_final: true,
       target_title: "Updated Session",
-      target_material: [{ client_id: "local:page", block_type: "rich_text", title: "Updated Page", rich_text_content: page.richTextContent, url: null, description: null }],
+      target_material: [{ client_id: "local:page", block_type: "rich_text", title: "Updated Page", rich_text_content: page.richTextContent, url: null, description: null, is_recommended: false }],
       target_homework_version_id: null, target_homework_blocks: [],
       save_homework: false, publish_homework: true,
     }));

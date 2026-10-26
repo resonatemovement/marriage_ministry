@@ -47,11 +47,10 @@ export async function getSession(sessionId: string): Promise<SessionSummary | nu
 
 export async function getSessionMaterialBlocks(sessionId: string): Promise<SessionMaterialBlock[]> {
   const supabase = await createServerSupabaseClient();
-  // This boundary stays narrow until DEV OAuth permits generated-type refresh.
   const { data, error } = await supabase.from("session_material_blocks").select("*").eq("session_id", sessionId).order("position", { ascending: true });
   if (error) throw new Error("Session Material is unavailable");
-  type MaterialRow = Database["public"]["Tables"]["session_material_blocks"]["Row"] & { resource_id: string | null; resource_category: string | null };
-  const rows = (data ?? []) as unknown as MaterialRow[];
+  type MaterialRow = Database["public"]["Tables"]["session_material_blocks"]["Row"];
+  const rows = (data ?? []) as MaterialRow[];
   const resources = new Map(await Promise.all([...new Set(rows.flatMap((row) => row.resource_id ? [row.resource_id] : []))].map(async (id) => {
     const { resource, versions } = await getResourceDetail(id);
     const version = versions.find((item) => item.id === resource.current_version_id);
@@ -62,6 +61,6 @@ export async function getSessionMaterialBlocks(sessionId: string): Promise<Sessi
       currentVersion: { originalFilename: version.original_filename, mimeType: version.mime_type, sizeBytes: version.size_bytes, uploadedAt: version.created_at },
       previewUrl: access.signedUrl }] as const;
   })));
-  return rows.map((row) => ({ id: row.id, sessionId: row.session_id, blockType: row.block_type as SessionMaterialBlock["blockType"], position: row.position, title: row.title, richTextContent: row.rich_text_content as Record<string, unknown> | null, url: row.url, description: row.description,
+  return rows.map((row) => ({ id: row.id, sessionId: row.session_id, blockType: row.block_type as SessionMaterialBlock["blockType"], position: row.position, title: row.title, richTextContent: row.rich_text_content as Record<string, unknown> | null, url: row.url, description: row.description, isRecommended: row.is_recommended,
     resourceId: row.resource_id, resourceCategory: row.resource_category as ResourceCategory | null, resource: row.resource_id ? resources.get(row.resource_id) ?? null : null }));
 }

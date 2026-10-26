@@ -23,6 +23,7 @@ export interface SessionMaterialBlock {
   richTextContent: Record<string, unknown> | null;
   url: string | null;
   description: string | null;
+  isRecommended?: boolean;
   resourceId?: string | null;
   resourceCategory?: ResourceCategory | null;
   resource?: ResourceLibraryItem | null;

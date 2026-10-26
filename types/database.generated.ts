@@ -2096,6 +2096,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_recommended: boolean
           position: number
           resource_category: string | null
           resource_id: string | null
@@ -2110,6 +2111,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_recommended?: boolean
           position: number
           resource_category?: string | null
           resource_id?: string | null
@@ -2124,6 +2126,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_recommended?: boolean
           position?: number
           resource_category?: string | null
           resource_id?: string | null

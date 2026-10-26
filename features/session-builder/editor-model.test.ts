@@ -4,7 +4,7 @@ import { duplicateStagedBlock, editorStateIsDirty, initialSessionEditorState, li
 import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
 
 const richText = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Lesson" }] }] };
-const saved: StagedMaterialBlock = { key: "saved-id", persistedId: "saved-id", blockType: "rich_text", title: "Intro", richTextContent: richText, url: "", description: "" };
+const saved: StagedMaterialBlock = { key: "saved-id", persistedId: "saved-id", blockType: "rich_text", title: "Intro", richTextContent: richText, url: "", description: "", isRecommended: true };
 const video: StagedMaterialBlock = { key: "video-id", persistedId: "video-id", blockType: "video_link", title: "", richTextContent: null, url: "https://example.com", description: "" };
 
 describe("unified Session editor model", () => {
@@ -30,7 +30,7 @@ describe("unified Session editor model", () => {
     const persisted = sessionStateFromRpc({ session_id: "session-id", status: "draft", title: "Lesson", is_final: false, blocks: [{
       id: "new-block-id", client_id: library.key, block_type: "library_resource", position: 0,
       title: null, rich_text_content: null, url: null, description: null,
-      resource_id: resource.id, resource_category: resource.category,
+      resource_id: resource.id, resource_category: resource.category, is_recommended: false,
     }] }, [library]);
     expect(persisted?.blocks[0]).toMatchObject({ persistedId: "new-block-id", resourceId: resource.id, resourceCategory: "document" });
     expect(persisted?.blocks[0].resource?.title).toBe("File");
@@ -101,6 +101,7 @@ describe("unified Session editor model", () => {
     expect(editorStateIsDirty({ ...baseline, isFinal: true }, baseline)).toBe(true);
     expect(editorStateIsDirty({ ...baseline, blocks: [{ ...saved, title: "Edited" }, video] }, baseline)).toBe(true);
     expect(editorStateIsDirty({ ...baseline, blocks: [saved, { ...video, url: "https://other.example" }] }, baseline)).toBe(true);
+    expect(editorStateIsDirty({ ...baseline, blocks: [{ ...saved, isRecommended: false }, video] }, baseline)).toBe(true);
     expect(editorStateIsDirty({ ...baseline, blocks: [saved] }, baseline)).toBe(true);
     const added = newStagedBlock("rich_text");
     expect(added.persistedId).toBeNull();
@@ -109,6 +110,7 @@ describe("unified Session editor model", () => {
     expect(duplicate[1].persistedId).toBeNull();
     expect(duplicate[1].key).not.toBe(saved.key);
     expect(duplicate[1].richTextContent).toEqual(saved.richTextContent);
+    expect(duplicate[1].isRecommended).toBe(false);
     expect(editorStateIsDirty({ ...baseline, blocks: duplicate }, baseline)).toBe(true);
     expect(moveStagedBlock(baseline.blocks, video.key, saved.key).map((block) => block.key)).toEqual([video.key, saved.key]);
     expect(editorStateIsDirty({ ...baseline, blocks: moveStagedBlock(baseline.blocks, video.key, saved.key) }, baseline)).toBe(true);
@@ -138,10 +140,12 @@ describe("unified Session editor model", () => {
     expect(page.blockType).toBe("rich_text");
     expect(page.key).toMatch(/^local:/);
     expect(page.persistedId).toBeNull();
+    expect(page.isRecommended).toBe(false);
     expect(page.richTextContent).toEqual({ type: "doc", content: [{ type: "paragraph" }] });
     expect(resource.blockType).toBe("video_link");
     expect(resource.key).toMatch(/^local:/);
     expect(resource.persistedId).toBeNull();
+    expect(resource.isRecommended).toBe(false);
   });
 
   it("restores the complete persisted baseline for local discard", () => {
@@ -168,20 +172,21 @@ describe("unified Session editor model", () => {
   it("sends the complete ordered state with client IDs only for unsaved blocks", () => {
     const local = { ...newStagedBlock("video_link"), url: " https://example.com/new " };
     expect(materialForRpc([saved, local])).toEqual([
-      { id: "saved-id", block_type: "rich_text", title: "Intro", rich_text_content: richText, url: null, description: null },
-      { client_id: local.key, block_type: "video_link", title: null, rich_text_content: null, url: "https://example.com/new", description: null },
+      { id: "saved-id", block_type: "rich_text", title: "Intro", rich_text_content: richText, url: null, description: null, is_recommended: true },
+      { client_id: local.key, block_type: "video_link", title: null, rich_text_content: null, url: "https://example.com/new", description: null, is_recommended: false },
     ]);
   });
 
   it("adopts returned database IDs and order while retaining stable editor keys", () => {
     const local = { ...newStagedBlock("video_link"), url: "https://example.com/new" };
     const result = sessionStateFromRpc({ session_id: "session-id", status: "published", title: "Published Session", is_final: false, blocks: [
-      { id: "new-db-id", client_id: local.key, block_type: "video_link", position: 0, title: null, rich_text_content: null, url: local.url, description: null },
-      { id: "saved-id", client_id: null, block_type: "rich_text", position: 1, title: "Intro", rich_text_content: richText, url: null, description: null },
+      { id: "new-db-id", client_id: local.key, block_type: "video_link", position: 0, title: null, rich_text_content: null, url: local.url, description: null, is_recommended: false },
+      { id: "saved-id", client_id: null, block_type: "rich_text", position: 1, title: "Intro", rich_text_content: richText, url: null, description: null, is_recommended: true },
     ] }, [saved, local]);
     expect(result?.blocks.map((block) => [block.key, block.persistedId])).toEqual([[local.key, "new-db-id"], [saved.key, "saved-id"]]);
     expect(result?.status).toBe("published");
     expect(result?.isFinal).toBe(false);
+    expect(result?.blocks.map((block) => block.isRecommended)).toEqual([false, true]);
     if (!result) throw new Error("Expected a valid RPC result");
     const next = { sessionId: result.sessionId, status: result.status, title: result.title, isFinal: result.isFinal, blocks: result.blocks };
     expect(editorStateIsDirty(next, next)).toBe(false);

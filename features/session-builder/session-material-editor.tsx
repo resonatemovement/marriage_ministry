@@ -8,6 +8,7 @@ import { useId, useState } from "react";
 import Image from "next/image";
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AuthoringSectionHeader } from "@/components/shared/authoring-section-header";
 import { RichTextSummary } from "@/components/shared/rich-text-summary";
@@ -26,7 +27,7 @@ import { refreshSessionResourceAccess } from "./resource-actions";
 
 type UpdateBlocks = (update: (blocks: StagedMaterialBlock[]) => StagedMaterialBlock[]) => void;
 
-export function SessionMaterialEditor({ blocks, archived, updateBlocks }: { blocks: StagedMaterialBlock[]; archived: boolean; updateBlocks: UpdateBlocks }) {
+export function SessionMaterialEditor({ blocks, archived, canManageRecommendations, updateBlocks }: { blocks: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -103,12 +104,12 @@ export function SessionMaterialEditor({ blocks, archived, updateBlocks }: { bloc
 
     <section aria-labelledby="session-pages-heading">
       <AuthoringSectionHeader headingId="session-pages-heading" title="Pages" description="Create and organize the reading material for this Session." />
-      {editing?.blockType === "rich_text" ? openEditing : pages.length ? <MaterialRows blockType="rich_text" blocks={pages} archived={archived} updateBlocks={updateBlocks} edit={setEditingKey} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Pages yet.</p>}
+      {editing?.blockType === "rich_text" ? openEditing : pages.length ? <MaterialRows blockType="rich_text" blocks={pages} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={setEditingKey} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Pages yet.</p>}
     </section>
     <section aria-labelledby="session-resources-heading">
       <AuthoringSectionHeader headingId="session-resources-heading" title="Resources" description="Add supporting videos, links, and other resources for this Session."
         action={!archived && !editing ? <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent"><Plus className="size-4" aria-hidden="true" />Add Resource</button> : undefined} />
-      {editing && editing.blockType !== "rich_text" ? openEditing : resources.length ? <MaterialRows blockType="library_resource" blocks={resources} archived={archived} updateBlocks={updateBlocks} edit={setEditingKey} replace={(block) => { if (block.resourceCategory) setPicker({ category: block.resourceCategory, blockKey: block.key }); }} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Resources yet.</p>}
+      {editing && editing.blockType !== "rich_text" ? openEditing : resources.length ? <MaterialRows blockType="library_resource" blocks={resources} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={setEditingKey} replace={(block) => { if (block.resourceCategory) setPicker({ category: block.resourceCategory, blockKey: block.key }); }} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Resources yet.</p>}
     </section>
 
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0">
@@ -150,22 +151,23 @@ function MaterialForm({ block, patch, done, message, showCancel, cancel, chooseR
   </div>;
 }
 
-function MaterialRows({ blockType, blocks, archived, updateBlocks, edit, replace }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; archived: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void; replace?: (block: StagedMaterialBlock) => void }) {
+function MaterialRows({ blockType, blocks, archived, canManageRecommendations, updateBlocks, edit, replace }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void; replace?: (block: StagedMaterialBlock) => void }) {
   const dndContextId = useId();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }));
   const keys = blocks.map((block) => block.key);
   function move(activeKey: string, overKey: string) { updateBlocks((current) => moveStagedBlockWithinType(current, blockType, activeKey, overKey)); }
   function onDragEnd({ active, over }: DragEndEvent) { if (over && active.id !== over.id) move(String(active.id), String(over.id)); }
   return <DndContext id={dndContextId} sensors={sensors} onDragEnd={onDragEnd}><SortableContext items={keys} strategy={verticalListSortingStrategy}><div className="mt-5 grid gap-3">
-    {blocks.map((block, index) => <MaterialRow key={block.key} block={block} index={index} count={blocks.length} keys={keys} archived={archived}
+    {blocks.map((block, index) => <MaterialRow key={block.key} block={block} index={index} count={blocks.length} keys={keys} archived={archived} canManageRecommendations={canManageRecommendations}
       edit={() => edit(block.key)} replace={() => replace?.(block)} move={move} duplicate={() => updateBlocks((current) => duplicateStagedBlock(current, block.key))}
+      toggleRecommended={(checked) => updateBlocks((current) => current.map((item) => item.key === block.key ? { ...item, isRecommended: checked } : item))}
       remove={() => updateBlocks((current) => removeStagedBlock(current, block.key))} />)}
   </div></SortableContext></DndContext>;
 }
 
-function MaterialRow({ block, index, count, keys, archived, edit, replace, move, duplicate, remove }: {
-  block: StagedMaterialBlock; index: number; count: number; keys: string[]; archived: boolean;
-  edit: () => void; replace: () => void; move: (activeKey: string, overKey: string) => void; duplicate: () => void; remove: () => void;
+function MaterialRow({ block, index, count, keys, archived, canManageRecommendations, edit, replace, move, duplicate, toggleRecommended, remove }: {
+  block: StagedMaterialBlock; index: number; count: number; keys: string[]; archived: boolean; canManageRecommendations: boolean;
+  edit: () => void; replace: () => void; move: (activeKey: string, overKey: string) => void; duplicate: () => void; toggleRecommended: (checked: boolean) => void; remove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: archived });
   const [confirming, setConfirming] = useState(false);
@@ -182,6 +184,10 @@ function MaterialRow({ block, index, count, keys, archived, edit, replace, move,
       <span className="mt-1 block truncate text-sm font-semibold text-text-primary">{block.resource?.title ?? "Resource unavailable"}</span>
       <span className="block truncate text-xs text-text-muted">{block.resource ? `${formatResourceFileType(block.resource.currentVersion.mimeType)} · ${formatResourceFileSize(block.resource.currentVersion.sizeBytes)}` : ""}</span></span>
     </div> : <div className="flex items-center gap-3"><span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded bg-surface-muted text-brand-primary"><ExternalLink className="size-5" /></span><span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">Video / Link</span><span className="mt-1 block truncate text-sm font-semibold text-text-primary">{materialPreview(block)}</span></span></div>}</div>
+    <label className="flex shrink-0 items-center gap-2 text-sm font-medium text-text-primary">
+      <Checkbox checked={block.isRecommended === true} onCheckedChange={(checked) => toggleRecommended(checked === true)} disabled={archived || !canManageRecommendations} />
+      Include by Default
+    </label>
     {!archived ? confirming ? <div className="flex items-center gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">{block.blockType === "library_resource" ? "Remove from Session" : "Remove"}</button></div> : <>
       {block.blockType === "library_resource" ? <a href={`/resource-library/${block.resourceId}/open`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md px-2 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Open Resource</a> : <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>}
       <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
