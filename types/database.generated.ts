@@ -2274,6 +2274,7 @@ export type Database = {
         Args: {
           target_case_id: string
           target_ends_at: string
+          target_selected_material_block_ids: string[]
           target_session_id: string
           target_starts_at: string
         }
@@ -2383,6 +2384,7 @@ export type Database = {
           override_confirmation?: string
           target_case_session_id: string
           target_ends_at: string
+          target_selected_material_block_ids: string[]
           target_session_id: string
           target_starts_at: string
         }
@@ -2528,6 +2530,18 @@ export type Database = {
       get_or_create_homework_draft_for_session: {
         Args: { target_session_id: string }
         Returns: string
+      }
+      get_published_session_material_options: {
+        Args: never
+        Returns: {
+          block_id: string
+          block_position: number
+          block_type: string
+          is_recommended: boolean
+          label: string
+          resource_category: string
+          session_id: string
+        }[]
       }
       invite_intake_request: {
         Args: { target_request_id: string }

@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +18,7 @@ import { MeetingNotificationResendMenuItems, resendableMeetingNotificationPartne
 import { closeCounselingCaseIncomplete, completeCounselingProgram, completeInitialMeeting, completeSessionScheduleNext, rescheduleSessionMeeting, scheduleFollowupMeeting, scheduleInitialMeeting } from "./actions";
 import { COUNSELING_TIME_ZONE, counselingDateOnly } from "./meeting-date-time";
 import { meetingTimeDefaults, validateMeetingSchedule, type MeetingPeriod } from "./scheduling-validation";
+import { recommendedSessionContentIds, toggleSessionContentId } from "./session-content-selection";
 import type { CounselingSessionCard } from "./queries";
 
 type Mode = "schedule-initial" | "reschedule-initial" | "complete-initial" | "complete-session" | "complete-program" | "close-case" | "schedule-followup" | "reschedule-meeting";
@@ -48,8 +50,9 @@ function inlineDomainError(error: string) {
   if (error.includes("OVERRIDE is only accepted")) return "OVERRIDE is only accepted when required Homework is incomplete.";
   if (error.includes("Required Homework progress") || error.includes("Current Session Homework is unavailable")) return "Homework status is unavailable. Refresh the case and try again.";
   if (error.includes("Select a published Session")) return "Choose a published next Session.";
-  if (error.includes("This Session needs published Material")) return "The selected Session needs published Material before it can be scheduled.";
-  if (error.includes("A Session Resource is unavailable")) return "A selected Session Resource is unavailable. Choose another Session or contact an Admin.";
+  if (error.includes("Select at least one Session content item")) return "Select at least one Page or Resource to assign.";
+  if (error.includes("Duplicate Session content selection") || error.includes("Selected Session content is unavailable")) return "The selected Session content changed. Review the selection and try again.";
+  if (error.includes("Session Resource is unavailable")) return "A selected Session Resource is unavailable. Choose another Session or contact an Admin.";
   if (error.includes("Select a reason for closing") || error.includes("Select a valid counseling case closure reason")) return "Select a valid reason for closing this counseling case.";
   if (error.includes("Add notes when the closure reason is Other")) return "Add notes when the closure reason is Other.";
   if (error.includes("valid meeting time") || error.includes("Meeting date") || error.includes("Meeting time")) return "Choose a valid future Meeting date and time.";
@@ -76,8 +79,11 @@ function localMeetingValue(value: string | undefined, part: "date" | "time") {
 }
 
 export function SessionLifecycleControls({ card, partners = [], deliveries = [] }: { card: LifecycleCard; partners?: MeetingNotificationPartner[]; deliveries?: MeetingNotificationDelivery[] }) {
+  const initialSessionId = card.state.nextSession?.id ?? card.publishedSessions[0]?.id ?? "";
+  const initialSession = card.publishedSessions.find((session) => session.id === initialSessionId);
   const [mode, setMode] = useState<Mode | null>(null);
-  const [sessionId, setSessionId] = useState(card.state.nextSession?.id ?? "");
+  const [sessionId, setSessionId] = useState(initialSessionId);
+  const [selectedMaterialBlockIds, setSelectedMaterialBlockIds] = useState(() => recommendedSessionContentIds(initialSession?.content ?? []));
   const [meetingDate, setMeetingDate] = useState("");
   const [minimumMeetingDate, setMinimumMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
@@ -95,6 +101,9 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
   const isAuthored = card.state.kind === "session";
   const isFinalSession = Boolean(card.state.caseSession?.isFinal);
   const nextSessionUnavailable = open === "complete-session" && card.publishedSessions.length === 0;
+  const requiresContentSelection = open === "complete-initial" || open === "complete-session";
+  const selectedSession = card.publishedSessions.find((session) => session.id === sessionId) ?? null;
+  const selectedSessionContent = selectedSession?.content ?? [];
   const homeworkRequired = Boolean(card.state.caseSession?.homeworkAssignmentRevisionId);
   const homeworkComplete = !homeworkRequired || card.homework?.complete === true;
   const homeworkBlocked = !homeworkComplete;
@@ -135,6 +144,19 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
     setMeetingPeriod(timeDefaults.period);
     setDateError(null);
     setTimeError(null);
+    if (nextMode === "complete-initial" || nextMode === "complete-session") {
+      const nextSessionId = card.state.nextSession?.id ?? card.publishedSessions[0]?.id ?? "";
+      const nextSession = card.publishedSessions.find((session) => session.id === nextSessionId);
+      setSessionId(nextSessionId);
+      setSelectedMaterialBlockIds(recommendedSessionContentIds(nextSession?.content ?? []));
+    }
+  };
+
+  const selectSession = (nextSessionId: string) => {
+    const nextSession = card.publishedSessions.find((session) => session.id === nextSessionId);
+    setSessionId(nextSessionId);
+    setSelectedMaterialBlockIds(recommendedSessionContentIds(nextSession?.content ?? []));
+    setError(null);
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -142,6 +164,10 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
     if (nextSessionUnavailable) return;
     const formData = new FormData(event.currentTarget);
     setError(null);
+    if (requiresContentSelection && selectedMaterialBlockIds.length === 0) {
+      setError("Select at least one Page or Resource to assign.");
+      return;
+    }
     if (open !== "complete-program" && open !== "close-case") {
       const validation = validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod);
       if (validation.displayTime) setMeetingTime(validation.displayTime);
@@ -216,7 +242,25 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
           {(open === "complete-program" || open === "close-case") && card.state.caseSession ? <input type="hidden" name="caseSessionId" value={card.state.caseSession.id} /> : null}
           {open === "schedule-followup" && card.state.caseSession ? <input type="hidden" name="caseSessionId" value={card.state.caseSession.id} /> : null}
           {open === "complete-session" && nextSessionUnavailable ? <div role="status" className="grid gap-1 rounded-md bg-amber-50 px-3 py-2"><p className="text-sm font-semibold text-amber-900">Next Session</p><p className="text-sm text-amber-900">No eligible published next Session is currently available.</p><p className="text-sm text-amber-900">Publish another Session before this Session can be completed.</p></div> : null}
-          {(open === "complete-initial" || open === "complete-session" && !nextSessionUnavailable) ? <div className="grid gap-1.5"><label htmlFor="next-session" className="text-sm font-medium">Next Session</label><input type="hidden" name="sessionId" value={sessionId} /><Select required value={sessionId} onValueChange={setSessionId}><SelectTrigger id="next-session" className="w-full"><SelectValue placeholder="Choose a published Session" /></SelectTrigger><SelectContent>{card.publishedSessions.map((session) => <SelectItem key={session.id} value={session.id}>Session {session.number}: {session.title}</SelectItem>)}</SelectContent></Select></div> : null}
+          {(open === "complete-initial" || open === "complete-session" && !nextSessionUnavailable) ? <>
+            <div className="grid gap-1.5"><label htmlFor="next-session" className="text-sm font-medium">Next Session</label><input type="hidden" name="sessionId" value={sessionId} /><Select required value={sessionId} onValueChange={selectSession}><SelectTrigger id="next-session" className="w-full"><SelectValue placeholder="Choose a published Session" /></SelectTrigger><SelectContent>{card.publishedSessions.map((session) => <SelectItem key={session.id} value={session.id}>Session {session.number}: {session.title}</SelectItem>)}</SelectContent></Select></div>
+            {selectedSession ? <section aria-labelledby="assign-session-content" className="grid gap-3 rounded-md border border-border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div><p id="assign-session-content" className="text-sm font-semibold text-text-primary">Assign Session Content</p><p className="mt-0.5 text-xs text-text-muted">{selectedMaterialBlockIds.length} selected</p></div>
+                <button type="button" onClick={() => { setSelectedMaterialBlockIds(recommendedSessionContentIds(selectedSessionContent)); setError(null); }} className="min-h-9 shrink-0 rounded-md px-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent">Restore Defaults</button>
+              </div>
+              {selectedSessionContent.length ? <div className="grid gap-2">{selectedSessionContent.map((item) => {
+                const checked = selectedMaterialBlockIds.includes(item.id);
+                const typeLabel = item.blockType === "rich_text" ? "Page" : "Resource";
+                return <label key={item.id} htmlFor={`session-content-${item.id}`} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md bg-surface-muted px-3 py-2">
+                  <Checkbox id={`session-content-${item.id}`} checked={checked} onCheckedChange={(nextChecked) => { setSelectedMaterialBlockIds((current) => toggleSessionContentId(current, item.id, nextChecked === true)); setError(null); }} className="mt-0.5" />
+                  <span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">{typeLabel}</span><span className="block truncate text-sm font-medium text-text-primary">{item.label}</span></span>
+                </label>;
+              })}</div> : <p className="text-sm text-text-muted">This published Session has no available Pages or Resources.</p>}
+              {selectedMaterialBlockIds.map((id) => <input key={id} type="hidden" name="materialBlockId" value={id} />)}
+              {selectedMaterialBlockIds.length === 0 ? <p role="alert" className="text-sm text-danger-strong">Select at least one Page or Resource to assign.</p> : null}
+            </section> : null}
+          </> : null}
           {open === "complete-session" || open === "complete-program" ? <section aria-label="Homework status" className="grid gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Homework status</p>
             {!homeworkRequired ? <p className="text-sm text-text-muted">No Homework is required for this Session.</p> : card.homework ? <>
@@ -254,7 +298,7 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
           {open === "close-case" ? <section className="grid gap-3 rounded-md border border-danger-strong/30 bg-danger-soft/40 p-3"><p className="text-sm font-semibold text-danger-strong">This ends counseling without normal program completion. Session history, meetings, materials, and Homework responses will be preserved.</p><div className="grid gap-1.5"><label htmlFor="closure-reason" className="text-sm font-medium">Reason{card.isAdmin ? " (optional for Admin)" : ""}</label><input type="hidden" name="closureReason" value={closureReason} /><Select value={closureReason} onValueChange={setClosureReason}><SelectTrigger id="closure-reason" className="w-full"><SelectValue placeholder="Select a reason" /></SelectTrigger><SelectContent>{["Couple withdrew", "Unable to contact couple", "Couple relocated", "Referred elsewhere", "Counseling relationship ended", "Other"].map((reason) => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent></Select></div>{closureReason === "Other" ? <label className="grid gap-1.5 text-sm font-medium">Notes<textarea required name="closureNotes" rows={3} className="rounded-md border border-border bg-white px-3 py-2" /></label> : <input type="hidden" name="closureNotes" value="" />}</section> : null}
           {open === "complete-initial" && !card.publishedSessions.length ? <p role="alert" className="text-sm text-danger-strong">A published Session with Material and Homework is required.</p> : null}
           {error && error !== "Meeting date is required." ? <p role="alert" className="text-sm text-danger-strong">{error}</p> : null}
-          {!nextSessionUnavailable ? <button disabled={pending || ((open === "complete-initial" || open === "complete-session") && !sessionId) || ((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid)) || (open === "close-case" && !closureReason && !card.isAdmin)} className="min-h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">{pending ? "Saving…" : title[open]}</button> : null}
+          {!nextSessionUnavailable ? <button disabled={pending || ((open === "complete-initial" || open === "complete-session") && (!sessionId || selectedMaterialBlockIds.length === 0)) || ((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid)) || (open === "close-case" && !closureReason && !card.isAdmin)} className="min-h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">{pending ? "Saving…" : title[open]}</button> : null}
         </form> : null}
       </SheetContent>
     </Sheet>

@@ -1,7 +1,8 @@
 import { withAuthoredSessionNumbers } from "@/features/session-builder/presentation";
 
 export type Meeting = { id: string; sessionId: string | null; caseSessionId: string | null; startsAt: string; endsAt: string; location: string; completedAt: string | null; createdAt: string };
-export type Session = { id: string; number: number; title: string; isFinal: boolean };
+export type SessionContentOption = { id: string; blockType: "rich_text" | "video_link" | "library_resource"; position: number; label: string; resourceCategory: string | null; isRecommended: boolean };
+export type Session = { id: string; number: number; title: string; isFinal: boolean; content?: SessionContentOption[] };
 export type SessionTemplate = { id: string; sequenceNumber: number; title: string; status: string; isFinal: boolean };
 export type Progress = { sessionId: string; complete: boolean };
 export type CaseSession = { id: string; sessionId: string; actualSequence: number; templateSequence: number; title: string; status: "active" | "completed"; isFinal: boolean; homeworkAssignmentRevisionId: string | null; materialReleasedAt: string; homeworkReleasedAt: string | null };

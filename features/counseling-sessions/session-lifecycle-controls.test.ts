@@ -127,7 +127,7 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain(': isAuthored ? isFinalSession ? "Complete Program" : "Schedule Next Session" : null');
     expect(controls).toContain("No eligible published next Session is currently available.");
     expect(controls).toContain("Publish another Session before this Session can be completed.");
-    expect(controls).toContain('((open === "complete-initial" || open === "complete-session") && !sessionId)');
+    expect(controls).toContain('((open === "complete-initial" || open === "complete-session") && (!sessionId || selectedMaterialBlockIds.length === 0))');
     expect(controls).toContain('onClick={() => openMode(primaryMode)}');
     expect(controls).toContain('const primaryMode: Mode | null = isInitial\n    ? meeting ? "complete-initial" : "schedule-initial"');
     expect(controls).toContain('const primaryLabel = isInitial\n    ? meeting ? "Schedule Next Session" : "Schedule Initial Meeting"');
@@ -191,15 +191,15 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain('<p className="text-sm font-semibold text-amber-900">Next Session</p>');
     expect(controls).toContain("No eligible published next Session is currently available.");
     expect(controls).toContain("Publish another Session before this Session can be completed.");
-    expect(controls).toContain('(open === "complete-initial" || open === "complete-session" && !nextSessionUnavailable) ? <div');
+    expect(controls).toContain('(open === "complete-initial" || open === "complete-session" && !nextSessionUnavailable) ? <>');
     expect(controls).toContain('!nextSessionUnavailable && (open !== "complete-session" || homeworkComplete || overrideValid)');
     expect(controls).toContain('{!nextSessionUnavailable ? <button disabled=');
     expect(controls).toContain('<section aria-label="Homework status"');
   });
 
   it("keeps the normal next-Session selector and scheduling fields for eligible authored progression", () => {
-    expect(controls).toContain('open === "complete-session" && !nextSessionUnavailable) ? <div');
-    expect(controls).toContain('<Select required value={sessionId} onValueChange={setSessionId}>');
+    expect(controls).toContain('open === "complete-session" && !nextSessionUnavailable) ? <>');
+    expect(controls).toContain('<Select required value={sessionId} onValueChange={selectSession}>');
     expect(controls).toContain('<DatePicker label="Meeting date" value={meetingDate} required');
     expect(controls).toContain('<TimeInput');
     expect(controls).toContain(': open === "complete-session"\n          ? completeSessionScheduleNext');
@@ -235,7 +235,7 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain("homeworkProgressLabel(partner.status)");
     expect(controls).toContain('partners.find((item) => item.id === partner.profileId)?.firstName');
     expect(controls).not.toContain("Outstanding Homework:");
-    expect(controls).toContain('<Select required value={sessionId} onValueChange={setSessionId}>');
+    expect(controls).toContain('<Select required value={sessionId} onValueChange={selectSession}>');
     expect(controls).toContain('open !== "complete-session" || homeworkComplete || overrideValid');
     expect(controls).toContain('((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid))');
     expect(controls).toContain("homeworkRequired = Boolean(card.state.caseSession?.homeworkAssignmentRevisionId)");
@@ -265,5 +265,20 @@ describe("lifecycle scheduling date control", () => {
   it("renders the authored Session number supplied by the canonical ranked projection", () => {
     expect(controls).toContain("Session {session.number}: {session.title}");
     expect(controls).not.toContain("actualSequence}");
+  });
+
+  it("uses Admin recommendations as optional defaults and keeps selected content in the existing scheduling forms", () => {
+    expect(controls).toContain('import { Checkbox } from "@/components/ui/checkbox"');
+    expect(controls).toContain("recommendedSessionContentIds(initialSession?.content ?? [])");
+    expect(controls).toContain("recommendedSessionContentIds(nextSession?.content ?? [])");
+    expect(controls).toContain("recommendedSessionContentIds(selectedSessionContent)");
+    expect(controls).toContain("Assign Session Content");
+    expect(controls).toContain("Restore Defaults");
+    expect(controls).toContain('name="materialBlockId"');
+    expect(controls).toContain("toggleSessionContentId(current, item.id, nextChecked === true)");
+    expect(controls).toContain("Select at least one Page or Resource to assign.");
+    expect(controls).toContain("selectedMaterialBlockIds.length === 0");
+    expect(actions).toContain('formData.getAll("materialBlockId")');
+    expect(actions).toContain("target_selected_material_block_ids: materialBlockIds");
   });
 });

@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import type { HomeworkProgressStatus } from "@/features/homework/presentation";
 
-import { publishedSessionOptions, sessionCardState, type CaseSession, type Meeting, type Session, type SessionTemplate } from "./model";
+import { publishedSessionOptions, sessionCardState, type CaseSession, type Meeting, type Session, type SessionContentOption, type SessionTemplate } from "./model";
 import { counselingSessionQueryFailure } from "./query-diagnostics";
 import { projectCounselingHomeworkProgress, type CounselingHomeworkProgress } from "./homework-query-projection";
 import { counselingWorkspaceCoupleIdentity, type CounselingWorkspaceCoupleIdentityRow } from "./workspace-identity";
@@ -20,15 +20,16 @@ export type CounselingSessionCard = { caseId: string; coupleId: string; coupleNa
 
 export async function getCounselingSessionCards(): Promise<CounselingSessionCard[]> {
   const supabase = await createServerSupabaseClient();
-  const [caseResult, sessionsResult, meetingsResult, caseSessionsResult, assignmentsResult] = await Promise.all([
+  const [caseResult, sessionsResult, meetingsResult, caseSessionsResult, assignmentsResult, materialOptionsResult] = await Promise.all([
     supabase.from("counseling_cases").select("id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(id,name))").order("updated_at", { ascending: false }),
     supabase.from("sessions").select("id,sequence_number,title,status,is_final").order("sequence_number"),
     supabase.from("case_session_meetings").select("id,counseling_case_id,session_id,case_session_id,starts_at,ends_at,location,completed_at,created_at").order("created_at").order("id"),
     supabase.from("case_sessions").select("id,counseling_case_id,session_id,actual_sequence,template_sequence_number,title,status,is_final,homework_assignment_revision_id,material_released_at,homework_released_at").order("actual_sequence"),
     supabase.from("homework_assignments").select("counseling_case_id,homework_assignment_revisions(id,ended_at,homework_participant_progress(profile_id,status))").is("unassigned_at", null),
+    supabase.rpc("get_published_session_material_options"),
   ]);
   const noIdentityFailure = { error: null };
-  const failure = counselingSessionQueryFailure(caseResult, sessionsResult, meetingsResult, caseSessionsResult, assignmentsResult, noIdentityFailure);
+  const failure = counselingSessionQueryFailure(caseResult, sessionsResult, meetingsResult, caseSessionsResult, assignmentsResult, materialOptionsResult, noIdentityFailure);
   if (failure) {
     console.error("Counseling Sessions query failed.", failure);
     throw new Error("Counseling Sessions are unavailable");
@@ -39,14 +40,21 @@ export async function getCounselingSessionCards(): Promise<CounselingSessionCard
     return { caseId, result };
   }));
   const identityFailure = identityQueries.find(({ result }) => result.error)?.result ?? noIdentityFailure;
-  const identityQueryFailure = counselingSessionQueryFailure({ error: null }, { error: null }, { error: null }, { error: null }, { error: null }, identityFailure);
+  const identityQueryFailure = counselingSessionQueryFailure({ error: null }, { error: null }, { error: null }, { error: null }, { error: null }, { error: null }, identityFailure);
   if (identityQueryFailure) {
     console.error("Counseling Sessions query failed.", identityQueryFailure);
     throw new Error("Counseling Sessions are unavailable");
   }
   type SessionRow = { id: string; sequence_number: number; title: string; status: string; is_final: boolean };
   const templates: SessionTemplate[] = ((sessionsResult.data ?? []) as unknown as SessionRow[]).map((item) => ({ id: item.id, sequenceNumber: item.sequence_number, title: item.title, status: item.status, isFinal: item.is_final }));
-  const sessions: Session[] = publishedSessionOptions(templates);
+  type MaterialOptionRow = { session_id: string; block_id: string; block_type: SessionContentOption["blockType"]; block_position: number; label: string; resource_category: string | null; is_recommended: boolean };
+  const materialBySession = new Map<string, SessionContentOption[]>();
+  ((materialOptionsResult.data ?? []) as MaterialOptionRow[]).forEach((item) => {
+    const content = materialBySession.get(item.session_id) ?? [];
+    content.push({ id: item.block_id, blockType: item.block_type, position: item.block_position, label: item.label, resourceCategory: item.resource_category, isRecommended: item.is_recommended });
+    materialBySession.set(item.session_id, content);
+  });
+  const sessions: Session[] = publishedSessionOptions(templates).map((session) => ({ ...session, content: materialBySession.get(session.id) ?? [] }));
   const identitiesByCase = new Map<string, CounselingWorkspaceCoupleIdentityRow[]>();
   identityQueries.forEach(({ result }) => (result.data ?? []).forEach((identity) => { const values = identitiesByCase.get(identity.counseling_case_id) ?? []; values.push(identity); identitiesByCase.set(identity.counseling_case_id, values); }));
   const meetingsByCase = new Map<string, Meeting[]>();

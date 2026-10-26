@@ -9,6 +9,7 @@ import { validateCanonicalMeetingStart } from "./scheduling-validation";
 
 const CARE_ROLES = ["campus_lead", "coach", "counselor"] as const;
 function required(formData: FormData, name: string) { const value = formData.get(name); return typeof value === "string" && value.trim() ? value.trim() : null; }
+function selectedMaterialBlockIds(formData: FormData) { return formData.getAll("materialBlockId").flatMap((value) => typeof value === "string" && value.trim() ? [value.trim()] : []); }
 
 function meetingTimes(formData: FormData) {
   const date = required(formData, "date");
@@ -45,11 +46,13 @@ export async function completeInitialMeeting(formData: FormData) {
   await requireOneOfRoles([...CARE_ROLES, "super_admin"], "/workspace");
   const caseId = required(formData, "caseId");
   const sessionId = required(formData, "sessionId");
+  const materialBlockIds = selectedMaterialBlockIds(formData);
   const times = meetingTimes(formData);
   if (!caseId || !sessionId) return { error: "Counseling case and next Session are required." };
+  if (!materialBlockIds.length) return { error: "Select at least one Session content item." };
   if ("error" in times) return times;
   const supabase = await createServerSupabaseClient();
-  const { data: caseSessionId, error } = await supabase.rpc("activate_first_case_session", { target_case_id: caseId, target_session_id: sessionId, target_starts_at: times.startsAt, target_ends_at: times.endsAt });
+  const { data: caseSessionId, error } = await supabase.rpc("activate_first_case_session", { target_case_id: caseId, target_session_id: sessionId, target_selected_material_block_ids: materialBlockIds, target_starts_at: times.startsAt, target_ends_at: times.endsAt });
   if (error) return { error: error.message };
   const { data: meeting } = await supabase.from("case_session_meetings").select("id").eq("case_session_id", caseSessionId).is("completed_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (meeting) await dispatchMeetingNotifications(meeting.id, "meeting.scheduled");
@@ -62,16 +65,19 @@ export async function completeSessionScheduleNext(formData: FormData) {
   const caseId = required(formData, "caseId");
   const caseSessionId = required(formData, "caseSessionId");
   const sessionId = required(formData, "sessionId");
+  const materialBlockIds = selectedMaterialBlockIds(formData);
   const rawOverrideConfirmation = formData.get("overrideConfirmation");
   const overrideConfirmation = typeof rawOverrideConfirmation === "string" ? rawOverrideConfirmation : null;
   const times = meetingTimes(formData);
   if (!caseId || !caseSessionId || !sessionId) return { error: "Counseling case and next Session are required." };
+  if (!materialBlockIds.length) return { error: "Select at least one Session content item." };
   if ("error" in times) return times;
   const isAdmin = identity.roles.some((role) => role === "admin" || role === "super_admin");
   const supabase = await createServerSupabaseClient();
   const { data: activatedCaseSessionId, error } = await supabase.rpc("complete_case_session_schedule_next", {
     target_case_session_id: caseSessionId,
     target_session_id: sessionId,
+    target_selected_material_block_ids: materialBlockIds,
     target_starts_at: times.startsAt,
     target_ends_at: times.endsAt,
     override_confirmation: isAdmin ? overrideConfirmation ?? undefined : undefined,
