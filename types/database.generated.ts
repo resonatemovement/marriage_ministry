@@ -2505,6 +2505,10 @@ export type Database = {
           profile_id: string
         }[]
       }
+      get_counselor_submitted_homework_review: {
+        Args: { target_progress_id: string }
+        Returns: Json
+      }
       get_current_couple_case_counselor: {
         Args: never
         Returns: {

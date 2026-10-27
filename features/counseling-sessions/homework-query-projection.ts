@@ -1,6 +1,6 @@
 import type { HomeworkProgressStatus } from "@/features/homework/presentation";
 
-type HomeworkProgressRow = { profile_id: string; status: HomeworkProgressStatus };
+type HomeworkProgressRow = { id: string; profile_id: string; status: HomeworkProgressStatus };
 type HomeworkRevisionRow = {
   id: string;
   ended_at: string | null;
@@ -19,7 +19,7 @@ type PinnedCaseSession = {
 export type CounselingHomeworkProgress = {
   sessionId: string;
   complete: boolean;
-  progress: { profileId: string; status: HomeworkProgressStatus }[];
+  progress: { progressId: string; profileId: string; status: HomeworkProgressStatus }[];
 };
 
 export function projectCounselingHomeworkProgress(
@@ -52,7 +52,7 @@ export function projectCounselingHomeworkProgress(
       homeworkByRevision.set(revision.id, {
         sessionId: pinnedSession.sessionId,
         complete,
-        progress: progress.flatMap(({ profile_id, status }) => profile_id ? [{ profileId: profile_id, status }] : []),
+        progress: progress.flatMap(({ id, profile_id, status }) => id && profile_id ? [{ progressId: id, profileId: profile_id, status }] : []),
       });
     }
   }

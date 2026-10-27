@@ -19,7 +19,7 @@ const card: CounselingSessionCard = {
   state: { kind: "session", label: "SESSION 2", detail: "Communication", action: "complete-session", canReschedule: true, session: { id: "session-2", number: 2, title: "Communication", isFinal: false }, caseSession: { id: "case-session", sessionId: "session-2", actualSequence: 2, templateSequence: 2, title: "Communication", status: "active", isFinal: false, homeworkAssignmentRevisionId: "homework-revision", materialReleasedAt: "2026-10-10T00:00:00Z", homeworkReleasedAt: "2026-10-10T00:00:00Z" }, nextSession: { id: "session-3", number: 3, title: "Trust", isFinal: false }, meeting: { id: "meeting", sessionId: "session-2", caseSessionId: "case-session", startsAt: "2026-10-12T19:00:00Z", endsAt: "2026-10-12T20:00:00Z", location: "Church", completedAt: null, createdAt: "2026-10-11T10:00:00Z" }, pastMeetings: [{ id: "meeting-one", sessionId: "session-2", caseSessionId: "case-session", startsAt: "2026-10-05T19:00:00Z", endsAt: "2026-10-05T20:00:00Z", location: "Church", completedAt: "2026-10-05T20:00:00Z", createdAt: "2026-10-04T10:00:00Z" }], progress: "Session 2 of 6" },
   publishedSessions: [{ id: "session-1", number: 1, title: "Foundations", isFinal: false }, { id: "session-2", number: 2, title: "Communication", isFinal: false }],
   team: { campusLead: { id: "lead-team", name: "Davis & Morgan" }, coach: { id: "coach-team", name: "James & Gina Jacobs" }, counselor: { id: "counselor-team", name: "Taylor & Jordan Reed" } },
-  homework: { title: "Session 2 Homework", complete: false, partners: [{ profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
+  homework: { title: "Session 2 Homework", complete: false, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
 };
 
 describe("Counseling couple detail foundation", () => {
@@ -99,6 +99,9 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain("Session 2 Homework");
     expect(markup).toContain(">Anthony</p>");
     expect(markup).toContain("Submitted");
+    expect(markup).toContain('href="/workspace/cases/case-1/homework/progress-anthony"');
+    expect(markup).toContain("View Answers");
+    expect(markup).not.toContain('href="/workspace/cases/case-1/homework/progress-amy"');
     expect(markup).toContain(">Amy</p>");
     expect(markup).toContain("In Progress");
     expect(markup).not.toContain("homework response");
@@ -114,8 +117,8 @@ describe("Counseling couple detail foundation", () => {
         title: "Session 2 Homework",
         complete: false,
         partners: [
-          { profileId: "anthony", name: "Anthony Jones", status: "not_started" as const },
-          { profileId: "amy", name: "Amy Lee", status: "not_started" as const },
+          { progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "not_started" as const },
+          { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "not_started" as const },
         ],
       },
     };
