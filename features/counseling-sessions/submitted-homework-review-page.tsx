@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Card } from "@/components/ui/card";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
@@ -34,9 +32,8 @@ export function SubmittedHomeworkReviewPage({ review, partnerName }: { review: S
   const caseHref = `/workspace/cases/${review.caseId}`;
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
-    <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href={caseHref}>Counseling Case</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Homework Answers</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
-    <Link href={caseHref} className="inline-flex min-h-10 items-center text-sm font-semibold text-brand-secondary hover:text-brand-primary focus-visible:text-brand-primary">← Back to Counseling Case</Link>
-    <header className="my-5">
+    <Breadcrumb className="mb-3"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href={caseHref}>Counseling Case</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Homework Answers</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+    <header className="mb-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Submitted Homework</p>
       <h1 className="font-heading mt-2 text-2xl font-bold text-text-primary sm:text-3xl">{partnerName}</h1>
       <p className="mt-2 text-sm text-text-secondary">Session {review.sessionSequence}: {review.sessionTitle}</p>

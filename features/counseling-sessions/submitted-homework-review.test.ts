@@ -47,8 +47,11 @@ describe("submitted Homework review presentation", () => {
     expect(markup.indexOf("Long prompt")).toBeLessThan(markup.indexOf("Checkbox prompt"));
     expect(markup.indexOf("Checkbox prompt")).toBeLessThan(markup.indexOf("Radio prompt"));
     expect(markup.indexOf("Radio prompt")).toBeLessThan(markup.indexOf("Optional prompt"));
+    expect(markup).toContain("Workspace");
+    expect(markup).toContain("Counseling Case");
+    expect(markup).toContain("Homework Answers");
     expect(markup).toContain('href="/workspace/cases/case-a"');
-    expect(markup).toContain("Back to Counseling Case");
+    expect(markup).not.toContain("Back to Counseling Case");
     expect(markup).not.toMatch(/<(form|textarea|input|button)\b/);
     expect(markup).not.toContain("Grade");
     expect(markup).not.toContain("Feedback");
