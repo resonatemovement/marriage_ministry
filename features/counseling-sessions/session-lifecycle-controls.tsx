@@ -18,7 +18,7 @@ import { MeetingNotificationResendMenuItems, resendableMeetingNotificationPartne
 import { closeCounselingCaseIncomplete, completeCounselingProgram, completeInitialMeeting, completeSessionScheduleNext, rescheduleSessionMeeting, scheduleFollowupMeeting, scheduleInitialMeeting } from "./actions";
 import { COUNSELING_TIME_ZONE, counselingDateOnly } from "./meeting-date-time";
 import { meetingTimeDefaults, validateMeetingSchedule, type MeetingPeriod } from "./scheduling-validation";
-import { recommendedSessionContentIds, toggleSessionContentId } from "./session-content-selection";
+import { recommendedSessionContentIds, sessionContentListNeedsScroll, toggleSessionContentId } from "./session-content-selection";
 import type { CounselingSessionCard } from "./queries";
 
 type Mode = "schedule-initial" | "reschedule-initial" | "complete-initial" | "complete-session" | "complete-program" | "close-case" | "schedule-followup" | "reschedule-meeting";
@@ -249,7 +249,7 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
                 <div><p id="assign-session-content" className="text-sm font-semibold text-text-primary">Assign Session Content</p><p className="mt-0.5 text-xs text-text-muted">{selectedMaterialBlockIds.length} selected</p></div>
                 <button type="button" onClick={() => { setSelectedMaterialBlockIds(recommendedSessionContentIds(selectedSessionContent)); setError(null); }} className="min-h-9 shrink-0 rounded-md px-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent">Restore Defaults</button>
               </div>
-              {selectedSessionContent.length ? <div className="grid gap-2">{selectedSessionContent.map((item) => {
+              {selectedSessionContent.length ? <div role="group" aria-label="Session content options" tabIndex={sessionContentListNeedsScroll(selectedSessionContent.length) ? 0 : undefined} className={sessionContentListNeedsScroll(selectedSessionContent.length) ? "grid max-h-[14.5rem] gap-2 overflow-y-auto overscroll-contain pr-1 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary" : "grid gap-2"}>{selectedSessionContent.map((item) => {
                 const checked = selectedMaterialBlockIds.includes(item.id);
                 const typeLabel = item.blockType === "rich_text" ? "Page" : "Resource";
                 return <label key={item.id} htmlFor={`session-content-${item.id}`} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md bg-surface-muted px-3 py-2">

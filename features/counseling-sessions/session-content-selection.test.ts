@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SessionContentOption } from "./model";
-import { recommendedSessionContentIds, toggleSessionContentId } from "./session-content-selection";
+import { recommendedSessionContentIds, sessionContentListNeedsScroll, toggleSessionContentId } from "./session-content-selection";
 
 const content: SessionContentOption[] = [
   { id: "page-one", blockType: "rich_text", position: 0, label: "Welcome", resourceCategory: null, isRecommended: true },
@@ -9,6 +9,12 @@ const content: SessionContentOption[] = [
 ];
 
 describe("selective Session content state", () => {
+  it("scrolls only when the list contains more than four items", () => {
+    expect(sessionContentListNeedsScroll(4)).toBe(false);
+    expect(sessionContentListNeedsScroll(5)).toBe(true);
+    expect(sessionContentListNeedsScroll(8)).toBe(true);
+  });
+
   it("starts and restores from Admin recommendations in authored order", () => {
     expect(recommendedSessionContentIds(content)).toEqual(["page-one", "page-two"]);
   });

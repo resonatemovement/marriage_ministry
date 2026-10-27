@@ -281,4 +281,12 @@ describe("lifecycle scheduling date control", () => {
     expect(actions).toContain('formData.getAll("materialBlockId")');
     expect(actions).toContain("target_selected_material_block_ids: materialBlockIds");
   });
+
+  it("keeps the selected count and Restore Defaults outside the keyboard-scrollable content list", () => {
+    expect(controls).toContain('tabIndex={sessionContentListNeedsScroll(selectedSessionContent.length) ? 0 : undefined}');
+    expect(controls).toContain('"grid max-h-[14.5rem] gap-2 overflow-y-auto overscroll-contain pr-1 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary"');
+    expect(controls).toContain('aria-label="Session content options"');
+    expect(controls).toContain("{selectedMaterialBlockIds.length} selected");
+    expect(controls).toContain("Restore Defaults");
+  });
 });

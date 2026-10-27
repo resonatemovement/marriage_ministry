@@ -1,5 +1,9 @@
 import type { SessionContentOption } from "./model";
 
+export function sessionContentListNeedsScroll(itemCount: number) {
+  return itemCount > 4;
+}
+
 export function recommendedSessionContentIds(content: readonly SessionContentOption[]) {
   return content.filter((item) => item.isRecommended).map((item) => item.id);
 }
