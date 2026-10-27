@@ -33,7 +33,7 @@ export function SubmittedHomeworkReviewPage({ review, partnerName }: { review: S
   }).format(new Date(review.submittedAt));
   const caseHref = `/workspace/cases/${review.caseId}`;
 
-  return <main className="mx-auto max-w-3xl p-5 sm:p-8 lg:p-10">
+  return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href={caseHref}>Counseling Case</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Homework Answers</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
     <Link href={caseHref} className="inline-flex min-h-10 items-center text-sm font-semibold text-brand-secondary hover:text-brand-primary focus-visible:text-brand-primary">← Back to Counseling Case</Link>
     <header className="my-5">
