@@ -252,7 +252,7 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
               {selectedSessionContent.length ? <div role="group" aria-label="Session content options" tabIndex={sessionContentListNeedsScroll(selectedSessionContent.length) ? 0 : undefined} className={sessionContentListNeedsScroll(selectedSessionContent.length) ? "grid max-h-[14.5rem] gap-2 overflow-y-auto overscroll-contain pr-1 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary" : "grid gap-2"}>{selectedSessionContent.map((item) => {
                 const checked = selectedMaterialBlockIds.includes(item.id);
                 const typeLabel = item.blockType === "rich_text" ? "Page" : "Resource";
-                return <label key={item.id} htmlFor={`session-content-${item.id}`} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md bg-surface-muted px-3 py-2">
+                return <label key={item.id} htmlFor={`session-content-${item.id}`} className="flex h-[3.25rem] cursor-pointer items-start gap-3 rounded-md bg-surface-muted px-3 py-2">
                   <Checkbox id={`session-content-${item.id}`} checked={checked} onCheckedChange={(nextChecked) => { setSelectedMaterialBlockIds((current) => toggleSessionContentId(current, item.id, nextChecked === true)); setError(null); }} className="mt-0.5" />
                   <span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">{typeLabel}</span><span className="block truncate text-sm font-medium text-text-primary">{item.label}</span></span>
                 </label>;

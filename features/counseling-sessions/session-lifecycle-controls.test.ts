@@ -285,6 +285,8 @@ describe("lifecycle scheduling date control", () => {
   it("keeps the selected count and Restore Defaults outside the keyboard-scrollable content list", () => {
     expect(controls).toContain('tabIndex={sessionContentListNeedsScroll(selectedSessionContent.length) ? 0 : undefined}');
     expect(controls).toContain('"grid max-h-[14.5rem] gap-2 overflow-y-auto overscroll-contain pr-1 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary"');
+    expect(controls).toContain('className="flex h-[3.25rem] cursor-pointer items-start gap-3 rounded-md bg-surface-muted px-3 py-2"');
+    expect(4 * 3.25 + 3 * 0.5).toBe(14.5);
     expect(controls).toContain('aria-label="Session content options"');
     expect(controls).toContain("{selectedMaterialBlockIds.length} selected");
     expect(controls).toContain("Restore Defaults");
