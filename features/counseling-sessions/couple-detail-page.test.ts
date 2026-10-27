@@ -9,6 +9,7 @@ vi.mock("./homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ as
 vi.mock("./meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 vi.mock("./case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
 vi.mock("./meeting-notification-realtime", () => ({ MeetingNotificationRealtime: ({ meetingId }: { meetingId: string }) => createElement("i", { "data-notification-meeting": meetingId }) }));
+vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId }: { caseSessionId: string }) => createElement("button", { "data-export-session": caseSessionId }, "Export PDF") }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
 import type { CounselingSessionCard } from "./queries";
@@ -20,6 +21,7 @@ const card: CounselingSessionCard = {
   publishedSessions: [{ id: "session-1", number: 1, title: "Foundations", isFinal: false }, { id: "session-2", number: 2, title: "Communication", isFinal: false }],
   team: { campusLead: { id: "lead-team", name: "Davis & Morgan" }, coach: { id: "coach-team", name: "James & Gina Jacobs" }, counselor: { id: "counselor-team", name: "Taylor & Jordan Reed" } },
   homework: { title: "Session 2 Homework", complete: false, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
+  materialSessions: [{ id: "case-session", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }],
 };
 
 describe("Counseling couple detail foundation", () => {

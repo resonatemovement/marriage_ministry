@@ -12,6 +12,7 @@ import { homeworkProgressBadgeClass, homeworkProgressLabel } from "@/features/ho
 import type { CounselingSessionCard } from "./queries";
 import { counselingProgressPercent, counselingSessionPresentation, couplePhotoSlots } from "./presentation";
 import { SessionLifecycleControls } from "./session-lifecycle-controls";
+import { ExportSessionMaterialsButton } from "@/features/session-materials-export/export-session-materials-button";
 import { DevResetControl } from "./dev-reset-control";
 import { MeetingNotificationStatus, type MeetingNotificationDelivery } from "./meeting-notification-status";
 import { MeetingNotificationRealtime } from "./meeting-notification-realtime";
@@ -101,6 +102,14 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin
               })}</ul>
             </> : <p className="mt-1 text-sm text-text-muted">{card.state.caseSession ? card.state.caseSession.homeworkAssignmentRevisionId ? "Homework status unavailable." : "No Homework for this Session" : "No homework assigned yet."}</p>}
           </section>
+
+          {card.materialSessions.length ? <section aria-label="Session Materials" className="mt-4 border-t border-border pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Session Materials</p>
+            <ul className="mt-1 divide-y divide-border">{card.materialSessions.map((session) => <li key={session.id} className="flex flex-wrap items-center justify-between gap-3 py-2 first:pt-1 last:pb-0">
+              <p className="min-w-0 text-sm font-medium text-text-primary">Session {session.templateSequence}: {session.title} <span className="text-text-muted">· {session.status === "completed" ? "Completed" : "Active"}</span></p>
+              <ExportSessionMaterialsButton caseSessionId={session.id} />
+            </li>)}</ul>
+          </section> : null}
 
           {card.state.meeting ? <>
             <MeetingNotificationRealtime meetingId={card.state.meeting.id} />

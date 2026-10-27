@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CaseLifecycleRealtime } from "@/features/counseling-sessions/case-lifecycle-realtime";
 import { homeworkProgressBadgeClass, homeworkProgressLabel, participantHomeworkTitle } from "@/features/homework/presentation";
 import { SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
+import { ExportSessionMaterialsButton } from "@/features/session-materials-export/export-session-materials-button";
 import { ParticipantHomeworkContent } from "./homework-participant";
 import type { CoupleSessionViewData } from "./queries";
 import { CoupleBreadcrumb } from "./couple-breadcrumb";
@@ -45,6 +46,7 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
           <TabsTrigger value="material" className="flex-1 sm:flex-none">Session Material</TabsTrigger>
           <TabsTrigger value="homework" className="flex-1 sm:flex-none">Homework</TabsTrigger>
         </TabsList>
+        {activeTab === "material" ? <ExportSessionMaterialsButton caseSessionId={session.id} className="ml-auto" /> : null}
         {activeTab === "material" && totalPages > 0 ? <p className="ml-auto text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</p> : null}
       </div>
       <TabsContent value="material" forceMount>

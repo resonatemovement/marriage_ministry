@@ -8,6 +8,7 @@ import type { CoupleSessionViewData } from "./queries";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/counseling-sessions/case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
+vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId }: { caseSessionId: string }) => createElement("button", { "data-export-session": caseSessionId }, "Export PDF") }));
 
 const session: CoupleSessionViewData = {
   id: "case-session-1", caseId: "case-1", number: 2, title: "Testing", status: "active", caseCompleted: false, homeworkRequired: false, homework: null,
@@ -45,6 +46,8 @@ describe("Couple Session View", () => {
     expect(materialHtml).toContain("Session 2: Testing");
     expect(materialHtml).toContain(">Current</span>");
     expect(materialHtml).toContain("Page 1 of 3");
+    expect(materialHtml).toContain('data-export-session="case-session-1"');
+    expect(materialHtml).toContain("Export PDF");
     expect(materialHtml).toContain('class="grid w-full gap-8"');
     expect(materialHtml).toContain("Previous Page");
     expect(materialHtml).toContain("Next Page");
