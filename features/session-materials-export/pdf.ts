@@ -132,7 +132,9 @@ export async function buildSessionMaterialsPdf(title: string, blocks: readonly S
     doc.on("error", reject);
   });
   const logo = await logoPng();
-  doc.image(logo, 58, 34, { fit: [100, 28] }).font("Helvetica-Bold").fontSize(24).fillColor(navy);
+  doc.image(logo, 58, 34, { fit: [100, 28] });
+  doc.font("Helvetica-Bold").fontSize(14).fillColor(navy).text("Resonate Marriage Ministry", 94, 40, { width: 250 });
+  doc.font("Helvetica-Bold").fontSize(24).fillColor(navy);
   doc.text(title, 58, 86, { width: 496 });
   doc.moveDown(0.7).font("Helvetica").fontSize(10.5).fillColor(ink);
 

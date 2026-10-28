@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
+import { inflateSync } from "node:zlib";
 import sharp from "sharp";
 vi.mock("server-only", () => ({}));
 import { buildSessionMaterialsPdf } from "./pdf";
@@ -9,7 +10,22 @@ const page = (id: string, position: number, content: string): SessionMaterialsPd
   id, position, blockType: "rich_text", title: id, richTextContent: { type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: content }] }, { type: "paragraph", content: [{ type: "text", text: `Included ${content}`, marks: [{ type: "bold" }] }] }, { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "List item" }] }] }] }] }, url: null, description: null, resourceId: null, resourceVersionId: null, resourceCategory: null, image: null, imageWidth: null, imageHeight: null,
 });
 
+function decodedPdfText(pdf: Buffer) {
+  const streams = [...pdf.toString("latin1").matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)];
+  const textStreams = streams.flatMap(([, stream]) => {
+    try { return [inflateSync(Buffer.from(stream, "latin1")).toString("latin1")]; } catch { return []; }
+  });
+  return textStreams.flatMap((stream) => [...stream.matchAll(/<([0-9a-f]+)>/gi)].map(([, text]) => Buffer.from(text, "hex").toString("latin1"))).join("");
+}
+
 describe("assigned Session Materials PDF", () => {
+  it("places the Resonate brand name in the PDF header above the Session title", async () => {
+    const { bytes } = await buildSessionMaterialsPdf("Marriage Connection", [], "https://app.example");
+    const content = decodedPdfText(bytes);
+    expect(content.indexOf("Resonate Marriage Ministry")).toBeGreaterThanOrEqual(0);
+    expect(content.indexOf("Marriage Connection")).toBeGreaterThan(content.indexOf("Resonate Marriage Ministry"));
+  });
+
   it("keeps selected snapshot order and emits a US Letter PDF with only supplied blocks", async () => {
     const ordered = sessionSnapshotOrder([page("Second", 2, "Selected second"), page("First", 1, "Selected first")]);
     expect(ordered.map(({ id }) => id)).toEqual(["First", "Second"]);
