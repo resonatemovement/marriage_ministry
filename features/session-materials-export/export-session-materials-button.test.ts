@@ -7,7 +7,7 @@ import { ExportSessionMaterialsButton } from "./export-session-materials-button"
 
 describe("Session Materials PDF actions", () => {
   it("renders a secondary Preview PDF action and a primary Download PDF action", () => {
-    const markup = renderToStaticMarkup(createElement(ExportSessionMaterialsButton, { caseSessionId: "case-session-1" }));
+    const markup = renderToStaticMarkup(createElement(ExportSessionMaterialsButton, { caseSessionId: "case-session-1", sessionLabel: "Session 2: Communication" }));
     expect(markup).toContain('data-pdf-action="preview"');
     expect(markup).toContain('data-pdf-action="download"');
     expect(markup).toContain("Preview PDF");
@@ -15,6 +15,11 @@ describe("Session Materials PDF actions", () => {
     expect(markup).toContain("border-border bg-surface");
     expect(markup).toContain("bg-brand-primary");
     expect(markup).toContain("aria-busy=\"false\"");
+    expect(markup).toContain('aria-label="Preview PDF for Session 2: Communication"');
+    expect(markup).toContain('aria-label="Download PDF for Session 2: Communication"');
+    expect(markup.match(/w-\[168px\]/g)).toHaveLength(2);
+    expect(markup.match(/whitespace-nowrap/g)).toHaveLength(2);
+    expect(markup.match(/shrink-0/g)).toHaveLength(2);
     expect(markup.match(/<svg\b/g)).toHaveLength(2);
   });
 

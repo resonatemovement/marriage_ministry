@@ -6,7 +6,7 @@ import { Download, Eye } from "lucide-react";
 import { filenameFromContentDisposition } from "./model";
 import { showErrorToast } from "@/lib/toast";
 
-export function ExportSessionMaterialsButton({ caseSessionId, className }: { caseSessionId: string; className?: string }) {
+export function ExportSessionMaterialsButton({ caseSessionId, className, sessionLabel }: { caseSessionId: string; className?: string; sessionLabel?: string }) {
   const [pending, setPending] = useState<"preview" | "download" | null>(null);
   const lock = useRef(false);
 
@@ -58,10 +58,10 @@ export function ExportSessionMaterialsButton({ caseSessionId, className }: { cas
   }
 
   return <div aria-busy={pending !== null} className={`flex flex-wrap items-center gap-2 ${className ?? ""}`}>
-    <button type="button" data-pdf-action="preview" onClick={() => exportPdf("preview")} disabled={pending !== null} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">
+    <button type="button" data-pdf-action="preview" aria-label={sessionLabel ? `Preview PDF for ${sessionLabel}` : undefined} onClick={() => exportPdf("preview")} disabled={pending !== null} className="inline-flex min-h-10 w-[168px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">
       <Eye className="size-4" aria-hidden="true" />{pending === "preview" ? "Preparing PDF…" : "Preview PDF"}
     </button>
-    <button type="button" data-pdf-action="download" onClick={() => exportPdf("download")} disabled={pending !== null} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-brand-primary px-3 text-sm font-semibold text-white hover:bg-brand-primary/90 focus-visible:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
+    <button type="button" data-pdf-action="download" aria-label={sessionLabel ? `Download PDF for ${sessionLabel}` : undefined} onClick={() => exportPdf("download")} disabled={pending !== null} className="inline-flex min-h-10 w-[168px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-brand-primary px-3 text-sm font-semibold text-white hover:bg-brand-primary/90 focus-visible:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
       <Download className="size-4" aria-hidden="true" />{pending === "download" ? "Preparing PDF…" : "Download PDF"}
     </button>
   </div>;

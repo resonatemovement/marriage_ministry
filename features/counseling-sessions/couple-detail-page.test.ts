@@ -9,7 +9,7 @@ vi.mock("./homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ as
 vi.mock("./meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 vi.mock("./case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
 vi.mock("./meeting-notification-realtime", () => ({ MeetingNotificationRealtime: ({ meetingId }: { meetingId: string }) => createElement("i", { "data-notification-meeting": meetingId }) }));
-vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId }: { caseSessionId: string }) => createElement("div", { "data-export-session": caseSessionId }, createElement("button", null, "Preview PDF"), createElement("button", null, "Download PDF")) }));
+vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId, sessionLabel }: { caseSessionId: string; sessionLabel?: string }) => createElement("div", { "data-export-session": caseSessionId }, createElement("button", { "aria-label": sessionLabel ? `Preview PDF for ${sessionLabel}` : undefined }, "Preview PDF"), createElement("button", { "aria-label": sessionLabel ? `Download PDF for ${sessionLabel}` : undefined }, "Download PDF")) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
 import type { CounselingSessionCard } from "./queries";
@@ -21,7 +21,7 @@ const card: CounselingSessionCard = {
   publishedSessions: [{ id: "session-1", number: 1, title: "Foundations", isFinal: false }, { id: "session-2", number: 2, title: "Communication", isFinal: false }],
   team: { campusLead: { id: "lead-team", name: "Davis & Morgan" }, coach: { id: "coach-team", name: "James & Gina Jacobs" }, counselor: { id: "counselor-team", name: "Taylor & Jordan Reed" } },
   homework: { title: "Session 2 Homework", complete: false, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
-  materialSessions: [{ id: "case-session", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }],
+  materialSessions: [{ id: "case-session", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }, { id: "case-session-completed", title: "Trust", actualSequence: 3, templateSequence: 3, status: "completed" }],
 };
 
 describe("Counseling couple detail foundation", () => {
@@ -48,6 +48,20 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain('data-lifecycle-case="case-1"');
     expect(markup).toContain("Preview PDF");
     expect(markup).toContain("Download PDF");
+  });
+
+  it("shows one Session Materials heading and keeps completed Session exports separate and accessible", () => {
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
+    const section = markup.slice(markup.indexOf('<section aria-label="Session Materials"'), markup.indexOf("</section>", markup.indexOf('<section aria-label="Session Materials"')) + "</section>".length);
+    expect(section.match(/>Session Materials</g)).toHaveLength(1);
+    expect(section).toContain('data-export-session="case-session"');
+    expect(section).toContain('data-export-session="case-session-completed"');
+    expect(section).toContain('aria-label="Preview PDF for Session 2: Communication"');
+    expect(section).toContain('aria-label="Download PDF for Session 3: Trust"');
+    const visibleMarkup = section.replace(/aria-label="[^"]*"/g, "");
+    expect(visibleMarkup).not.toContain("Communication");
+    expect(visibleMarkup).not.toContain("Completed");
+    expect(visibleMarkup).not.toContain("Active");
   });
 
   it("uses the Schedule Next Session label for Session 0 while retaining its existing completion flow", () => {

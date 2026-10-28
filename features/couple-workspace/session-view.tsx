@@ -46,7 +46,7 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
           <TabsTrigger value="material" className="flex-1 sm:flex-none">Session Material</TabsTrigger>
           <TabsTrigger value="homework" className="flex-1 sm:flex-none">Homework</TabsTrigger>
         </TabsList>
-        {activeTab === "material" ? <ExportSessionMaterialsButton caseSessionId={session.id} className="ml-auto" /> : null}
+        {activeTab === "material" ? <ExportSessionMaterialsButton caseSessionId={session.id} sessionLabel={`Session ${session.number}: ${session.title}`} className="ml-auto" /> : null}
         {activeTab === "material" && totalPages > 0 ? <p className="ml-auto text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</p> : null}
       </div>
       <TabsContent value="material" forceMount>
