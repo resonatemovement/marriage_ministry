@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canExportSessionMaterials, contentDispositionInline, resourceOpenUrl, safeHttpUrl, sanitizeSessionPdfFilename } from "./model";
+import { canExportSessionMaterials, contentDispositionAttachment, contentDispositionInline, filenameFromContentDisposition, resourceOpenUrl, safeHttpUrl, sanitizeSessionPdfFilename } from "./model";
 
 describe("Session Materials export authorization and URL helpers", () => {
   const access = {
@@ -26,6 +26,11 @@ describe("Session Materials export authorization and URL helpers", () => {
   it("sanitizes the PDF filename and builds an authorized, version-pinned Resource route", () => {
     expect(sanitizeSessionPdfFilename("../Couples: Connection? ")).toBe("Couples Connection.pdf");
     expect(contentDispositionInline("Session.pdf")).toContain('inline; filename="Session.pdf"');
+    const attachment = contentDispositionAttachment("Couples Connection.pdf");
+    expect(attachment).toContain('attachment; filename="Couples Connection.pdf"');
+    expect(filenameFromContentDisposition(attachment)).toBe("Couples Connection.pdf");
+    expect(filenameFromContentDisposition('attachment; filename="Fallback.pdf"')).toBe("Fallback.pdf");
+    expect(filenameFromContentDisposition('attachment; filename*=UTF-8\'\'%E2%9C%93%20Session.pdf')).toBe("✓ Session.pdf");
     expect(resourceOpenUrl("https://app.example", "resource/1", "version-2")).toBe("https://app.example/resource-library/resource%2F1/open?version=version-2");
     expect(safeHttpUrl("javascript:alert(1)")).toBeNull();
     expect(safeHttpUrl("https://user:secret@example.com")).toBeNull();

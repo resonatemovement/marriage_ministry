@@ -45,10 +45,29 @@ export function sanitizeSessionPdfFilename(title: string) {
   return `${safeTitle || "Session Materials"}.pdf`;
 }
 
-export function contentDispositionInline(filename: string) {
+function contentDisposition(filename: string, disposition: "inline" | "attachment") {
   const fallback = filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\;]/g, "_");
   const encoded = encodeURIComponent(filename).replace(/[!'()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
-  return `inline; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
+export function contentDispositionInline(filename: string) {
+  return contentDisposition(filename, "inline");
+}
+
+export function contentDispositionAttachment(filename: string) {
+  return contentDisposition(filename, "attachment");
+}
+
+export function filenameFromContentDisposition(header: string | null) {
+  if (!header) return null;
+  const normalizeFilename = (filename: string) => sanitizeSessionPdfFilename(filename.replace(/\.pdf$/i, ""));
+  const encoded = header.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (encoded) {
+    try { return normalizeFilename(decodeURIComponent(encoded)); } catch { return null; }
+  }
+  const fallback = header.match(/filename="?([^";]+)"?/i)?.[1];
+  return fallback ? normalizeFilename(fallback) : null;
 }
 
 export function safeHttpUrl(value: string) {

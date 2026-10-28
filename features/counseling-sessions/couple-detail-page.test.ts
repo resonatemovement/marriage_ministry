@@ -9,7 +9,7 @@ vi.mock("./homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ as
 vi.mock("./meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 vi.mock("./case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
 vi.mock("./meeting-notification-realtime", () => ({ MeetingNotificationRealtime: ({ meetingId }: { meetingId: string }) => createElement("i", { "data-notification-meeting": meetingId }) }));
-vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId }: { caseSessionId: string }) => createElement("button", { "data-export-session": caseSessionId }, "Export PDF") }));
+vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId }: { caseSessionId: string }) => createElement("div", { "data-export-session": caseSessionId }, createElement("button", null, "Preview PDF"), createElement("button", null, "Download PDF")) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
 import type { CounselingSessionCard } from "./queries";
@@ -46,6 +46,8 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain("Session 2 of 6");
     expect(markup).toContain('data-meeting-case="case-1"');
     expect(markup).toContain('data-lifecycle-case="case-1"');
+    expect(markup).toContain("Preview PDF");
+    expect(markup).toContain("Download PDF");
   });
 
   it("uses the Schedule Next Session label for Session 0 while retaining its existing completion flow", () => {

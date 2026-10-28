@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { buildSessionMaterialsPdf, contentDispositionInline } from "@/features/session-materials-export/pdf";
+import { buildSessionMaterialsPdf } from "@/features/session-materials-export/pdf";
 import { getAuthorizedSessionMaterials } from "@/features/session-materials-export/server";
-import { safeHttpUrl } from "@/features/session-materials-export/model";
+import { contentDispositionAttachment, contentDispositionInline, safeHttpUrl } from "@/features/session-materials-export/model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ case
   try {
     const { caseSessionId } = await params;
     if (!/^[0-9a-f-]{36}$/i.test(caseSessionId)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "private, no-store" } });
+    const disposition = new URL(request.url).searchParams.get("download") === "1" ? contentDispositionAttachment : contentDispositionInline;
     const session = await getAuthorizedSessionMaterials(caseSessionId);
     if (!session) return new Response("Not found", { status: 404, headers: { "Cache-Control": "private, no-store" } });
     const baseUrl = process.env.APP_URL?.replace(/\/+$/, "") ?? "";
@@ -18,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ case
     const pdf = await buildSessionMaterialsPdf(session.title, session.blocks, baseUrl);
     return new NextResponse(new Uint8Array(pdf.bytes), { headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": contentDispositionInline(pdf.filename),
+      "Content-Disposition": disposition(pdf.filename),
       "Cache-Control": "private, no-store, max-age=0",
       "Pragma": "no-cache",
       "Vary": "Cookie",

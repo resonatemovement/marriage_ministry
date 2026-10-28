@@ -4,7 +4,7 @@ import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { contentDispositionInline, resourceOpenUrl, safeHttpUrl, sanitizeSessionPdfFilename, type SessionMaterialsPdfBlock } from "./model";
+import { resourceOpenUrl, safeHttpUrl, sanitizeSessionPdfFilename, type SessionMaterialsPdfBlock } from "./model";
 
 const navy = "#0d2349";
 const primary = "#41748d";
@@ -192,5 +192,3 @@ export async function buildSessionMaterialsPdf(title: string, blocks: readonly S
   doc.end();
   return { bytes: await output, filename: sanitizeSessionPdfFilename(title) };
 }
-
-export { contentDispositionInline };
