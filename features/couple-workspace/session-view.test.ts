@@ -8,10 +8,11 @@ import type { CoupleSessionViewData } from "./queries";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/counseling-sessions/case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
+vi.mock("@/features/counseling-sessions/homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ assignmentRevisionId }: { assignmentRevisionId: string }) => createElement("i", { "data-homework-revision": assignmentRevisionId }) }));
 vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId, sessionLabel }: { caseSessionId: string; sessionLabel?: string }) => createElement("div", { "data-export-session": caseSessionId }, createElement("button", { "aria-label": sessionLabel ? `Preview PDF for ${sessionLabel}` : undefined }, "Preview PDF"), createElement("button", { "aria-label": sessionLabel ? `Download PDF for ${sessionLabel}` : undefined }, "Download PDF")) }));
 
 const session: CoupleSessionViewData = {
-  id: "case-session-1", caseId: "case-1", number: 2, title: "Testing", status: "active", caseCompleted: false, homeworkRequired: false, homework: null,
+  id: "case-session-1", caseId: "case-1", number: 2, title: "Testing", status: "active", caseCompleted: false, homeworkRequired: false, homeworkRevisionId: null, homework: null,
   materials: [1, 2, 3].map((number) => ({ key: `page-${number}`, persistedId: `page-${number}`, blockType: "rich_text" as const, title: `Welcome ${number}`, richTextContent: { type: "doc", content: [] }, url: "", description: "", resourceId: null, resourceVersionId: null, resourceCategory: null, resource: null })),
 };
 
@@ -111,7 +112,7 @@ describe("Couple Session View", () => {
       ...session,
       status: "completed" as const,
       homeworkRequired: true,
-      homework: { title: "Testing Homework", status, progressId: "own-progress", blocks: [] },
+      homework: { title: "Testing Homework", status, progressId: "own-progress", revisionId: "revision-1", blocks: [] },
     };
     const html = renderToStaticMarkup(createElement(CoupleSessionView, { session: assignedSession, initialTab: "homework" }));
     expect(html).toContain(">Session Homework</p>");
@@ -126,7 +127,7 @@ describe("Couple Session View", () => {
       ...session,
       status: "completed" as const,
       homeworkRequired: true,
-      homework: { title: "Testing Homework", status: "submitted" as const, progressId: "own-progress", blocks: [
+      homework: { title: "Testing Homework", status: "submitted" as const, progressId: "own-progress", revisionId: "revision-1", blocks: [
         { id: "answer", type: "long_answer", title: null, content: { type: "doc", content: [] }, url: null, description: null, answer: "My submitted answer", questionChoices: [], isRequired: true },
       ] },
     };

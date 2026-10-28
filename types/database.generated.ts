@@ -1306,6 +1306,54 @@ export type Database = {
           },
         ]
       }
+      in_app_notifications: {
+        Row: {
+          case_session_id: string
+          created_at: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          recipient_profile_id: string
+          title: string
+        }
+        Insert: {
+          case_session_id: string
+          created_at?: string
+          id?: string
+          message: string
+          notification_type: string
+          read_at?: string | null
+          recipient_profile_id: string
+          title: string
+        }
+        Update: {
+          case_session_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          recipient_profile_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_case_session_id_fkey"
+            columns: ["case_session_id"]
+            isOneToOne: false
+            referencedRelation: "case_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "in_app_notifications_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intake_request_people: {
         Row: {
           city: string | null
@@ -2527,6 +2575,10 @@ export type Database = {
           published_session_count: number
         }[]
       }
+      get_homework_reopen_eligibility: {
+        Args: { target_case_id: string }
+        Returns: boolean
+      }
       get_or_create_homework_draft: {
         Args: { source_version_id?: string; target_homework_id: string }
         Returns: string
@@ -2550,6 +2602,10 @@ export type Database = {
       invite_intake_request: {
         Args: { target_request_id: string }
         Returns: Json
+      }
+      mark_in_app_notification_read: {
+        Args: { target_notification_id: string }
+        Returns: boolean
       }
       persist_participant_homework: {
         Args: {
@@ -2633,6 +2689,10 @@ export type Database = {
         Returns: boolean
       }
       record_onboarding_photo: { Args: never; Returns: undefined }
+      reopen_participant_homework: {
+        Args: { target_case_id: string; target_progress_id: string }
+        Returns: string
+      }
       reorder_session_material_blocks: {
         Args: { target_block_ids: string[]; target_session_id: string }
         Returns: undefined

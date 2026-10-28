@@ -13,6 +13,7 @@ import { CaseLifecycleRealtime } from "@/features/counseling-sessions/case-lifec
 
 import type { CoupleWorkspaceData } from "./queries";
 import { CoupleBreadcrumb } from "./couple-breadcrumb";
+import { HomeworkProgressRealtime } from "@/features/counseling-sessions/homework-progress-realtime";
 
 function dateTime(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
 
@@ -46,6 +47,7 @@ export function CoupleWorkspace({ data, prepareEnrich }: { data: CoupleWorkspace
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <MeetingRealtime caseId={data.caseId} />
     <CaseLifecycleRealtime caseId={data.caseId} />
+    {data.homeworkRevisionId ? <HomeworkProgressRealtime assignmentRevisionId={data.homeworkRevisionId} /> : null}
     <CoupleBreadcrumb parent="Workspace" current="Couple Workspace" />
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]"><div className="space-y-6"><Card className="p-5 sm:p-7"><header className="flex flex-col gap-5 sm:flex-row sm:items-center"><GroupedAvatars people={data.partners} label={`${data.coupleName} partner photos`} /><div><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Couple Workspace</p><h1 className="font-heading mt-1 text-3xl font-bold text-text-primary">{data.coupleName}</h1><p className="mt-2 text-sm text-text-muted">Follow your counseling journey, current Session, and next meeting.</p></div></header></Card>{data.completed ? <CompletedJourneyCard /> : <div className="grid items-stretch gap-4 sm:grid-cols-2"><CurrentSessionCard data={data} /><HomeworkSummaryCard data={data} /><Card className="h-full p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Next Meeting</p><p className="mt-2 flex items-start gap-2 text-sm font-medium text-text-primary">{data.nextMeeting ? <><CalendarDays className="mt-0.5 size-4 shrink-0 text-text-muted" />{dateTime(data.nextMeeting.startsAt)} · {data.nextMeeting.location}</> : "No meeting scheduled"}</p></Card><Card className="h-full p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Counseling Progress</p><p className="font-heading mt-2 text-lg font-bold text-text-primary">{progress}</p><div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary" style={{ width: `${progressValue}%` }} /></div></Card></div>}</div><aside className="space-y-4"><Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Counseling Status</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{status}</p></Card><TeamCard team={data.team} /><PrepareEnrichCard document={prepareEnrich} /></aside></section>
   </main>;

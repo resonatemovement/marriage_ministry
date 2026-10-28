@@ -20,6 +20,7 @@ import { formatCounselingMeetingDateTime } from "./meeting-date-time";
 import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 import { MeetingRealtime } from "./meeting-realtime";
 import { CaseLifecycleRealtime } from "./case-lifecycle-realtime";
+import { ReopenHomeworkButton } from "./homework-reopen-button";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
   return <GroupedAvatars people={couplePhotoSlots(card.partners)} label={`${card.coupleName} partner photos`} />;
@@ -31,7 +32,7 @@ function PrepareEnrichCard({ caseId, document }: { caseId: string; document: Pre
 
 type MeetingNotificationRow = MeetingNotificationDelivery;
 
-export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin = false, canResetCounselingJourney = false, meetingNotifications = [] }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; isAdmin?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[] }) {
+export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [] }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[] }) {
   const presentation = counselingSessionPresentation(card.state);
   const progressPercent = counselingProgressPercent(presentation.progress, card.state.kind === "completed");
   const caseStatus = counselingStatusLabel(card.status, true, false) ?? card.status;
@@ -98,7 +99,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin
               <ul className="mt-2 divide-y divide-border">{card.homework.partners.map((partner) => {
                 const firstName = card.partners.find((casePartner) => casePartner.id === partner.profileId)?.firstName?.trim();
                 const displayName = firstName || partner.name;
-                return <li key={partner.profileId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 first:pt-1 last:pb-0"><p className="min-w-0 truncate text-sm font-medium text-text-primary">{displayName}</p><div className="flex items-center gap-3"><Badge className={homeworkProgressBadgeClass(partner.status)}>{homeworkProgressLabel(partner.status)}</Badge>{partner.status === "submitted" || partner.status === "reviewed" ? <Link href={`/workspace/cases/${card.caseId}/homework/${partner.progressId}`} className="min-h-9 inline-flex items-center text-sm font-semibold text-brand-secondary hover:text-brand-primary focus-visible:text-brand-primary">View Answers<span className="sr-only"> for {displayName}</span></Link> : null}</div></li>;
+                return <li key={partner.profileId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 first:pt-1 last:pb-0"><p className="min-w-0 truncate text-sm font-medium text-text-primary">{displayName}</p><div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1"><Badge className={homeworkProgressBadgeClass(partner.status)}>{homeworkProgressLabel(partner.status)}</Badge>{partner.status === "submitted" || partner.status === "reviewed" ? <Link href={`/workspace/cases/${card.caseId}/homework/${partner.progressId}`} className="min-h-9 inline-flex items-center text-sm font-semibold text-brand-secondary hover:text-brand-primary focus-visible:text-brand-primary">View Answers<span className="sr-only"> for {displayName}</span></Link> : null}{canReopenHomework && card.status === "active" && card.state.caseSession?.status === "active" && (partner.status === "submitted" || partner.status === "reviewed") ? <ReopenHomeworkButton caseId={card.caseId} progressId={partner.progressId} partnerName={displayName} /> : null}</div></li>;
               })}</ul>
             </> : <p className="mt-1 text-sm text-text-muted">{card.state.caseSession ? card.state.caseSession.homeworkAssignmentRevisionId ? "Homework status unavailable." : "No Homework for this Session" : "No homework assigned yet."}</p>}
           </section>

@@ -8,7 +8,7 @@ export type AuthReadyRealtimeClient = {
   realtime: { setAuth(token: string): Promise<void> };
 };
 
-export type RealtimeFeature = "homework_progress" | "meetings" | "case_lifecycle" | "meeting_notifications";
+export type RealtimeFeature = "homework_progress" | "meetings" | "case_lifecycle" | "meeting_notifications" | "in_app_notifications";
 export type RealtimeSubscriptionStatus = "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED";
 export type RealtimeFailurePhase = "initial_join" | "post_subscription";
 type RealtimeDiagnosticStatus = Exclude<RealtimeSubscriptionStatus, "SUBSCRIBED"> | "AUTH_UNAVAILABLE" | "AUTH_ERROR";

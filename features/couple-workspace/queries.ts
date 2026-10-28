@@ -28,6 +28,7 @@ export type CoupleWorkspaceData = {
   initialMeeting: Meeting | null;
   nextMeeting: Meeting | null;
   homeworkRequired: boolean;
+  homeworkRevisionId: string | null;
   homework: { status: HomeworkProgressStatus } | null;
 };
 export type Meeting = { startsAt: string; location: string };
@@ -41,6 +42,7 @@ export type CoupleSessionViewData = {
   caseCompleted: boolean;
   materials: StagedMaterialBlock[];
   homeworkRequired: boolean;
+  homeworkRevisionId: string | null;
   homework: ParticipantHomework | null;
 };
 
@@ -102,6 +104,7 @@ export async function getCoupleWorkspaceData(authenticatedProfileId: string): Pr
     totalSessions: teamRow.published_session_count,
     currentSession,
     homeworkRequired: Boolean(homeworkRevisionId),
+    homeworkRevisionId,
     initialMeeting: initialMeeting ? { startsAt: initialMeeting.startsAt, location: initialMeeting.location } : null,
     nextMeeting: currentMeeting ? { startsAt: currentMeeting.startsAt, location: currentMeeting.location } : initialMeeting ? { startsAt: initialMeeting.startsAt, location: initialMeeting.location } : null,
     homework: homeworkStatusResult?.data?.status ? { status: homeworkStatusResult.data.status as HomeworkProgressStatus } : null,
@@ -200,6 +203,7 @@ export async function getCoupleSessionViewData(authenticatedProfileId: string, c
     caseCompleted: counselingCase?.status === "finished" && counselingCase.closed_at !== null,
     materials,
     homeworkRequired: Boolean(homeworkRevisionId),
+    homeworkRevisionId,
     homework,
   };
 }
@@ -220,6 +224,7 @@ async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof creat
     title,
     status: progress.status,
     progressId: progress.id,
+    revisionId: revision.id,
     blocks: content.map((block) => {
       const questionChoices = homeworkAnswerChoicesFromJson(block.question_choices);
       return {

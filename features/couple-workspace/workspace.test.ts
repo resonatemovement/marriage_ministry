@@ -5,6 +5,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => createElement("img", props) }));
 vi.mock("@/features/counseling-sessions/meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 vi.mock("@/features/counseling-sessions/case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
+vi.mock("@/features/counseling-sessions/homework-progress-realtime", () => ({ HomeworkProgressRealtime: ({ assignmentRevisionId }: { assignmentRevisionId: string }) => createElement("i", { "data-homework-revision": assignmentRevisionId }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/features/notifications/in-app-actions", () => ({ markInAppNotificationRead: vi.fn() }));
 
 import { CoupleWorkspace } from "./workspace";
 import { homeworkProgressBadgeClass } from "@/features/homework/presentation";
@@ -17,6 +20,7 @@ const data = {
   team: { counselor: { caseId: "case-1", id: "counselor-team", name: "Counselor Team" } },
   currentSession: { id: "session-1", caseSessionId: "case-session-1", number: 2, actualSequence: 1, title: "Connection" },
   homeworkRequired: true,
+  homeworkRevisionId: "homework-revision",
   initialMeeting: null, nextMeeting: { startsAt: "2026-10-10T18:00:00.000Z", location: "Fremont" },
   homework: { title: "Listening practice", status: "not_started" as const },
 };

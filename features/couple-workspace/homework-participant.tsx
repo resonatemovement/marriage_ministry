@@ -14,6 +14,7 @@ import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import type { Json } from "@/types/database.generated";
 
 import { persistParticipantHomework, type ParticipantHomeworkIntent } from "./homework-participant-actions";
+import { HomeworkProgressRealtime } from "@/features/counseling-sessions/homework-progress-realtime";
 
 export type ParticipantHomeworkAnswer = HomeworkResponseValue;
 export type ParticipantHomeworkAnswers = Record<string, ParticipantHomeworkAnswer>;
@@ -33,6 +34,7 @@ export type ParticipantHomework = {
   title: string;
   status: HomeworkProgressStatus;
   progressId: string;
+  revisionId: string;
   blocks: ParticipantHomeworkBlock[];
 };
 
@@ -213,9 +215,9 @@ export function ParticipantHomeworkContent({ homework, emptyTitle = "Your Homewo
   onStatusChange?: (status: HomeworkProgressStatus) => void;
 }) {
   if (!homework) return <Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">{emptyTitle}</h2><p className="mt-2 text-sm text-text-muted">{emptyDescription}</p></Card>;
-  return <HomeworkAssignment key={homework.progressId} homework={homework} readOnly={readOnly} showHeader={showHeader} onDirtyChange={onDirtyChange} onStatusChange={onStatusChange} />;
+  return <HomeworkAssignment key={`${homework.progressId}-${homework.status}`} homework={homework} readOnly={readOnly} showHeader={showHeader} onDirtyChange={onDirtyChange} onStatusChange={onStatusChange} />;
 }
 
 export function HomeworkParticipantPage({ homework }: { homework: ParticipantHomework | null }) {
-  return <main id="homework-response" className="mx-auto max-w-3xl p-5 sm:p-8"><ParticipantHomeworkContent homework={homework} /></main>;
+  return <main id="homework-response" className="mx-auto max-w-3xl p-5 sm:p-8">{homework ? <HomeworkProgressRealtime assignmentRevisionId={homework.revisionId} /> : null}<ParticipantHomeworkContent homework={homework} /></main>;
 }

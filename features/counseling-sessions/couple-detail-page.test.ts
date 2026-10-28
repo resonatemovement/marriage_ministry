@@ -12,6 +12,10 @@ vi.mock("./meeting-notification-realtime", () => ({ MeetingNotificationRealtime:
 vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId, sessionLabel }: { caseSessionId: string; sessionLabel?: string }) => createElement("div", { "data-export-session": caseSessionId }, createElement("button", { "aria-label": sessionLabel ? `Preview PDF for ${sessionLabel}` : undefined }, "Preview PDF"), createElement("button", { "aria-label": sessionLabel ? `Download PDF for ${sessionLabel}` : undefined }, "Download PDF")) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
+
+vi.mock("./homework-reopen-actions", () => ({ reopenParticipantHomework: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName }: { partnerName: string }) => createElement("button", null, `Reopen Homework for ${partnerName}`) }));
 import type { CounselingSessionCard } from "./queries";
 
 const card: CounselingSessionCard = {
@@ -129,6 +133,21 @@ describe("Counseling couple detail foundation", () => {
     expect(markup.indexOf("Upcoming Meeting")).toBeLessThan(markup.indexOf(">Homework</p>"));
     expect(markup).not.toContain("Current Homework");
     expect(markup).toContain('data-homework-revision="homework-revision"');
+  });
+
+  it("offers Reopen only for eligible submitted Homework on the active Session", () => {
+    const eligible = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, canReopenHomework: true }));
+    expect(eligible).toContain("Reopen Homework for Anthony");
+    expect(eligible).not.toContain("Reopen Homework for Amy");
+
+    const unauthorized = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
+    expect(unauthorized).not.toContain("Reopen Homework");
+
+    const completed = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, {
+      card: { ...card, state: { ...card.state, caseSession: { ...card.state.caseSession!, status: "completed" } } },
+      canReopenHomework: true,
+    }));
+    expect(completed).not.toContain("Reopen Homework");
   });
 
   it("shows both Not Started statuses from the active pinned revision and keeps partner rows scoped", () => {

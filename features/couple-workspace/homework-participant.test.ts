@@ -40,6 +40,7 @@ const homework = (blocks: ParticipantHomeworkBlock[], status: ParticipantHomewor
   title: "Testing Homework",
   status,
   progressId: "own-progress",
+  revisionId: "revision-1",
   blocks,
 });
 

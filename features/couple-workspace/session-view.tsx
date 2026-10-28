@@ -11,6 +11,7 @@ import { ExportSessionMaterialsButton } from "@/features/session-materials-expor
 import { ParticipantHomeworkContent } from "./homework-participant";
 import type { CoupleSessionViewData } from "./queries";
 import { CoupleBreadcrumb } from "./couple-breadcrumb";
+import { HomeworkProgressRealtime } from "@/features/counseling-sessions/homework-progress-realtime";
 
 export function CoupleSessionView({ session, initialTab = "material" }: { session: CoupleSessionViewData; initialTab?: "material" | "homework" }) {
   const completed = session.status === "completed";
@@ -29,6 +30,7 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <CaseLifecycleRealtime caseId={session.caseId} />
+    {session.homeworkRevisionId ? <HomeworkProgressRealtime assignmentRevisionId={session.homeworkRevisionId} /> : null}
     <CoupleBreadcrumb parent="Workspace" current={`Session ${session.number}`} sessionsHref={session.caseCompleted ? "/workspace/sessions" : undefined} />
     <header className="mb-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{eyebrow}</p>

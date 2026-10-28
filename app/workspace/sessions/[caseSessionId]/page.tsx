@@ -16,5 +16,5 @@ export default async function CoupleSessionRoute({ params, searchParams }: {
   const session = await getCoupleSessionViewData(identity.id, caseSessionId);
   if (!session) notFound();
   const initialTab = tab === "homework" ? "homework" : "material";
-  return <WorkspaceShell workspace="couple" activeHref="/workspace" identity={identity}><CoupleSessionView session={session} initialTab={initialTab} /></WorkspaceShell>;
+  return <WorkspaceShell workspace="couple" activeHref="/workspace" identity={identity}><CoupleSessionView key={`${caseSessionId}-${initialTab}-${session.homework?.status ?? "none"}`} session={session} initialTab={initialTab} /></WorkspaceShell>;
 }
