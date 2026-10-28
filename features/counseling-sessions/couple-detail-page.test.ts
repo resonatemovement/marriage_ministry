@@ -54,6 +54,9 @@ describe("Counseling couple detail foundation", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
     const section = markup.slice(markup.indexOf('<section aria-label="Session Materials"'), markup.indexOf("</section>", markup.indexOf('<section aria-label="Session Materials"')) + "</section>".length);
     expect(section.match(/>Session Materials</g)).toHaveLength(1);
+    expect(section.indexOf(">Session Materials")).toBeLessThan(section.indexOf('data-export-session='));
+    expect(section.match(/items-center justify-start gap-3/g)).toHaveLength(2);
+    expect(section).not.toContain("justify-end");
     expect(section).toContain('data-export-session="case-session"');
     expect(section).toContain('data-export-session="case-session-completed"');
     expect(section).toContain('aria-label="Preview PDF for Session 2: Communication"');
