@@ -7,11 +7,12 @@ const route = readFileSync("app/workspace/assessments/[assignmentId]/page.tsx", 
 const rls = readFileSync("supabase/migrations/20261029130000_assessments_database_foundation.sql", "utf8");
 
 describe("Couple Assessment access contract", () => {
-  it("scopes assignments, attempts, and answers to the authenticated profile and never loads partner history", () => {
+  it("scopes personal attempts and answers to the authenticated profile and loads only authorized partner scores", () => {
     expect(query).toContain('.eq("profile_id", profileId)');
-    expect(query).toContain('.eq("attempt_id", attempt.id).eq("profile_id", profileId)');
-    expect(query).not.toContain("get_partner_assessment_score_history");
+    expect(query).toContain('rpc("get_partner_assessment_score_history"');
     expect(query).not.toContain("service_role");
+    expect(query).not.toContain("partner_attempts");
+    expect(query).not.toContain("partner_responses");
   });
 
   it("keeps routes Couple-role gated and writes only through the existing authorized RPCs", () => {
@@ -28,5 +29,12 @@ describe("Couple Assessment access contract", () => {
     expect(rls).toContain("using (profile_id = auth.uid())");
     expect(rls).toContain("Submitted Assessment responses are read-only");
     expect(rls).toContain("on conflict (attempt_id, question_id) do update");
+  });
+
+  it("does not expose partner answer or attempt history in the rendered assessment contract", () => {
+    expect(route).toContain('identity.roles.includes("couple")');
+    expect(actions).toContain("voluntary_retake");
+    expect(query).toContain('.eq("profile_id", profileId).order("attempt_number"');
+    expect(query).toContain('rpc("get_partner_assessment_score_history"');
   });
 });

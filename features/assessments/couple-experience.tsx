@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { RadioGroup } from "radix-ui";
-import { ArrowLeft, ArrowRight, Check, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ClipboardCheck, RotateCcw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsInDisplayOrder, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentResult, type CoupleAssessmentStatus } from "./couple-model";
+import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsInDisplayOrder, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentHistoryItem, type CoupleAssessmentResult, type CoupleAssessmentStatus } from "./couple-model";
 import type { CoupleAssessmentData, CoupleAssessmentSummary } from "./couple-queries";
 import { saveCoupleAssessmentResponse, startCoupleAssessment, submitCoupleAssessment } from "./couple-actions";
 
@@ -33,10 +33,24 @@ function AssessmentSummaryCard({ assessment }: { assessment: CoupleAssessmentSum
   </Card>;
 }
 
-export function AssessmentResults({ results }: { results: CoupleAssessmentResult[] }) {
-  const ordered = assessmentResultsInDisplayOrder(results);
+function completionDate(value: string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+export function AssessmentResults({
+  results, name = "Your", submittedAt, history = [],
+}: { results: CoupleAssessmentResult[]; name?: string; submittedAt?: string; history?: CoupleAssessmentHistoryItem[] }) {
+  const [selectedAttemptNumber, setSelectedAttemptNumber] = useState<number | null>(null);
+  const selectedAttempt = history.find((attempt) => attempt.attemptNumber === selectedAttemptNumber)
+    ?? (selectedAttemptNumber === null ? history[0] : undefined);
+  const selectedResults = selectedAttempt?.results ?? results;
+  const selectedDate = selectedAttempt?.submittedAt ?? submittedAt;
+  const ordered = assessmentResultsInDisplayOrder(selectedResults);
   if (!ordered.length) return <Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">Results unavailable</h2><p className="mt-2 text-sm text-text-muted">Your results could not be loaded. Please try again later.</p></Card>;
-  return <Card className="p-5 sm:p-7"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Your results</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">Your calculated scores</h2><ol className="mt-5 space-y-3">{ordered.map((result) => <li key={result.label} className="flex items-center justify-between gap-3 rounded-md bg-surface-muted p-3"><span className="font-medium text-text-primary">{result.label}{result.isPrimary ? <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-brand-secondary">Primary</span> : null}</span><span className="tabular-nums text-sm text-text-muted">{result.score}</span></li>)}</ol><p className="mt-4 text-xs text-text-muted">Only your results are shown here.</p></Card>;
+  return <Card className="p-5 sm:p-7"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessment results</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{name} results</h2>{selectedDate ? <p className="mt-1 text-sm text-text-muted">Completed {completionDate(selectedDate)}{selectedAttempt ? ` · Attempt ${selectedAttempt.attemptNumber}` : ""}</p> : null}
+    {history.length > 1 ? <div className="mt-5"><h3 className="text-sm font-semibold text-text-primary">Your completed attempts</h3><div className="mt-2 flex flex-wrap gap-2" aria-label="Assessment history">{history.map((attempt) => <button key={attempt.attemptNumber} type="button" aria-pressed={(selectedAttempt?.attemptNumber ?? history[0]?.attemptNumber) === attempt.attemptNumber} onClick={() => setSelectedAttemptNumber(attempt.attemptNumber)} className="min-h-10 rounded-md border border-border px-3 text-sm text-text-primary hover:bg-surface-muted aria-pressed:bg-surface-muted">Attempt {attempt.attemptNumber} · {completionDate(attempt.submittedAt)}</button>)}</div></div> : null}
+    <ol className="mt-5 space-y-3">{ordered.map((result) => <li key={result.label} className={`flex items-center justify-between gap-3 rounded-md p-3 ${result.isPrimary ? "bg-brand-primary/10" : "bg-surface-muted"}`}><span className="font-medium text-text-primary">{result.label}{result.isPrimary ? <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-brand-secondary">Primary</span> : null}</span><span className="tabular-nums text-sm text-text-muted">{result.score} <span className="text-xs">/ 12</span></span></li>)}</ol>
+  </Card>;
 }
 
 export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleAssessmentData }) {
@@ -52,19 +66,25 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
   const [submitting, setSubmitting] = useState(false);
   const submitLock = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const submitted = assessment.status === "completed";
+  const submitted = assessment.status === "completed" && !attemptId;
   const questions = assessment.questions;
   const question = questions[questionIndex];
 
-  async function begin() {
+  async function begin(voluntaryRetake = false) {
     if (starting) return;
     setStarting(true); setStartError(null);
     let result: Awaited<ReturnType<typeof startCoupleAssessment>>;
-    try { result = await startCoupleAssessment(assessment.assignmentId); }
+    try { result = await startCoupleAssessment(assessment.assignmentId, voluntaryRetake); }
     catch { setStartError("This Assessment could not be started. Please try again."); setStarting(false); return; }
     setStarting(false);
     if (!result.success || !result.attemptId) { setStartError(result.error); return; }
     setAttemptId(result.attemptId);
+    if (voluntaryRetake) {
+      setAnswers(result.answers);
+      setSavedAnswers(result.answers);
+      setQuestionIndex(assessmentResumeIndex(assessment.questions, result.answers));
+      setReview(false);
+    }
     router.refresh();
   }
 
@@ -92,6 +112,11 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     submitLock.current = false;
     setSubmitting(false);
     if (!result.success) { setError(result.error); return; }
+    if (assessment.attemptId === null && assessment.status === "completed") {
+      setAttemptId(null);
+      setAnswers({});
+      setSavedAnswers({});
+    }
     router.refresh();
   }
 
@@ -106,8 +131,8 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [question, currentAnswer, currentAnswerSaved]);
   if (assessment.status === "unavailable") return <AssessmentPageShell assessment={assessment}><Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">Assessment unavailable</h2><p className="mt-2 text-sm text-text-muted">This Assessment does not have published questions yet. Please contact your Counselor.</p></Card></AssessmentPageShell>;
-  if (submitted) return <AssessmentPageShell assessment={assessment}><AssessmentResults results={assessment.results} /></AssessmentPageShell>;
-  if (!attemptId) return <AssessmentPageShell assessment={assessment}><Card className="p-6"><p className="text-sm text-text-muted">Assigned for {assessment.sessionTitle}</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">Ready when you are</h2><p className="mt-2 text-sm text-text-muted">Your progress is saved as you answer, and you can return later.</p><button type="button" onClick={begin} disabled={starting} className={`${actionClass(true)} mt-5`}>{starting ? "Starting…" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></button>{startError ? <p role="alert" className="mt-3 text-sm text-danger">{startError}</p> : null}</Card></AssessmentPageShell>;
+  if (submitted) return <AssessmentPageShell assessment={assessment}><div className="space-y-5"><AssessmentResults name={assessment.profileName} results={assessment.results} history={assessment.history} /><div className="flex flex-wrap gap-3"><button type="button" onClick={() => begin(true)} disabled={starting} className={actionClass(true)}>{starting ? "Starting…" : assessment.activeRetakeId ? "Continue Retake" : "Retake Assessment"}<RotateCcw className="size-4" aria-hidden="true" /></button></div>{startError ? <p role="alert" className="text-sm text-danger">{startError}</p> : null}{assessment.partnerResults ? <AssessmentResults name={assessment.partnerResults.name} results={assessment.partnerResults.results} submittedAt={assessment.partnerResults.submittedAt} /> : <p className="text-sm text-text-muted">Partner results are shared after both partners complete their initial Assessment.</p>}</div></AssessmentPageShell>;
+  if (!attemptId) return <AssessmentPageShell assessment={assessment}><Card className="p-6"><p className="text-sm text-text-muted">Assigned for {assessment.sessionTitle}</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">Ready when you are</h2><p className="mt-2 text-sm text-text-muted">Your progress is saved as you answer, and you can return later.</p><button type="button" onClick={() => begin(false)} disabled={starting} className={`${actionClass(true)} mt-5`}>{starting ? "Starting…" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></button>{startError ? <p role="alert" className="mt-3 text-sm text-danger">{startError}</p> : null}</Card></AssessmentPageShell>;
   return <AssessmentPageShell assessment={assessment}>
     <div className="mb-5"><div className="flex justify-between gap-3 text-sm"><span className="font-medium text-text-primary">{review ? "Review your answers" : `Question ${questionIndex + 1} of ${questions.length}`}</span><span className="text-text-muted">{progress}%</span></div><div role="progressbar" aria-label="Assessment progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary transition-[width]" style={{ width: `${progress}%` }} /></div></div>
     {review ? <Card className="p-5 sm:p-7"><h2 className="font-heading text-xl font-bold text-text-primary">Review &amp; Submit</h2><p className="mt-2 text-sm text-text-muted">Select any question number to review or change your answer.</p><div className="mt-5 grid grid-cols-5 gap-2 sm:grid-cols-10">{questions.map((item, index) => <button key={item.id} type="button" onClick={() => { setQuestionIndex(index); setReview(false); setError(null); }} aria-label={`Review question ${index + 1}`} className="grid aspect-square min-h-10 place-items-center rounded-md border border-border bg-surface text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted"><Check className={`size-4 ${savedAnswers[item.id] ? "text-success-strong" : "text-danger"}`} aria-hidden="true" /><span className="sr-only">{index + 1}</span></button>)}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => { setQuestionIndex(questions.length - 1); setReview(false); }} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back</button><button type="button" onClick={submit} disabled={!assessmentCanSubmit(questions, savedAnswers, saving, submitting)} className={actionClass(true)}>{submitting ? "Submitting…" : "Submit Assessment"}<ClipboardCheck className="size-4" aria-hidden="true" /></button></div></Card> : question ? <Card className="p-5 sm:p-7"><h2 className="font-heading text-xl font-bold leading-relaxed text-text-primary">{question.prompt}</h2><RadioGroup.Root value={currentAnswer ?? ""} onValueChange={(value) => choose(question.id, value)} disabled={saving || submitting} aria-label={`Answer to question ${questionIndex + 1}`} className="mt-6 grid gap-3">{question.choices.map((choice, index) => <div key={choice.id} className="flex min-h-16 items-center gap-4 rounded-md border border-border p-4 text-sm text-text-primary has-[:disabled]:opacity-60"><RadioGroup.Item id={`assessment-choice-${choice.id}`} value={choice.id} aria-label={choice.label} className="grid size-5 shrink-0 place-items-center rounded-full border border-border bg-white focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20"><RadioGroup.Indicator className="size-2.5 rounded-full bg-brand-primary" /></RadioGroup.Item><label htmlFor={`assessment-choice-${choice.id}`} className="flex min-h-8 flex-1 cursor-pointer items-center">{choice.label}</label><span className="text-xs text-text-muted">{String.fromCharCode(65 + index)}</span></div>)}</RadioGroup.Root><div aria-live="polite" className="mt-4 min-h-5 text-sm">{saving ? <span className="text-text-muted">Saving answer…</span> : currentAnswerSaved ? <span className="text-success-strong">Answer saved</span> : currentAnswer ? <span className="text-danger">Not saved yet</span> : null}</div>{currentAnswer && !currentAnswerSaved && !saving ? <button type="button" onClick={() => saveChoice(question.id, currentAnswer)} className="mt-2 min-h-10 text-sm font-semibold text-brand-secondary hover:text-brand-primary">Retry saving answer</button> : null}<div className="mt-4 flex flex-wrap justify-between gap-3"><button type="button" onClick={() => setQuestionIndex((index) => previousAssessmentQuestionIndex(index, questions.length))} disabled={saving || Boolean(currentAnswer && !currentAnswerSaved) || questionIndex === 0} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back</button>{questionIndex === questions.length - 1 ? <button type="button" onClick={() => setReview(true)} disabled={saving || !currentAnswerSaved || !canReview} className={actionClass(true)}>Review &amp; Submit<ArrowRight className="size-4" aria-hidden="true" /></button> : <button type="button" onClick={() => setQuestionIndex((index) => nextAssessmentQuestionIndex(index, questions.length))} disabled={saving || !currentAnswerSaved} className={actionClass(true)}>Next<ArrowRight className="size-4" aria-hidden="true" /></button>}</div></Card> : null}

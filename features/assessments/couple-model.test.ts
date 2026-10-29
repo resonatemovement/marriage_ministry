@@ -47,4 +47,16 @@ describe("Couple Assessment experience model", () => {
     expect(display.map(({ label }) => label)).toEqual(["Gifts", "Time", "Words"]);
     expect(display.filter(({ isPrimary }) => isPrimary)).toHaveLength(2);
   });
+
+  it("orders all five server-calculated Love Languages scores and preserves tied primary categories", () => {
+    const display = assessmentResultsInDisplayOrder([
+      { label: "Touch", score: 6, rank: 4, isPrimary: false },
+      { label: "Time", score: 12, rank: 1, isPrimary: true },
+      { label: "Words", score: 3, rank: 5, isPrimary: false },
+      { label: "Gifts", score: 12, rank: 1, isPrimary: true },
+      { label: "Service", score: 9, rank: 3, isPrimary: false },
+    ]);
+    expect(display.map((result) => result.score)).toEqual([12, 12, 9, 6, 3]);
+    expect(display.filter((result) => result.isPrimary).map((result) => result.label).sort()).toEqual(["Gifts", "Time"]);
+  });
 });

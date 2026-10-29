@@ -3231,10 +3231,10 @@ export type Database = {
       get_partner_assessment_score_history: {
         Args: { target_schedule_id: string }
         Returns: {
-          attempt_number: number
           category_key: string
           category_label: string
           is_primary: boolean
+          partner_name: string
           rank: number
           score: number
           submitted_at: string

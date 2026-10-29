@@ -312,6 +312,10 @@ declare
   attempt_a uuid;
   attempt_a_again uuid;
   attempt_b uuid;
+  retake_b uuid;
+  retake_b_again uuid;
+  next_retake_b uuid;
+  next_retake_b_again uuid;
   question_row record;
   rejected boolean;
   row_count integer;
@@ -381,10 +385,9 @@ begin
   begin perform public.save_assessment_response(attempt_a, (select id from public.assessment_questions where assessment_version_id = version_1 order by position limit 1), (select id from public.assessment_choices where assessment_version_id = version_1 order by question_id, position limit 1)); exception when others then rejected := sqlerrm = 'Submitted Assessment responses are read-only'; end;
   if not rejected then raise exception 'Submitted responses were not immutable'; end if;
 
-  -- Partner score sharing is denied until both initial assessments are submitted.
-  rejected := false;
-  begin perform count(*) from public.get_partner_assessment_score_history(schedule_a); exception when others then rejected := sqlerrm = 'Partner results are available after both initial Assessments are submitted'; end;
-  if not rejected then raise exception 'Partner results were shared before both initial submissions'; end if;
+  -- Partner score sharing remains empty until both initial assessments submit.
+  select count(*) into row_count from public.get_partner_assessment_score_history(schedule_a);
+  if row_count <> 0 then raise exception 'Partner results were shared before both initial submissions'; end if;
 
   perform set_config('request.jwt.claim.sub', couple_b::text, true);
   attempt_b := public.start_assessment_attempt(assignment_b, false);
@@ -402,24 +405,75 @@ begin
   select count(*) into row_count from public.assessment_responses response where response.profile_id <> couple_b;
   if row_count <> 0 then raise exception 'Second Couple member read another participant''s answers'; end if;
   select count(*) into row_count from public.get_partner_assessment_score_history(schedule_a);
-  if row_count <> 5 then raise exception 'Partner score history was unavailable after both initial submissions'; end if;
+  if row_count <> 5 or not exists (
+    select 1 from public.get_partner_assessment_score_history(schedule_a) shared
+    where shared.partner_name = (select trim(concat_ws(' ', profile.first_name, profile.last_name)) from public.profiles profile where profile.id = couple_a)
+  ) then raise exception 'Partner latest score projection or name was unavailable after both initial submissions'; end if;
   rejected := false;
   begin perform count(*) from public.get_partner_assessment_score_history(schedule_b); exception when others then rejected := sqlerrm = 'Not authorized'; end;
   if not rejected then raise exception 'Couple read a different Case''s Assessment scores'; end if;
 
+  -- Retake starts reuse one active attempt. A submitted retake becomes the
+  -- latest shared result, while a later unfinished retake does not replace it.
+  retake_b := public.start_assessment_attempt(assignment_b, true);
+  retake_b_again := public.start_assessment_attempt(assignment_b, true);
+  if retake_b is null or retake_b <> retake_b_again then raise exception 'Repeated retake starts created duplicate active attempts'; end if;
+  for question_row in
+    select question.id as question_id, choice.id as choice_id
+    from public.assessment_questions question join public.assessment_choices choice on choice.question_id = question.id and choice.position = 0
+    where question.assessment_version_id = version_1 order by question.position
+  loop
+    perform public.save_assessment_response(retake_b, question_row.question_id, question_row.choice_id);
+  end loop;
+  perform public.submit_assessment_attempt(retake_b);
+  perform set_config('request.jwt.claim.sub', couple_a::text, true);
+  if (select count(*) from public.get_partner_assessment_score_history(schedule_a)) <> 5
+    or exists (
+      select shared.category_key, shared.score, shared.rank, shared.is_primary
+      from public.get_partner_assessment_score_history(schedule_a) shared
+      join public.assessment_categories category on category.category_key = shared.category_key and category.assessment_version_id = version_1
+      join public.assessment_attempt_scores score on score.attempt_id = retake_b and score.category_id = category.id
+      where (shared.score, shared.rank, shared.is_primary) <> (score.score, score.rank, score.is_primary)
+    ) then raise exception 'Partner results did not update to the latest completed retake'; end if;
+  perform set_config('request.jwt.claim.sub', couple_b::text, true);
+  next_retake_b := public.start_assessment_attempt(assignment_b, true);
+  next_retake_b_again := public.start_assessment_attempt(assignment_b, true);
+  if next_retake_b is null or next_retake_b <> next_retake_b_again
+    or (select count(*) from public.assessment_attempts attempt where attempt.participant_assignment_id = assignment_b and attempt.attempt_number > 1 and attempt.status = 'in_progress') <> 1
+    then raise exception 'Repeated retake starts created duplicate active attempts'; end if;
+  perform set_config('request.jwt.claim.sub', couple_a::text, true);
+  if exists (
+      select shared.category_key, shared.score
+      from public.get_partner_assessment_score_history(schedule_a) shared
+      join public.assessment_categories category on category.category_key = shared.category_key and category.assessment_version_id = version_1
+      join public.assessment_attempt_scores score on score.attempt_id = retake_b and score.category_id = category.id
+      where (shared.score, shared.is_primary) <> (score.score, score.is_primary)
+    ) then raise exception 'An unfinished retake replaced the latest completed result'; end if;
+  perform set_config('request.jwt.claim.sub', couple_b::text, true);
+  select count(*) into row_count from public.assessment_attempts attempt where attempt.participant_assignment_id = assignment_b;
+  if row_count <> 3 then raise exception 'Partner could not read personal completed and in-progress attempt history'; end if;
+  perform set_config('request.jwt.claim.sub', couple_a::text, true);
+  if exists (select 1 from public.assessment_attempts attempt where attempt.participant_assignment_id = assignment_b)
+    or exists (select 1 from public.assessment_responses response where response.profile_id = couple_b) then
+    raise exception 'Partner could read the other participant''s attempt or answers';
+  end if;
+
   -- Counselor can see result status/scores for the assigned Case but not individual answers.
   perform set_config('request.jwt.claim.sub', counselor_a::text, true);
   select count(*) into row_count from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b);
-  if row_count <> 2 then raise exception 'Assigned Counselor could not read both attempt statuses'; end if;
-  select count(*) into row_count from public.assessment_attempt_scores result where result.attempt_id in (attempt_a, attempt_b);
-  if row_count <> 10 then raise exception 'Assigned Counselor could not read result history'; end if;
-  select count(*) into row_count from public.assessment_responses response where response.attempt_id in (attempt_a, attempt_b);
+  if row_count <> 4 then raise exception 'Assigned Counselor could not read all initial and retake statuses'; end if;
+  select count(*) into row_count from public.assessment_attempt_scores result
+  where result.attempt_id in (select attempt.id from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b));
+  if row_count <> 15 then raise exception 'Assigned Counselor could not read result history'; end if;
+  select count(*) into row_count from public.assessment_responses response
+  where response.attempt_id in (select attempt.id from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b));
   if row_count <> 0 then raise exception 'Counselor could read individual answers'; end if;
 
   perform set_config('request.jwt.claim.sub', unauthorized_counselor::text, true);
   select count(*) into row_count from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b);
   if row_count <> 0 then raise exception 'Unassigned Counselor read Assessment attempts'; end if;
-  select count(*) into row_count from public.assessment_attempt_scores result where result.attempt_id in (attempt_a, attempt_b);
+  select count(*) into row_count from public.assessment_attempt_scores result
+  where result.attempt_id in (select attempt.id from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b));
   if row_count <> 0 then raise exception 'Unassigned Counselor read Assessment results'; end if;
 end;
 $$;

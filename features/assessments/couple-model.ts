@@ -8,6 +8,8 @@ export type CoupleAssessmentQuestion = {
 };
 
 export type CoupleAssessmentResult = { label: string; score: number; rank: number; isPrimary: boolean };
+export type CoupleAssessmentHistoryItem = { attemptNumber: number; submittedAt: string; results: CoupleAssessmentResult[] };
+export type CoupleAssessmentPartnerResults = { name: string; submittedAt: string; results: CoupleAssessmentResult[] };
 
 export function assessmentStatus(attempt: { status: string } | null, hasQuestions: boolean): CoupleAssessmentStatus {
   if (!hasQuestions) return "unavailable";
