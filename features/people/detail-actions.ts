@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireOneOfWorkspaces, requireWorkspace } from "@/lib/auth/session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isValidPhone, normalizePhone } from "@/features/onboarding/phone";
 
 import { isAssignmentReadyCouple } from "./detail-actions-model";
 import { coupleDisplayName } from "./types";
@@ -115,6 +116,40 @@ export async function updatePeopleDetail(formData: FormData): Promise<ActionResu
 
 interface CoupleGenderRpcClient {
   rpc(functionName: "update_couple_partner_gender", args: { target_couple_group_id: string; target_profile_id: string; target_gender: "male" | "female" }): Promise<{ data: boolean | null; error: { message: string } | null }>;
+}
+
+interface CoupleDetailsRpcClient {
+  rpc(functionName: "update_couple_partner_details", args: { target_couple_group_id: string; target_profile_id: string; target_first_name: string; target_last_name: string; target_phone: string; target_gender: "male" | "female" | null }): Promise<{ data: boolean | null; error: { message: string } | null }>;
+}
+
+export async function updateCouplePartnerDetails(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const profileId = formValue(formData, "profileId");
+  const firstName = formValue(formData, "firstName");
+  const lastName = formValue(formData, "lastName");
+  const phone = formValue(formData, "phone");
+  const genderValue = formValue(formData, "gender");
+  const gender = genderValue === "" ? null : genderValue;
+
+  if (!coupleGroupId || !profileId || !firstName || firstName.length > 80 || !lastName || lastName.length > 80 || !isValidPhone(phone) || (gender !== null && gender !== "male" && gender !== "female")) {
+    return invalid("Enter a first and last name and a valid phone number.");
+  }
+
+  await requireOneOfWorkspaces(["admin", "counselor"], `/people/${coupleGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await (supabase as unknown as CoupleDetailsRpcClient).rpc("update_couple_partner_details", {
+    target_couple_group_id: coupleGroupId,
+    target_profile_id: profileId,
+    target_first_name: firstName,
+    target_last_name: lastName,
+    target_phone: normalizePhone(phone),
+    target_gender: gender,
+  });
+  if (error || data !== true) return safeMutationError();
+  revalidatePath(`/people/${coupleGroupId}`);
+  revalidatePath(`/workspace/contacts`);
+  revalidatePath(`/workspace`);
+  return { success: true };
 }
 
 export async function updateCouplePartnerGender(formData: FormData): Promise<ActionResult> {

@@ -1,0 +1,23 @@
+import { isValidPhone, normalizePhone } from "@/features/onboarding/phone";
+import { validateOnboarding } from "@/features/onboarding/validation";
+
+export type PartnerDetailsFields = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  gender: "male" | "female" | "";
+};
+
+export type PartnerDetailsErrors = Partial<Record<"firstName" | "lastName" | "phone", string>>;
+
+export function validatePartnerDetails(fields: PartnerDetailsFields): PartnerDetailsErrors {
+  return validateOnboarding(fields);
+}
+
+export function hasPartnerDetailsChanges(current: PartnerDetailsFields, original: PartnerDetailsFields) {
+  return current.firstName.trim() !== original.firstName.trim()
+    || current.lastName.trim() !== original.lastName.trim()
+    || (isValidPhone(current.phone) ? normalizePhone(current.phone) : current.phone.trim())
+      !== (isValidPhone(original.phone) ? normalizePhone(original.phone) : original.phone.trim())
+    || current.gender !== original.gender;
+}

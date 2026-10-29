@@ -127,6 +127,73 @@ describe("updateCouplePartnerGender", () => {
   });
 });
 
+describe("updateCouplePartnerDetails", () => {
+  beforeEach(() => {
+    mocks.revalidatePath.mockReset();
+    mocks.requireOneOfWorkspaces.mockReset();
+    mocks.rpc.mockReset();
+  });
+
+  it("validates and sends only editable profile fields through the authorized RPC", async () => {
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("profileId", providerId);
+    form.set("firstName", "Taylor");
+    form.set("lastName", "Chen");
+    form.set("phone", "(555) 555-1212");
+    form.set("gender", "female");
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    const { updateCouplePartnerDetails } = await import("./detail-actions");
+
+    await expect(updateCouplePartnerDetails(form)).resolves.toEqual({ success: true });
+    expect(mocks.requireOneOfWorkspaces).toHaveBeenCalledWith(["admin", "counselor"], `/people/${coupleId}`);
+    expect(mocks.rpc).toHaveBeenCalledWith("update_couple_partner_details", {
+      target_couple_group_id: coupleId,
+      target_profile_id: providerId,
+      target_first_name: "Taylor",
+      target_last_name: "Chen",
+      target_phone: "+15555551212",
+      target_gender: "female",
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/people/${coupleId}`);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspace/contacts");
+  });
+
+  it("keeps legacy null gender nullable while validating required names and phone", async () => {
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("profileId", providerId);
+    form.set("firstName", "Taylor");
+    form.set("lastName", "Chen");
+    form.set("phone", "5555551212");
+    form.set("gender", "");
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    const { updateCouplePartnerDetails } = await import("./detail-actions");
+
+    await expect(updateCouplePartnerDetails(form)).resolves.toEqual({ success: true });
+    expect(mocks.rpc).toHaveBeenCalledWith("update_couple_partner_details", expect.objectContaining({ target_gender: null }));
+  });
+
+  it("rejects malformed details before RPC and fails closed on database authorization errors", async () => {
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("profileId", providerId);
+    form.set("firstName", "Taylor");
+    form.set("lastName", "Chen");
+    form.set("phone", "555");
+    form.set("gender", "unknown");
+    const { updateCouplePartnerDetails } = await import("./detail-actions");
+
+    await expect(updateCouplePartnerDetails(form)).resolves.toMatchObject({ error: expect.any(String) });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    form.set("phone", "5555551212");
+    form.set("gender", "male");
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "Not authorized to update this Couple" } });
+    await expect(updateCouplePartnerDetails(form)).resolves.toEqual({ error: "The change could not be saved. Please try again." });
+  });
+});
+
 describe("unassignCoachCaseAssignment", () => {
   const caseId = "33333333-3333-3333-3333-333333333333";
   const coachGroupId = "44444444-4444-4444-4444-444444444444";
