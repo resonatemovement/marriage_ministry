@@ -47,9 +47,10 @@ export function parseDateInput(value: string): { date: string; error: string | n
   return { date: formatDateOnly(date), error: null };
 }
 
-export function DatePicker({ value, onChange, label = "Wedding Date", required = false, error: externalError, minDate }: {
+export function DatePicker({ value, onChange, onBlur, label = "Wedding Date", required = false, error: externalError, minDate }: {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   label?: string;
   required?: boolean;
   error?: string | null;
@@ -94,7 +95,7 @@ export function DatePicker({ value, onChange, label = "Wedding Date", required =
         aria-required={required || undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        onBlur={() => setTouched(true)}
+        onBlur={() => { setTouched(true); onBlur?.(); }}
         onChange={(event) => {
           const nextText = event.target.value;
           const parsed = parseDateInput(nextText);

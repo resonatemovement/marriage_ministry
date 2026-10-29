@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { emptyDraft } from "./validation";
 import {
+  canSubmitIntake,
   mapIntakeDraftToSubmissionPayload,
   publicSubmissionError,
   toCreateIntakeRequestRpcArgs,
@@ -28,6 +29,7 @@ function validDraft() {
 describe("intake submission validation and mapping", () => {
   it("normalizes a complete form and maps date-only values for the RPC", () => {
     const draft = validDraft();
+    expect(canSubmitIntake(draft, [campusId])).toBe(true);
     const validation = validateIntakeSubmission(draft, [campusId]);
     expect("value" in validation).toBe(true);
     if (!("value" in validation)) return;
@@ -59,6 +61,7 @@ describe("intake submission validation and mapping", () => {
   it("requires a valid gender for each person before creating the intake payload", () => {
     const draft = validDraft();
     draft.partner.gender = "";
+    expect(canSubmitIntake(draft, [campusId])).toBe(false);
     const result = validateIntakeSubmission(draft, [campusId]);
     expect("errors" in result && result.errors["partner.gender"]).toBeTruthy();
   });

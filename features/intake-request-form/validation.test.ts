@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { capitalizeInitials, emptyDraft, normalizeDraft, revalidateVisibleErrors, validateStep } from "./validation";
+import { canAdvanceIntakeStep, capitalizeInitials, emptyDraft, getVisibleStepErrors, normalizeDraft, validateStep } from "./validation";
 
 describe("public intake form validation", () => {
   it("requires both people and rejects duplicate email", () => {
@@ -19,17 +19,35 @@ describe("public intake form validation", () => {
     expect(validateStep(1, draft)["partner.city"]).toBeUndefined();
   });
 
-  it("clears only visible errors once values become valid, including duplicate email", () => {
+  it("does not show errors before blur and clears a touched error when corrected", () => {
     const draft = emptyDraft();
-    const errors = validateStep(1, draft);
+    expect(getVisibleStepErrors(1, draft, {}, [])).toEqual({});
+    expect(getVisibleStepErrors(1, draft, { "you.firstName": true }, [])).toMatchObject({ "you.firstName": "First name is required." });
     draft.you = { ...draft.you, firstName: "Cindy", lastName: "Lu", phone: "(510) 555-1212", email: "cindy.lu@mailinator.com" };
     draft.partner = { ...draft.partner, firstName: "Alex", lastName: "Lu", phone: "(415) 555-1212", email: "cindy.lu@mailinator.com" };
-    const duplicateErrors = { ...errors, "partner.email": "Partner email must be different." };
-    expect(revalidateVisibleErrors(1, draft, duplicateErrors)["you.lastName"]).toBeUndefined();
-    expect(revalidateVisibleErrors(1, draft, duplicateErrors)["you.phone"]).toBeUndefined();
-    expect(revalidateVisibleErrors(1, draft, duplicateErrors)["you.email"]).toBeUndefined();
+    expect(getVisibleStepErrors(1, draft, { "you.firstName": true }, [])).toEqual({});
+  });
+
+  it("shows duplicate email only for valid matching addresses after both blur", () => {
+    const draft = emptyDraft();
+    draft.you.email = "same";
+    draft.partner.email = "same";
+    const bothTouched = { "you.email": true, "partner.email": true };
+    expect(getVisibleStepErrors(1, draft, bothTouched, [])["partner.email"]).toBe("Enter a valid email address.");
+    draft.you.email = "same@example.com";
+    draft.partner.email = "same@example.com";
+    expect(getVisibleStepErrors(1, draft, { "you.email": true }, [])).not.toHaveProperty("partner.email");
+    expect(getVisibleStepErrors(1, draft, bothTouched, [])).toMatchObject({ "partner.email": "Partner email must be different." });
     draft.partner.email = "alex.lu@mailinator.com";
-    expect(revalidateVisibleErrors(1, draft, duplicateErrors)["partner.email"]).toBeUndefined();
+    expect(getVisibleStepErrors(1, draft, bothTouched, [])).not.toHaveProperty("partner.email");
+  });
+
+  it("preserves touched feedback when navigating away and returning", () => {
+    const draft = emptyDraft();
+    const touched = { "you.firstName": true };
+    expect(getVisibleStepErrors(1, draft, touched, [])).toHaveProperty("you.firstName");
+    expect(getVisibleStepErrors(2, draft, touched, [])).toEqual({});
+    expect(getVisibleStepErrors(1, draft, touched, [])).toHaveProperty("you.firstName");
   });
 
   it("requires Other campus and referral details", () => {
@@ -39,6 +57,53 @@ describe("public intake form validation", () => {
     draft.referralSource = "other";
     expect(validateStep(3, draft).campus).toBeTruthy();
     expect(validateStep(4, draft).referralOther).toBeTruthy();
+  });
+
+  it("keeps Continue disabled until each required step is valid", () => {
+    const draft = emptyDraft();
+    const campuses = ["active-campus"];
+    expect(canAdvanceIntakeStep(1, draft, campuses)).toBe(false);
+    draft.you = { firstName: "Avery", lastName: "One", gender: "male", phone: "4155550101", email: "avery@example.com", city: "", connections: [] };
+    draft.partner = { firstName: "Blair", lastName: "Two", gender: "", phone: "4155550102", email: "blair@example.com", city: "", connections: [] };
+    expect(canAdvanceIntakeStep(1, draft, campuses)).toBe(false);
+    draft.partner.gender = "female";
+    expect(canAdvanceIntakeStep(1, draft, campuses)).toBe(true);
+
+    expect(canAdvanceIntakeStep(2, draft, campuses)).toBe(false);
+    draft.relationshipStatus = "married";
+    expect(canAdvanceIntakeStep(2, draft, campuses)).toBe(true);
+    draft.you.connections = ["member"];
+    draft.partner.connections = ["mc"];
+    draft.campusId = campuses[0]!;
+    expect(canAdvanceIntakeStep(3, draft, campuses)).toBe(true);
+    draft.workingWithCounselor = "no";
+    draft.requestedSupport = ["lay_counselor"];
+    draft.goals = "We want to communicate well.";
+    draft.referralSource = "website";
+    expect(canAdvanceIntakeStep(4, draft, campuses)).toBe(true);
+    expect(canAdvanceIntakeStep(5, draft, campuses)).toBe(false);
+  });
+
+  it("preserves optional and conditional fields while validating them", () => {
+    const draft = emptyDraft();
+    draft.you = { firstName: "Avery", lastName: "One", gender: "male", phone: "4155550101", email: "avery@example.com", city: "", connections: ["member"] };
+    draft.partner = { firstName: "Blair", lastName: "Two", gender: "female", phone: "4155550102", email: "blair@example.com", city: "", connections: ["mc"] };
+    draft.relationshipStatus = "engaged";
+    draft.campusOther = "Neighborhood church";
+    draft.workingWithCounselor = "no";
+    draft.requestedSupport = ["lay_counselor"];
+    draft.goals = "We want to communicate well.";
+    draft.referralSource = "other";
+    expect(validateStep(3, draft, []).campus).toBeUndefined();
+    expect(validateStep(4, draft).referralOther).toBeTruthy();
+    expect(getVisibleStepErrors(4, draft, { referralSource: true }, []).referralOther).toBeUndefined();
+    expect(getVisibleStepErrors(4, draft, { referralSource: true, referralOther: true }, []).referralOther).toBeTruthy();
+    draft.referralOther = "A friend told us.";
+    expect(validateStep(4, draft).referralOther).toBeUndefined();
+    draft.questions = "x".repeat(10001);
+    expect(validateStep(4, draft).questions).toBeTruthy();
+    draft.questions = "";
+    expect(validateStep(4, draft).questions).toBeUndefined();
   });
 
   it("normalizes emails and phones", () => {
