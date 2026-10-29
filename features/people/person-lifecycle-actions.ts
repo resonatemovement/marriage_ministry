@@ -70,13 +70,13 @@ export async function permanentlyDeleteTeam(formData: FormData): Promise<Result>
   const targetGroupId = groupId(formData); if (!targetGroupId) return { error: "Choose a team." };
   const session = await createServerSupabaseClient(); const { data: claims } = await session.auth.getClaims(); const selfId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
   const admin = adminClient();
-  const { data: target, error: targetError } = await admin.from("groups").select("group_members(profile_id),invitations(auth_user_id),intake_requests(intake_request_people(person_position,first_name,last_name))").eq("id", targetGroupId).maybeSingle();
+  const { data: target, error: targetError } = await admin.from("groups").select("group_members(profile_id),invitations(auth_user_id),intake_requests(intake_request_people(person_position,first_name,last_name,gender))").eq("id", targetGroupId).maybeSingle();
   if (targetError || !target) return { error: "Delete preflight could not be completed. Nothing was deleted." };
   const ownedIds = [...new Set([...(target.group_members ?? []).map((member) => member.profile_id), ...(target.invitations ?? []).flatMap((invitation) => invitation.auth_user_id ? [invitation.auth_user_id] : [])])];
   if (selfId && ownedIds.includes(selfId)) return { error: "You cannot permanently delete a team containing your own account." };
   const deleted = await (admin as unknown as { rpc(name: "delete_disposable_team_graph", args: { target_group_id: string }): Promise<{ data: { profile_ids?: string[]; auth_user_ids?: string[] } | null; error: { message: string } | null }> }).rpc("delete_disposable_team_graph", { target_group_id: targetGroupId });
   const intake = target.intake_requests as { intake_request_people?: { person_position?: string | null; first_name?: string | null; last_name?: string | null }[] } | null;
-  const intakeCoupleName = intakeCoupleDisplayName((intake?.intake_request_people ?? []).map((person) => ({ firstName: person.first_name ?? null, lastName: person.last_name ?? null, position: person.person_position ?? null })));
+  const intakeCoupleName = intakeCoupleDisplayName((intake?.intake_request_people ?? []).map((person) => ({ firstName: person.first_name ?? null, lastName: person.last_name ?? null, position: person.person_position ?? null, gender: (person as unknown as { gender?: "male" | "female" | null }).gender ?? null })));
   if (deleted.error || !deleted.data) return { error: teamDeleteBlockerMessage(deleted.error?.message ?? "", intakeCoupleName) };
   const profileIds = deleted.data.profile_ids ?? []; const authUserIds = deleted.data.auth_user_ids ?? [];
   const paths = profileIds.flatMap((profileId) => [`profiles/${profileId}/avatar.avif`, `profiles/${profileId}/avatar.webp`]);

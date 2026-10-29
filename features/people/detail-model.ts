@@ -1,6 +1,7 @@
 import type { CaseStatus } from "@/lib/counseling/domain";
 
 import type { PeopleRecordType } from "./types";
+import type { PartnerGender } from "./partner-order";
 import { getOnboardingRequirements } from "@/features/onboarding/requirements";
 
 export type MemberAccountStatus = "Active" | "Setup Incomplete" | "Invitation Created" | "Invitation Sent" | "Delivery Failed" | "Deactivated";
@@ -13,6 +14,7 @@ export interface PeopleDetailMember {
   firstName: string;
   lastName: string;
   name: string;
+  gender: PartnerGender;
   email: string | null;
   phone: string | null;
   campusId?: string | null;
@@ -33,6 +35,7 @@ export interface PeopleDetailMember {
 interface DetailMemberInput {
   id: string;
   firstName: string | null;
+  gender?: PartnerGender;
   lastName: string | null;
   email: string | null;
   phone?: string | null;
@@ -132,13 +135,14 @@ export function accountAccessState(status: DetailMemberInput["status"]): Account
   return "active_account";
 }
 
-export function createDetailMember({ id, firstName, lastName, email, phone = null, photoUrl = null, roles, status, onboardingCompletedAt = null, campusId = null, photoPath = null, invitationId }: DetailMemberInput): PeopleDetailMember {
+export function createDetailMember({ id, firstName, lastName, gender = null, email, phone = null, photoUrl = null, roles, status, onboardingCompletedAt = null, campusId = null, photoPath = null, invitationId }: DetailMemberInput): PeopleDetailMember {
   const requirements = getOnboardingRequirements({ firstName, lastName, email, campusId, phone, photoPath });
   return {
     id,
     firstName: firstName ?? "",
     lastName: lastName ?? "",
     name: [firstName, lastName].filter(Boolean).join(" ") || email || "Resonate member",
+    gender,
     email,
     phone,
     campusId,
@@ -151,10 +155,10 @@ export function createDetailMember({ id, firstName, lastName, email, phone = nul
   };
 }
 
-export function createPendingDetailMember(input: { id: string; firstName: string | null; lastName: string | null; email: string | null; delivered: boolean; failed: boolean }) : PeopleDetailMember {
+export function createPendingDetailMember(input: { id: string; firstName: string | null; lastName: string | null; email: string | null; gender?: PartnerGender; delivered: boolean; failed: boolean }) : PeopleDetailMember {
   const deliveryStatus = input.failed ? "Delivery Failed" : input.delivered ? "Sent" : "Not sent";
   const accountStatus = deliveryStatus === "Delivery Failed" ? "Delivery Failed" : deliveryStatus === "Sent" ? "Invitation Sent" : "Invitation Created";
-  return { id: input.id, invitationId: input.id, pending: true, firstName: input.firstName ?? "", lastName: input.lastName ?? "", name: [input.firstName, input.lastName].filter(Boolean).join(" ") || input.email || "Invitee", email: input.email, phone: null, roles: [], accountStatus, accountAccessState: "pending_invitation", lifecycleStatus: "Pending", deliveryStatus, onboardingStatus: "Invitation Pending", onboardingComplete: false, onboardingMissing: ["first name", "last name", "email", "campus", "phone", "profile photo"], photoUrl: null };
+  return { id: input.id, invitationId: input.id, pending: true, firstName: input.firstName ?? "", lastName: input.lastName ?? "", name: [input.firstName, input.lastName].filter(Boolean).join(" ") || input.email || "Invitee", email: input.email, phone: null, gender: input.gender ?? null, roles: [], accountStatus, accountAccessState: "pending_invitation", lifecycleStatus: "Pending", deliveryStatus, onboardingStatus: "Invitation Pending", onboardingComplete: false, onboardingMissing: ["first name", "last name", "email", "campus", "phone", "profile photo"], photoUrl: null };
 }
 
 export function groupOperationalStatuses({

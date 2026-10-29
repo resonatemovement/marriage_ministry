@@ -4,12 +4,13 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   revalidatePath: vi.fn(),
   requireWorkspace: vi.fn(),
+  requireOneOfWorkspaces: vi.fn(),
   rpc: vi.fn(),
   filters: [] as { table: string; method: string; column: string; value: unknown }[],
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("@/lib/auth/session", () => ({ requireOneOfWorkspaces: vi.fn(), requireWorkspace: mocks.requireWorkspace }));
+vi.mock("@/lib/auth/session", () => ({ requireOneOfWorkspaces: mocks.requireOneOfWorkspaces, requireWorkspace: mocks.requireWorkspace }));
 vi.mock("@/lib/supabase/server", () => ({ createServerSupabaseClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 
 const coupleId = "11111111-1111-1111-1111-111111111111";
@@ -78,6 +79,51 @@ describe("unassignCounselorOfRecord", () => {
 
     await expect(unassignCounselorOfRecord(formData(providerId))).resolves.toEqual({ error: "This Couple is no longer assigned to this team." });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateCouplePartnerGender", () => {
+  beforeEach(() => {
+    mocks.revalidatePath.mockReset();
+    mocks.requireOneOfWorkspaces.mockReset();
+    mocks.rpc.mockReset();
+  });
+
+  it("uses the narrow authorized RPC and refreshes Couple surfaces", async () => {
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("profileId", providerId);
+    form.set("gender", "female");
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    const { updateCouplePartnerGender } = await import("./detail-actions");
+
+    await expect(updateCouplePartnerGender(form)).resolves.toEqual({ success: true });
+    expect(mocks.requireOneOfWorkspaces).toHaveBeenCalledWith(["admin", "counselor"], `/people/${coupleId}`);
+    expect(mocks.rpc).toHaveBeenCalledWith("update_couple_partner_gender", { target_couple_group_id: coupleId, target_profile_id: providerId, target_gender: "female" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/people/${coupleId}`);
+  });
+
+  it("rejects invalid gender before calling the database", async () => {
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("profileId", providerId);
+    form.set("gender", "unknown");
+    const { updateCouplePartnerGender } = await import("./detail-actions");
+
+    await expect(updateCouplePartnerGender(form)).resolves.toEqual({ error: "Choose a valid gender." });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the database rejects an unauthorized gender update", async () => {
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("profileId", providerId);
+    form.set("gender", "male");
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "Not authorized to update this Couple" } });
+    const { updateCouplePartnerGender } = await import("./detail-actions");
+
+    await expect(updateCouplePartnerGender(form)).resolves.toEqual({ error: "The change could not be saved. Please try again." });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 });
 

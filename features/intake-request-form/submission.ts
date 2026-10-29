@@ -18,6 +18,7 @@ export type IntakeSubmissionPerson = {
   position: "requester" | "partner";
   first_name: string;
   last_name: string;
+  gender: "male" | "female";
   email: string;
   phone: string;
   city: string | null;
@@ -61,6 +62,7 @@ function normalizePerson(person: PersonDraft, position: IntakeSubmissionPerson["
     position,
     first_name: person.firstName.trim(),
     last_name: person.lastName.trim(),
+    gender: person.gender as "male" | "female",
     email: person.email.trim().toLowerCase(),
     phone: normalizePhone(person.phone),
     city: person.city.trim() || null,
@@ -91,6 +93,7 @@ export function validateIntakeSubmission(draft: IntakeDraft, activeCampusIds: re
   for (const [key, person] of [["you", payload.people[0]], ["partner", payload.people[1]]] as const) {
     if (!person.first_name) errors[`${key}.firstName`] = "First name is required.";
     if (!person.last_name) errors[`${key}.lastName`] = "Last name is required.";
+    if (person.gender !== "male" && person.gender !== "female") errors[`${key}.gender`] = "Choose a gender.";
     if (!emailPattern.test(person.email)) errors[`${key}.email`] = "Enter a valid email address.";
     if (!isValidPhone(person.phone)) errors[`${key}.phone`] = "Enter a valid phone number.";
     if (!person.connections.length || person.connections.length !== draft[key].connections.length) errors[`${key}.connections`] = "Choose valid connection options.";

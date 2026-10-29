@@ -5,10 +5,11 @@ export const relationshipStatuses = ["pre_engaged", "engaged", "married"] as con
 export const requestedSupportValues = ["lay_counselor", "professional_referral"] as const;
 export const referralSources = ["church_announcements", "mc", "friend", "ministry_leader", "website", "social_media", "other"] as const;
 
-export type PersonDraft = { firstName: string; lastName: string; phone: string; email: string; city: string; connections: string[] };
+export type IntakeGender = "male" | "female";
+export type PersonDraft = { firstName: string; lastName: string; gender: IntakeGender | ""; phone: string; email: string; city: string; connections: string[] };
 export type IntakeDraft = { you: PersonDraft; partner: PersonDraft; relationshipStatus: string; weddingDate: string; campusId: string; campusOther: string; workingWithCounselor: string; requestedSupport: string[]; goals: string; questions: string; referralSource: string; referralOther: string };
 
-const emptyPerson = (): PersonDraft => ({ firstName: "", lastName: "", phone: "", email: "", city: "", connections: [] });
+const emptyPerson = (): PersonDraft => ({ firstName: "", lastName: "", gender: "", phone: "", email: "", city: "", connections: [] });
 export const emptyDraft = (): IntakeDraft => ({ you: emptyPerson(), partner: emptyPerson(), relationshipStatus: "", weddingDate: "", campusId: "", campusOther: "", workingWithCounselor: "", requestedSupport: [], goals: "", questions: "", referralSource: "", referralOther: "" });
 const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,6 +19,7 @@ export function validateStep(step: number, draft: IntakeDraft) {
     for (const [key, person] of [["you", draft.you], ["partner", draft.partner]] as const) {
       if (!person.firstName.trim()) errors[`${key}.firstName`] = "First name is required.";
       if (!person.lastName.trim()) errors[`${key}.lastName`] = "Last name is required.";
+      if (person.gender !== "male" && person.gender !== "female") errors[`${key}.gender`] = "Choose a gender.";
       if (!isValidPhone(person.phone)) errors[`${key}.phone`] = "Enter a valid phone number.";
       if (!email.test(person.email.trim())) errors[`${key}.email`] = "Enter a valid email address.";
     }

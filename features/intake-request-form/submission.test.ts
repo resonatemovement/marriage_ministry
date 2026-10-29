@@ -12,8 +12,8 @@ const campusId = "11111111-1111-4111-8111-111111111111";
 
 function validDraft() {
   const draft = emptyDraft();
-  draft.you = { firstName: " Avery ", lastName: " Requester ", phone: "(415) 555-0101", email: " AVERY@EXAMPLE.COM ", city: " San Francisco ", connections: ["member"] };
-  draft.partner = { firstName: " Blair ", lastName: " Partner ", phone: "415-555-0102", email: "BLAIR@example.com", city: " Oakland ", connections: ["mc"] };
+  draft.you = { firstName: " Avery ", lastName: " Requester ", gender: "male", phone: "(415) 555-0101", email: " AVERY@EXAMPLE.COM ", city: " San Francisco ", connections: ["member"] };
+  draft.partner = { firstName: " Blair ", lastName: " Partner ", gender: "female", phone: "415-555-0102", email: "BLAIR@example.com", city: " Oakland ", connections: ["mc"] };
   draft.relationshipStatus = "engaged";
   draft.weddingDate = "2027-06-12";
   draft.campusId = campusId;
@@ -31,7 +31,8 @@ describe("intake submission validation and mapping", () => {
     const validation = validateIntakeSubmission(draft, [campusId]);
     expect("value" in validation).toBe(true);
     if (!("value" in validation)) return;
-    expect(validation.value.people[0]).toMatchObject({ position: "requester", email: "avery@example.com", phone: "+14155550101", city: "San Francisco" });
+    expect(validation.value.people[0]).toMatchObject({ position: "requester", email: "avery@example.com", phone: "+14155550101", city: "San Francisco", gender: "male" });
+    expect(validation.value.people[1].gender).toBe("female");
     expect(validation.value.wedding_date).toBe("2027-06-12");
     expect(toCreateIntakeRequestRpcArgs(validation.value)).toEqual({ payload: validation.value });
   });
@@ -53,6 +54,13 @@ describe("intake submission validation and mapping", () => {
     if (!("errors" in result)) return;
     expect(result.errors["partner.email"]).toContain("different");
     expect(result.errors["partner.phone"]).toContain("valid");
+  });
+
+  it("requires a valid gender for each person before creating the intake payload", () => {
+    const draft = validDraft();
+    draft.partner.gender = "";
+    const result = validateIntakeSubmission(draft, [campusId]);
+    expect("errors" in result && result.errors["partner.gender"]).toBeTruthy();
   });
 
   it("rejects unknown relationship, connection, support, and referral values", () => {

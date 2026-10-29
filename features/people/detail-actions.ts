@@ -11,6 +11,15 @@ import { coupleDisplayName } from "./types";
 type ActionResult = { error: string } | { success: true };
 type AssignmentType = "counselor" | "coach";
 type ManagedGroupType = "couple" | "coach_team" | "counselor_team" | "campus_lead_team";
+interface GroupNameDetailsClient {
+  from(table: "groups"): {
+    select(columns: string): {
+      eq(column: "id", value: string): {
+        maybeSingle(): Promise<{ data: { id: string; campus_id: string | null; group_type: string; group_members: { ended_at: string | null; profile: { first_name: string | null; last_name: string | null; email: string | null; gender?: "male" | "female" | null } | null }[]; invitations: { first_name: string; last_name: string; email: string }[] } | null; error: { message: string } | null }>;
+      };
+    };
+  };
+}
 
 interface EnsureCaseRpcClient {
   rpc(functionName: "ensure_and_assign_counseling_case", args: { target_couple_group_id: string; target_group_id: string | null; target_profile_id: string | null; target_assignment_type: "campus_lead" | AssignmentType; reassignment_reason?: string }): Promise<{ data: string | null; error: { message: string } | null }>;
@@ -73,14 +82,14 @@ export async function updatePeopleDetail(formData: FormData): Promise<ActionResu
   if (!recordId || name.length > 120) return invalid("Enter a name of up to 120 characters.");
 
   const supabase = await authorize(recordId);
-  const groupResult = await supabase.from("groups").select("id,campus_id,group_type,group_members(ended_at,profile:profiles(first_name,last_name,email)),invitations(first_name,last_name,email)").eq("id", recordId).maybeSingle();
+  const groupResult = await (supabase as unknown as GroupNameDetailsClient).from("groups").select("id,campus_id,group_type,group_members(ended_at,profile:profiles(first_name,last_name,gender,email)),invitations(first_name,last_name,email)").eq("id", recordId).maybeSingle();
   if (groupResult.error) return safeMutationError();
   if (groupResult.data) {
     if (!(["couple", "coach_team", "counselor_team", "campus_lead_team"] as const).includes(groupResult.data.group_type as ManagedGroupType)) return invalid("This record cannot be edited here.");
     const isCouple = groupResult.data.group_type === "couple";
     if (!name && !isCouple) return invalid("Enter a name of up to 120 characters.");
     if (campusId !== groupResult.data.campus_id && !await activeCampus(supabase, campusId)) return invalid("Choose an active campus.");
-    const activeMembers = isCouple ? groupResult.data.group_members.filter((membership) => membership.ended_at === null).map((membership) => ({ firstName: membership.profile?.first_name ?? null, lastName: membership.profile?.last_name ?? null, email: membership.profile?.email ?? null })) : [];
+    const activeMembers = isCouple ? groupResult.data.group_members.filter((membership) => membership.ended_at === null).map((membership) => ({ firstName: membership.profile?.first_name ?? null, lastName: membership.profile?.last_name ?? null, email: membership.profile?.email ?? null, gender: membership.profile?.gender ?? null })) : [];
     const invitations = isCouple ? groupResult.data.invitations.map((invitation) => ({ firstName: invitation.first_name, lastName: invitation.last_name, email: invitation.email })) : [];
     const savedName = name || coupleDisplayName(null, activeMembers, invitations);
     const { error } = await supabase.from("groups").update({ name: savedName, campus_id: campusId || null }).eq("id", recordId);
@@ -101,6 +110,29 @@ export async function updatePeopleDetail(formData: FormData): Promise<ActionResu
 
   revalidatePath(`/people/${recordId}`);
   revalidatePath("/people");
+  return { success: true };
+}
+
+interface CoupleGenderRpcClient {
+  rpc(functionName: "update_couple_partner_gender", args: { target_couple_group_id: string; target_profile_id: string; target_gender: "male" | "female" }): Promise<{ data: boolean | null; error: { message: string } | null }>;
+}
+
+export async function updateCouplePartnerGender(formData: FormData): Promise<ActionResult> {
+  const coupleGroupId = formValue(formData, "coupleGroupId");
+  const profileId = formValue(formData, "profileId");
+  const gender = formValue(formData, "gender");
+  if (!coupleGroupId || !profileId || (gender !== "male" && gender !== "female")) return invalid("Choose a valid gender.");
+  await requireOneOfWorkspaces(["admin", "counselor"], `/people/${coupleGroupId}`);
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await (supabase as unknown as CoupleGenderRpcClient).rpc("update_couple_partner_gender", {
+    target_couple_group_id: coupleGroupId,
+    target_profile_id: profileId,
+    target_gender: gender,
+  });
+  if (error || data !== true) return safeMutationError();
+  revalidatePath(`/people/${coupleGroupId}`);
+  revalidatePath(`/workspace/contacts`);
+  revalidatePath(`/workspace`);
   return { success: true };
 }
 

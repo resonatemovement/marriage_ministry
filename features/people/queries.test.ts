@@ -56,6 +56,14 @@ describe("Couple display names", () => {
     ])).toBe("John Walker & Lindsey Walker");
   });
 
+  it("uses authoritative intake gender when ordering an invited partner", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [
+      { firstName: "Casey", lastName: "Walker", email: "casey@example.com", gender: "female" },
+    ], [
+      { firstName: "Jordan", lastName: "Walker", email: "jordan@example.com", gender: "male" },
+    ])).toBe("Jordan Walker & Casey Walker");
+  });
+
   it("prefers full profile names and avoids duplicate members", () => {
     expect(coupleDisplayName("Pending Couple invitation", [
       { firstName: "John", lastName: "Walker", email: "john@example.com" },

@@ -7,7 +7,7 @@ import { eligibleCampusLeadCoachTeams, eligibleCoupleAssignmentTeams, eligibleCo
 import { coupleDisplayName } from "./types";
 
 type Row = Record<string, unknown>;
-const readinessProfileSelection = "status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path";
+const readinessProfileSelection = "status,onboarding_completed_at,first_name,last_name,gender,email,campus_id,phone,photo_path";
 
 function value(row: Row | null | undefined, key: string) {
   return typeof row?.[key] === "string" ? row[key] as string : null;
@@ -76,7 +76,7 @@ export async function getPeopleDetailActionContext(detail: PeopleDetail, mode: "
 
   const coupleCandidates = (couplesResult.data ?? []).map((couple) => {
     const members = (couple.group_members as unknown as Row[] | null) ?? [];
-    const activeMemberNames = members.filter((member) => member.ended_at === null).map((member) => { const profile = member.profile as Row | null; return { firstName: value(profile, "first_name"), lastName: value(profile, "last_name"), email: value(profile, "email") }; });
+    const activeMemberNames = members.filter((member) => member.ended_at === null).map((member) => { const profile = member.profile as Row | null; return { firstName: value(profile, "first_name"), lastName: value(profile, "last_name"), email: value(profile, "email"), gender: value(profile, "gender") as "male" | "female" | null }; });
     const resolvedName = coupleDisplayName(couple.name, activeMemberNames, []);
     const counselingCase = Array.isArray(couple.counseling_cases) ? couple.counseling_cases[0] : couple.counseling_cases;
     return { ...couple, name: resolvedName, case_assignments: (counselingCase as Row | null)?.case_assignments, invitations: (coupleInvitationsResult.data ?? []).filter((invitation) => invitation.group_id === couple.id) };

@@ -1,4 +1,5 @@
 import type { CaseStatus } from "@/lib/counseling/domain";
+import { orderCouplePartners, type PartnerGender } from "./partner-order";
 
 export const peopleFilters = ["all", "inactive", "couples", "coaches", "counselors", "admins", "campus_leads", "authors"] as const;
 export type PeopleFilter = (typeof peopleFilters)[number];
@@ -34,11 +35,11 @@ export function groupedRoleNames(members: readonly RoleSource[], invitations: re
   ])];
 }
 
-type PersonName = { firstName: string | null; lastName: string | null; email?: string | null };
+type PersonName = { firstName: string | null; lastName: string | null; email?: string | null; gender?: PartnerGender };
 type IntakePersonName = PersonName & { position?: string | null };
 
 export function intakeCoupleDisplayName(people: readonly IntakePersonName[]) {
-  const ordered = [...people].sort((left, right) => (left.position === "requester" ? -1 : 0) - (right.position === "requester" ? -1 : 0));
+  const ordered = orderCouplePartners([...people].sort((left, right) => (left.position === "requester" ? -1 : 0) - (right.position === "requester" ? -1 : 0)));
   const names = ordered.map((person) => [person.firstName, person.lastName].filter(Boolean).join(" ").trim()).filter(Boolean);
   return names.length ? names.slice(0, 2).join(" & ") : null;
 }
@@ -46,7 +47,8 @@ export function intakeCoupleDisplayName(people: readonly IntakePersonName[]) {
 /** Resolves Couple rows from their individual profile/invitation names. */
 export function coupleDisplayName(groupName: string | null, profiles: readonly PersonName[], invitations: readonly PersonName[], intakeFallback: string | null = null) {
   const seen = new Set<string>();
-  const names = [...profiles, ...invitations].flatMap((person) => {
+  const people = orderCouplePartners([...profiles, ...invitations]);
+  const names = people.flatMap((person) => {
     const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim();
     if (!name) return [];
     const key = person.email?.trim().toLowerCase() || name.toLowerCase();

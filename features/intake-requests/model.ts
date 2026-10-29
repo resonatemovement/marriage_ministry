@@ -1,3 +1,4 @@
+import { orderCouplePartners } from "@/features/people/partner-order";
 export const INTAKE_REQUEST_STATUSES = ["ready_for_review", "under_review", "ready_to_invite", "invited", "closed"] as const;
 export type IntakeRequestStatus = (typeof INTAKE_REQUEST_STATUSES)[number];
 
@@ -30,9 +31,11 @@ export function belongsToIntakeRequestView(request: { status: IntakeRequestStatu
   if (view === "open") return !request.hasInvitedCouple && (request.status === "ready_for_review" || request.status === "under_review");
   return true;
 }
-export function coupleDisplayName(people: readonly { personPosition: "requester" | "partner"; firstName: string; lastName: string }[]) {
-  const name = (position: "requester" | "partner") => { const person = people.find((item) => item.personPosition === position); return person ? `${person.firstName} ${person.lastName}`.trim() : ""; };
-  return [name("requester"), name("partner")].filter(Boolean).join(" & ") || "Couple request";
+export function coupleDisplayName(people: readonly { personPosition: "requester" | "partner"; firstName: string; lastName: string; gender?: "male" | "female" | null }[]) {
+  const requester = people.find((item) => item.personPosition === "requester");
+  const partner = people.find((item) => item.personPosition === "partner");
+  return orderCouplePartners([requester, partner].filter((person): person is NonNullable<typeof person> => Boolean(person)))
+    .map((person) => `${person.firstName} ${person.lastName}`.trim()).filter(Boolean).join(" & ") || "Couple request";
 }
 
 export const RELATIONSHIP_LABEL: Record<"pre_engaged" | "engaged" | "married", string> = { pre_engaged: "Pre-engaged", engaged: "Engaged", married: "Married" };

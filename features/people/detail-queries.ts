@@ -16,6 +16,7 @@ import {
 } from "./detail-model";
 import { coupleDisplayName, intakeCoupleDisplayName } from "./types";
 import { assignedCoupleAssignmentType } from "./team-assignment";
+import { orderCouplePartners } from "./partner-order";
 
 type Row = Record<string, unknown>;
 
@@ -37,6 +38,7 @@ async function asMember(profile: Row, invitationId?: string): Promise<PeopleDeta
   return createDetailMember({
     id: value(profile, "id")!,
     firstName: value(profile, "first_name"),
+    gender: value(profile, "gender") as "male" | "female" | null,
     lastName: value(profile, "last_name"),
     email: value(profile, "email"),
     phone: value(profile, "phone"),
@@ -55,12 +57,12 @@ export async function getPeopleDetail(recordId: string): Promise<PeopleDetail | 
   const [groupResult, profileResult] = await Promise.all([
     supabase
       .from("groups")
-      .select("id,name,group_type,updated_at,campus:campuses(id,name),intake_requests(id,status,submitted_at,intake_request_people(person_position,first_name,last_name)),group_members(ended_at,profile:profiles(id,first_name,last_name,email,phone,campus_id,photo_path,status,onboarding_completed_at,profile_roles!profile_roles_profile_id_fkey(role)))")
+      .select("id,name,group_type,updated_at,campus:campuses(id,name),intake_requests(id,status,submitted_at,intake_request_people(person_position,first_name,last_name,gender)),group_members(ended_at,profile:profiles(id,first_name,last_name,gender,email,phone,campus_id,photo_path,status,onboarding_completed_at,profile_roles!profile_roles_profile_id_fkey(role)))")
       .eq("id", recordId)
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("id,first_name,last_name,email,phone,photo_path,status,onboarding_completed_at,updated_at,campus:campuses(id,name),profile_roles!profile_roles_profile_id_fkey(role)")
+      .select("id,first_name,last_name,gender,email,phone,photo_path,status,onboarding_completed_at,updated_at,campus:campuses(id,name),profile_roles!profile_roles_profile_id_fkey(role)")
       .eq("id", recordId)
       .maybeSingle(),
   ]);
@@ -106,11 +108,13 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
   if (invitationResult.error) throw new Error("People detail data is unavailable");
   const invitations = rows(invitationResult.data);
   const invitationByProfileId = new Map(invitations.map((invitation) => [value(invitation, "auth_user_id"), value(invitation, "id")]));
+  const intake = group.intake_requests as Row | null;
+  const intakeGenderByEmail = new Map(rows(intake?.intake_request_people).map((person) => [value(person, "email")?.toLowerCase(), value(person, "gender")]));
   const profileMembers = rows(group.group_members)
     .filter((membership) => membership.ended_at === null && membership.profile)
     .map((membership) => { const profile = membership.profile as Row; return asMember(profile, invitationByProfileId.get(value(profile, "id")) ?? undefined); });
   const resolvedProfileMembers = await Promise.all(profileMembers);
-  const pendingMembers = invitations.filter((invitation) => value(invitation, "status") === "pending").map((invitation) => createPendingDetailMember({ id: value(invitation, "id")!, firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), delivered: Boolean(value(invitation, "last_delivery_succeeded_at")), failed: Boolean(value(invitation, "delivery_error_category")) }));
+  const pendingMembers = invitations.filter((invitation) => value(invitation, "status") === "pending").map((invitation) => createPendingDetailMember({ id: value(invitation, "id")!, firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderByEmail.get(value(invitation, "email")?.toLowerCase()) as "male" | "female" | null | undefined, delivered: Boolean(value(invitation, "last_delivery_succeeded_at")), failed: Boolean(value(invitation, "delivery_error_category")) }));
   const members = [...resolvedProfileMembers, ...pendingMembers];
   const [caseResult, assignmentResult, supervisionResult] = await Promise.all([
     type === "couples"
@@ -118,7 +122,7 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
       : Promise.resolve({ data: null, error: null }),
     type === "couples"
       ? Promise.resolve({ data: [], error: null })
-      : supabase.from("case_assignments").select("id,started_at,counseling_case:counseling_cases(id,status,couple_group:groups!counseling_cases_couple_group_id_fkey(id,name,campus:campuses(name),group_members(ended_at,profile:profiles(first_name,last_name,email))))").eq("assigned_group_id", groupId).eq("assignment_type", assignedCoupleAssignmentType(type)!).is("ended_at", null),
+      : supabase.from("case_assignments").select("id,started_at,counseling_case:counseling_cases(id,status,couple_group:groups!counseling_cases_couple_group_id_fkey(id,name,campus:campuses(name),group_members(ended_at,profile:profiles(first_name,last_name,gender,email))))").eq("assigned_group_id", groupId).eq("assignment_type", assignedCoupleAssignmentType(type)!).is("ended_at", null),
     type === "coaches"
       ? supabase.from("supervision_assignments").select("id,counselor_group:groups!supervision_assignments_counselor_group_id_fkey(name)").eq("coach_group_id", groupId).is("ended_at", null)
       : type === "counselors"
@@ -144,22 +148,21 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
   const counselorAssignment = type === "couples" ? caseAssignments.filter((assignment) => value(assignment, "assignment_type") === "counselor").map((assignment) => value(assignment.assigned_group as Row, "name")).find(Boolean) ?? null : null;
   const campusLeadAssignment = type === "couples" ? directAssignmentName("campus_lead") : null;
   const supervisedNames = supervision.map((assignment) => value((assignment.counselor_group ?? assignment.coach_group) as Row, "name")).filter(Boolean) as string[];
-  const assignedCouples = type === "coaches" || type === "counselors" || type === "campus_leads" ? teamAssignments.map((assignment) => { const counselingCase = assignment.counseling_case as Row | null; const couple = counselingCase?.couple_group as Row | null; const campus = couple?.campus as Row | null; const coupleMembers = rows(couple?.group_members).filter((member) => member.ended_at === null).map((member) => { const profile = member.profile as Row | null; return { firstName: value(profile, "first_name"), lastName: value(profile, "last_name"), email: value(profile, "email") }; }); return { id: value(couple, "id")!, caseId: value(counselingCase, "id")!, name: coupleDisplayName(value(couple, "name"), coupleMembers, []), campus: value(campus, "name"), status: value(counselingCase, "status") as GroupPeopleDetail["counselingStatus"], assignedAt: value(assignment, "started_at") }; }).filter((couple) => couple.id && couple.caseId) : [];
+  const assignedCouples = type === "coaches" || type === "counselors" || type === "campus_leads" ? teamAssignments.map((assignment) => { const counselingCase = assignment.counseling_case as Row | null; const couple = counselingCase?.couple_group as Row | null; const campus = couple?.campus as Row | null; const coupleMembers = rows(couple?.group_members).filter((member) => member.ended_at === null).map((member) => { const profile = member.profile as Row | null; return { firstName: value(profile, "first_name"), lastName: value(profile, "last_name"), email: value(profile, "email"), gender: value(profile, "gender") as "male" | "female" | null }; }); return { id: value(couple, "id")!, caseId: value(counselingCase, "id")!, name: coupleDisplayName(value(couple, "name"), coupleMembers, []), campus: value(campus, "name"), status: value(counselingCase, "status") as GroupPeopleDetail["counselingStatus"], assignedAt: value(assignment, "started_at") }; }).filter((couple) => couple.id && couple.caseId) : [];
   const campus = group.campus as Row | null;
-  const intake = group.intake_requests as Row | null;
-  const intakeName = intakeCoupleDisplayName(rows(intake?.intake_request_people).map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position") })));
+  const intakeName = intakeCoupleDisplayName(rows(intake?.intake_request_people).map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position"), gender: value(person, "gender") as "male" | "female" | null })));
 
   return {
     kind: "group",
     id: groupId,
     type,
     name: type === "couples"
-      ? coupleDisplayName(value(group, "name"), resolvedProfileMembers.map((member) => ({ firstName: member.firstName, lastName: member.lastName, email: member.email })), pendingMembers.map((member) => ({ firstName: member.firstName, lastName: member.lastName, email: member.email })), intakeName)
+      ? coupleDisplayName(value(group, "name"), resolvedProfileMembers.map((member) => ({ firstName: member.firstName, lastName: member.lastName, email: member.email, gender: member.gender })), pendingMembers.map((member) => ({ firstName: member.firstName, lastName: member.lastName, email: member.email, gender: member.gender })), intakeName)
       : value(group, "name")!,
     campusId: campus ? value(campus, "id") : null,
     campus: campus ? value(campus, "name") : null,
     updatedAt: value(group, "updated_at")!,
-    members,
+    members: type === "couples" ? orderCouplePartners(members) : members,
     counselingStatus: groupCase ? value(groupCase, "status") as GroupPeopleDetail["counselingStatus"] : null,
     activeAssignmentCount,
     assignmentSummary: teamNames.length ? teamNames.join(", ") : "No active assignments",

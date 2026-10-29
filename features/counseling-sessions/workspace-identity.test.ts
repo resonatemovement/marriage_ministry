@@ -12,7 +12,7 @@ describe("counseling workspace Couple identity", () => {
       caseId: "case-1",
       coupleId: "couple-1",
       coupleName: "John Smith & Stacy Miller",
-      partners: [{ id: "john", firstName: "John", name: "John Smith", photoPath: "john.jpg" }, { id: "stacy", firstName: "Stacy", name: "Stacy Miller", photoPath: "stacy.jpg" }],
+      partners: [{ id: "john", firstName: "John", name: "John Smith", photoPath: "john.jpg", gender: null }, { id: "stacy", firstName: "Stacy", name: "Stacy Miller", photoPath: "stacy.jpg", gender: null }],
     });
     expect(identity.coupleName).not.toContain("Pending Couple invitation");
   });
@@ -24,6 +24,15 @@ describe("counseling workspace Couple identity", () => {
     ]);
     expect(identity.coupleName).toBe("Lee Family");
     expect(identity.partners.map(({ name }) => name)).toEqual(["John Smith", "Stacy Miller"]);
+  });
+
+  it("orders both partner cards and derived couple names by explicit gender", () => {
+    const identity = counselingWorkspaceCoupleIdentity([
+      { counseling_case_id: "case-1", couple_group_id: "couple-1", group_name: "Pending Couple invitation", profile_id: "female", first_name: "Casey", last_name: "Lee", photo_path: null, gender: "female" },
+      { counseling_case_id: "case-1", couple_group_id: "couple-1", group_name: "Pending Couple invitation", profile_id: "male", first_name: "Jordan", last_name: "Lee", photo_path: null, gender: "male" },
+    ]);
+    expect(identity.partners.map(({ id }) => id)).toEqual(["male", "female"]);
+    expect(identity.coupleName).toBe("Jordan Lee & Casey Lee");
   });
 
   it("rejects incomplete or cross-case identity rather than inventing fallback text", () => {

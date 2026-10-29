@@ -13,8 +13,8 @@ describe("public intake form validation", () => {
 
   it("allows blank City values", () => {
     const draft = emptyDraft();
-    draft.you = { firstName: "Cindy", lastName: "Lu", phone: "(510) 555-1212", email: "cindy@example.com", city: "", connections: [] };
-    draft.partner = { firstName: "Alex", lastName: "Lu", phone: "(415) 555-1212", email: "alex@example.com", city: "", connections: [] };
+    draft.you = { firstName: "Cindy", lastName: "Lu", gender: "female", phone: "(510) 555-1212", email: "cindy@example.com", city: "", connections: [] };
+    draft.partner = { firstName: "Alex", lastName: "Lu", gender: "male", phone: "(415) 555-1212", email: "alex@example.com", city: "", connections: [] };
     expect(validateStep(1, draft)["you.city"]).toBeUndefined();
     expect(validateStep(1, draft)["partner.city"]).toBeUndefined();
   });

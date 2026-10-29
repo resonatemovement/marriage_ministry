@@ -56,9 +56,11 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
     const type = groupType === "coach_team" ? "coaches" : groupType === "counselor_team" ? "counselors" : groupType === "campus_lead_team" ? "campus_leads" : "couples";
     const assignedCoupleType = assignedCoupleAssignmentType(type);
     const intake = group.intake_requests as GroupRow | null;
-    const intakeName = intakeCoupleDisplayName(rows(intake?.intake_request_people).map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position") })));
+    const intakePeople = rows(intake?.intake_request_people);
+    const intakeGenderByEmail = new Map(intakePeople.map((person) => [value(person, "email")?.toLowerCase(), value(person, "gender")]));
+    const intakeName = intakeCoupleDisplayName(intakePeople.map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position"), gender: value(person, "gender") as "male" | "female" | null })));
     const name = type === "couples"
-      ? coupleDisplayName(value(group, "name"), members.map((member) => ({ firstName: value(member, "first_name"), lastName: value(member, "last_name"), email: value(member, "email") })), invitations.map((invitation) => ({ firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email") })), intakeName)
+      ? coupleDisplayName(value(group, "name"), members.map((member) => ({ firstName: value(member, "first_name"), lastName: value(member, "last_name"), email: value(member, "email"), gender: value(member, "gender") as "male" | "female" | null })), invitations.map((invitation) => ({ firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderByEmail.get(value(invitation, "email")?.toLowerCase()) as "male" | "female" | null | undefined })), intakeName)
       : value(group, "name")!;
     const statuses = groupOperationalStatuses({
       type,

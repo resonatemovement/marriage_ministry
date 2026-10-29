@@ -112,6 +112,12 @@ describe("People detail operational statuses", () => {
 });
 
 describe("Pending invitation lifecycle and delivery presentation", () => {
+  it("retains intake gender on a pending Couple member for stable ordering", () => {
+    const member = createPendingDetailMember({ id: "invite", firstName: "Jordan", lastName: "Smith", email: "jordan@example.com", gender: "male", delivered: true, failed: false });
+    expect(member.gender).toBe("male");
+    expect(member.pending).toBe(true);
+  });
+
   it.each([
     [false, false, "Not sent", "Invitation Created", "No delivery attempt has completed yet."],
     [true, false, "Sent", "Invitation Sent", "The invitation is still pending."],
