@@ -17,12 +17,12 @@ describe("counseling workspace Couple identity", () => {
     expect(identity.coupleName).not.toContain("Pending Couple invitation");
   });
 
-  it("uses the saved Couple name while preserving partner identities", () => {
+  it("prefers current partner names over the saved Couple label", () => {
     const identity = counselingWorkspaceCoupleIdentity([
       { counseling_case_id: "case-1", couple_group_id: "couple-1", group_name: "Lee Family", profile_id: "john", first_name: "John", last_name: "Smith", photo_path: "john.jpg" },
       { counseling_case_id: "case-1", couple_group_id: "couple-1", group_name: "Lee Family", profile_id: "stacy", first_name: "Stacy", last_name: "Miller", photo_path: "stacy.jpg" },
     ]);
-    expect(identity.coupleName).toBe("Lee Family");
+    expect(identity.coupleName).toBe("John Smith & Stacy Miller");
     expect(identity.partners.map(({ name }) => name)).toEqual(["John Smith", "Stacy Miller"]);
   });
 
