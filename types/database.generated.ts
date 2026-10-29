@@ -14,6 +14,416 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_attempt_scores: {
+        Row: {
+          assessment_version_id: string
+          attempt_id: string
+          category_id: string
+          is_primary: boolean
+          rank: number
+          score: number
+        }
+        Insert: {
+          assessment_version_id: string
+          attempt_id: string
+          category_id: string
+          is_primary: boolean
+          rank: number
+          score: number
+        }
+        Update: {
+          assessment_version_id?: string
+          attempt_id?: string
+          category_id?: string
+          is_primary?: boolean
+          rank?: number
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_attempt_scores_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_attempt_scores_category_version_fk"
+            columns: ["category_id", "assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_categories"
+            referencedColumns: ["id", "assessment_version_id"]
+          },
+        ]
+      }
+      assessment_attempts: {
+        Row: {
+          attempt_number: number
+          id: string
+          participant_assignment_id: string
+          profile_id: string
+          started_at: string
+          status: Database["public"]["Enums"]["assessment_attempt_status"]
+          submitted_at: string | null
+        }
+        Insert: {
+          attempt_number: number
+          id?: string
+          participant_assignment_id: string
+          profile_id: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["assessment_attempt_status"]
+          submitted_at?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          id?: string
+          participant_assignment_id?: string
+          profile_id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["assessment_attempt_status"]
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_attempts_assignment_profile_fk"
+            columns: ["participant_assignment_id", "profile_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_participant_assignments"
+            referencedColumns: ["id", "profile_id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_case_overrides: {
+        Row: {
+          assessment_id: string
+          configured_at: string
+          configured_by: string
+          counseling_case_id: string
+          session_id: string
+        }
+        Insert: {
+          assessment_id: string
+          configured_at?: string
+          configured_by: string
+          counseling_case_id: string
+          session_id: string
+        }
+        Update: {
+          assessment_id?: string
+          configured_at?: string
+          configured_by?: string
+          counseling_case_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_case_overrides_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_overrides_configured_by_fkey"
+            columns: ["configured_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_overrides_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_overrides_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_case_schedules: {
+        Row: {
+          assessment_id: string
+          assessment_version_id: string
+          case_session_id: string | null
+          configured_at: string
+          configured_by: string
+          counseling_case_id: string
+          id: string
+          required_for_progression: boolean
+          schedule_source: Database["public"]["Enums"]["assessment_schedule_source"]
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          assessment_version_id: string
+          case_session_id?: string | null
+          configured_at?: string
+          configured_by: string
+          counseling_case_id: string
+          id?: string
+          required_for_progression?: boolean
+          schedule_source: Database["public"]["Enums"]["assessment_schedule_source"]
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          assessment_version_id?: string
+          case_session_id?: string | null
+          configured_at?: string
+          configured_by?: string
+          counseling_case_id?: string
+          id?: string
+          required_for_progression?: boolean
+          schedule_source?: Database["public"]["Enums"]["assessment_schedule_source"]
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_case_schedules_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_schedules_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_schedules_case_session_id_fkey"
+            columns: ["case_session_id"]
+            isOneToOne: false
+            referencedRelation: "case_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_schedules_configured_by_fkey"
+            columns: ["configured_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_schedules_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_schedules_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_categories: {
+        Row: {
+          assessment_version_id: string
+          category_key: string
+          id: string
+          label: string
+          position: number
+        }
+        Insert: {
+          assessment_version_id: string
+          category_key: string
+          id?: string
+          label: string
+          position: number
+        }
+        Update: {
+          assessment_version_id?: string
+          category_key?: string
+          id?: string
+          label?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_categories_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_choice_scores: {
+        Row: {
+          assessment_version_id: string
+          category_id: string
+          choice_id: string
+        }
+        Insert: {
+          assessment_version_id: string
+          category_id: string
+          choice_id: string
+        }
+        Update: {
+          assessment_version_id?: string
+          category_id?: string
+          choice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_choice_scores_category_version_fk"
+            columns: ["category_id", "assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_categories"
+            referencedColumns: ["id", "assessment_version_id"]
+          },
+          {
+            foreignKeyName: "assessment_choice_scores_choice_id_fkey"
+            columns: ["choice_id"]
+            isOneToOne: true
+            referencedRelation: "assessment_choices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_choice_scores_choice_version_fk"
+            columns: ["choice_id", "assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_choices"
+            referencedColumns: ["id", "assessment_version_id"]
+          },
+        ]
+      }
+      assessment_choices: {
+        Row: {
+          assessment_version_id: string
+          id: string
+          label: string
+          position: number
+          question_id: string
+        }
+        Insert: {
+          assessment_version_id: string
+          id?: string
+          label: string
+          position: number
+          question_id: string
+        }
+        Update: {
+          assessment_version_id?: string
+          id?: string
+          label?: string
+          position?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_choices_question_version_fk"
+            columns: ["question_id", "assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_questions"
+            referencedColumns: ["id", "assessment_version_id"]
+          },
+        ]
+      }
+      assessment_counselor_preferences: {
+        Row: {
+          assessment_id: string
+          counselor_profile_id: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          counselor_profile_id: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          counselor_profile_id?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_counselor_preferences_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_counselor_preferences_counselor_profile_id_fkey"
+            columns: ["counselor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_counselor_preferences_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_definitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_definitions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_documents: {
         Row: {
           content_type: string
@@ -69,6 +479,205 @@ export type Database = {
           {
             foreignKeyName: "assessment_documents_uploaded_by_fkey"
             columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_participant_assignments: {
+        Row: {
+          assessment_schedule_id: string
+          assigned_at: string
+          counseling_case_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          assessment_schedule_id: string
+          assigned_at?: string
+          counseling_case_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          assessment_schedule_id?: string
+          assigned_at?: string
+          counseling_case_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_participant_assignments_counseling_case_id_fkey"
+            columns: ["counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_participant_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_participant_assignments_schedule_case_fk"
+            columns: ["assessment_schedule_id", "counseling_case_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_case_schedules"
+            referencedColumns: ["id", "counseling_case_id"]
+          },
+        ]
+      }
+      assessment_questions: {
+        Row: {
+          assessment_version_id: string
+          id: string
+          position: number
+          prompt: string
+        }
+        Insert: {
+          assessment_version_id: string
+          id?: string
+          position: number
+          prompt: string
+        }
+        Update: {
+          assessment_version_id?: string
+          id?: string
+          position?: number
+          prompt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_questions_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_responses: {
+        Row: {
+          attempt_id: string
+          choice_id: string
+          profile_id: string
+          question_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_id: string
+          choice_id: string
+          profile_id: string
+          question_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_id?: string
+          choice_id?: string
+          profile_id?: string
+          question_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_responses_attempt_profile_fk"
+            columns: ["attempt_id", "profile_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_attempts"
+            referencedColumns: ["id", "profile_id"]
+          },
+          {
+            foreignKeyName: "assessment_responses_choice_question_fk"
+            columns: ["choice_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_choices"
+            referencedColumns: ["id", "question_id"]
+          },
+          {
+            foreignKeyName: "assessment_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_system_defaults: {
+        Row: {
+          assessment_id: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_system_defaults_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: true
+            referencedRelation: "assessment_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_system_defaults_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_versions: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          published_at: string | null
+          status: Database["public"]["Enums"]["assessment_version_status"]
+          version_number: number
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["assessment_version_status"]
+          version_number: number
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["assessment_version_status"]
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_versions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_versions_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1360,6 +1969,7 @@ export type Database = {
           created_at: string
           email: string
           first_name: string
+          gender: string | null
           id: string
           intake_request_id: string
           last_name: string
@@ -1373,6 +1983,7 @@ export type Database = {
           created_at?: string
           email: string
           first_name: string
+          gender?: string | null
           id?: string
           intake_request_id: string
           last_name: string
@@ -1386,6 +1997,7 @@ export type Database = {
           created_at?: string
           email?: string
           first_name?: string
+          gender?: string | null
           id?: string
           intake_request_id?: string
           last_name?: string
@@ -1889,6 +2501,7 @@ export type Database = {
           deactivated_at: string | null
           email: string | null
           first_name: string
+          gender: string | null
           id: string
           last_name: string
           onboarding_completed_at: string | null
@@ -1903,6 +2516,7 @@ export type Database = {
           deactivated_at?: string | null
           email?: string | null
           first_name?: string
+          gender?: string | null
           id: string
           last_name?: string
           onboarding_completed_at?: string | null
@@ -1917,6 +2531,7 @@ export type Database = {
           deactivated_at?: string | null
           email?: string | null
           first_name?: string
+          gender?: string | null
           id?: string
           last_name?: string
           onboarding_completed_at?: string | null
@@ -2447,12 +3062,25 @@ export type Database = {
         Args: { target_token_hash: string }
         Returns: undefined
       }
+      configure_case_assessment_schedule: {
+        Args: {
+          target_assessment_id: string
+          target_case_id: string
+          target_session_id?: string
+          target_version_id: string
+        }
+        Returns: string
+      }
       create_intake_request: { Args: { payload: Json }; Returns: string }
       create_intake_request_with_city_optional: {
         Args: { payload: Json }
         Returns: string
       }
       create_intake_request_with_required_city: {
+        Args: { payload: Json }
+        Returns: string
+      }
+      create_intake_request_without_gender: {
         Args: { payload: Json }
         Returns: string
       }
@@ -2527,8 +3155,10 @@ export type Database = {
         Returns: {
           assignment_type: string
           campus_name: string
+          case_status: string
           email: string
           first_name: string
+          gender: string
           group_id: string
           group_name: string
           group_type: string
@@ -2547,6 +3177,7 @@ export type Database = {
           counseling_case_id: string
           couple_group_id: string
           first_name: string
+          gender: string
           group_name: string
           last_name: string
           photo_path: string
@@ -2586,6 +3217,18 @@ export type Database = {
       get_or_create_homework_draft_for_session: {
         Args: { target_session_id: string }
         Returns: string
+      }
+      get_partner_assessment_score_history: {
+        Args: { target_schedule_id: string }
+        Returns: {
+          attempt_number: number
+          category_key: string
+          category_label: string
+          is_primary: boolean
+          rank: number
+          score: number
+          submitted_at: string
+        }[]
       }
       get_published_session_material_options: {
         Args: never
@@ -2647,6 +3290,10 @@ export type Database = {
       prune_resource_versions: {
         Args: { keep_previous: number; target_resource_id: string }
         Returns: number
+      }
+      publish_assessment_version: {
+        Args: { target_version_id: string }
+        Returns: undefined
       }
       publish_homework_version: {
         Args: { target_version_id: string }
@@ -2711,6 +3358,14 @@ export type Database = {
       }
       reset_counseling_journey_impl: {
         Args: { reset_confirmation: string; target_case_id: string }
+        Returns: undefined
+      }
+      save_assessment_response: {
+        Args: {
+          target_attempt_id: string
+          target_choice_id: string
+          target_question_id: string
+        }
         Returns: undefined
       }
       save_homework_answer: {
@@ -2794,6 +3449,10 @@ export type Database = {
         }
         Returns: string
       }
+      set_assessment_counselor_preference: {
+        Args: { target_assessment_id: string; target_session_id: string }
+        Returns: undefined
+      }
       set_resource_archived: {
         Args: { should_archive: boolean; target_resource_id: string }
         Returns: {
@@ -2816,6 +3475,23 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      start_assessment_attempt: {
+        Args: {
+          target_participant_assignment_id: string
+          voluntary_retake?: boolean
+        }
+        Returns: string
+      }
+      submit_assessment_attempt: {
+        Args: { target_attempt_id: string }
+        Returns: {
+          category_key: string
+          category_label: string
+          is_primary: boolean
+          rank: number
+          score: number
+        }[]
       }
       submit_homework: {
         Args: { target_progress_id: string }
@@ -2863,6 +3539,25 @@ export type Database = {
       unassign_homework: {
         Args: { target_assignment_id: string }
         Returns: undefined
+      }
+      update_couple_partner_details: {
+        Args: {
+          target_couple_group_id: string
+          target_first_name: string
+          target_gender: string
+          target_last_name: string
+          target_phone: string
+          target_profile_id: string
+        }
+        Returns: boolean
+      }
+      update_couple_partner_gender: {
+        Args: {
+          target_couple_group_id: string
+          target_gender: string
+          target_profile_id: string
+        }
+        Returns: boolean
       }
       update_global_reminder_settings: {
         Args: {
@@ -2944,6 +3639,13 @@ export type Database = {
         | "couple"
         | "author"
         | "campus_lead"
+      assessment_attempt_status: "in_progress" | "submitted"
+      assessment_schedule_source:
+        | "system_default"
+        | "counselor_preference"
+        | "case_override"
+        | "manual"
+      assessment_version_status: "draft" | "published" | "retired"
       case_assignment_type: "coach" | "counselor" | "campus_lead"
       case_session_status: "active" | "completed"
       case_status:
@@ -3119,6 +3821,14 @@ export const Constants = {
         "author",
         "campus_lead",
       ],
+      assessment_attempt_status: ["in_progress", "submitted"],
+      assessment_schedule_source: [
+        "system_default",
+        "counselor_preference",
+        "case_override",
+        "manual",
+      ],
+      assessment_version_status: ["draft", "published", "retired"],
       case_assignment_type: ["coach", "counselor", "campus_lead"],
       case_session_status: ["active", "completed"],
       case_status: [

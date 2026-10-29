@@ -57,7 +57,12 @@ export async function getCounselingSessionCards(): Promise<CounselingSessionCard
   });
   const sessions: Session[] = publishedSessionOptions(templates).map((session) => ({ ...session, content: materialBySession.get(session.id) ?? [] }));
   const identitiesByCase = new Map<string, CounselingWorkspaceCoupleIdentityRow[]>();
-  identityQueries.forEach(({ result }) => (result.data ?? []).forEach((identity) => { const values = identitiesByCase.get(identity.counseling_case_id) ?? []; values.push(identity); identitiesByCase.set(identity.counseling_case_id, values); }));
+  identityQueries.forEach(({ result }) => (result.data ?? []).forEach((identity) => {
+    const values = identitiesByCase.get(identity.counseling_case_id) ?? [];
+    const gender = identity.gender === "male" || identity.gender === "female" ? identity.gender : undefined;
+    values.push({ ...identity, gender });
+    identitiesByCase.set(identity.counseling_case_id, values);
+  }));
   const meetingsByCase = new Map<string, Meeting[]>();
   (meetingsResult.data ?? []).forEach((meeting) => { const caseId = string(meeting, "counseling_case_id"); if (!caseId) return; const values = meetingsByCase.get(caseId) ?? []; values.push({ id: string(meeting, "id")!, sessionId: string(meeting, "session_id"), caseSessionId: string(meeting, "case_session_id"), startsAt: string(meeting, "starts_at")!, endsAt: string(meeting, "ends_at")!, location: string(meeting, "location")!, completedAt: string(meeting, "completed_at"), createdAt: string(meeting, "created_at")! }); meetingsByCase.set(caseId, values); });
   const caseSessionsByCase = new Map<string, CaseSession[]>();
