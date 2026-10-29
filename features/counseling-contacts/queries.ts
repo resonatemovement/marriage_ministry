@@ -3,6 +3,7 @@ import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { createDetailMember, type PeopleDetailMember } from "@/features/people/detail-model";
+import { orderCouplePartners } from "@/features/people/partner-order";
 
 export type CounselingContactDetail = {
   id: string;
@@ -10,7 +11,15 @@ export type CounselingContactDetail = {
   kind: "couple" | "team";
   roleLabel: string;
   campus: string | null;
+  caseStatus: string | null;
   members: PeopleDetailMember[];
+};
+
+type ContactRow = {
+  group_id: string; group_name: string | null; group_type: string; assignment_type: string | null;
+  campus_name: string | null; member_id: string; first_name: string | null; last_name: string | null;
+  email: string | null; phone: string | null; photo_path: string | null; profile_status: string;
+  onboarding_completed_at: string | null; roles: string[]; gender?: "male" | "female" | null; case_status?: string;
 };
 
 function roleLabel(assignmentType: string | null, groupType: string) {
@@ -24,12 +33,13 @@ export async function getCounselingContactDetail(caseId: string, groupId: string
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("get_counseling_contact_group", { target_case_id: caseId, target_group_id: groupId });
   if (error) throw new Error("Counseling contact data is unavailable");
-  const rows = data ?? [];
+  const rows = (data ?? []) as unknown as ContactRow[];
   const first = rows[0];
   if (!first) return null;
   const members = await Promise.all(rows.map(async (row) => createDetailMember({
     id: row.member_id,
     firstName: row.first_name,
+    gender: row.gender ?? null,
     lastName: row.last_name,
     email: row.email,
     phone: row.phone,
@@ -45,7 +55,8 @@ export async function getCounselingContactDetail(caseId: string, groupId: string
     kind: first.group_type === "couple" ? "couple" : "team",
     roleLabel: roleLabel(first.assignment_type, first.group_type),
     campus: first.campus_name,
-    members,
+    caseStatus: first.case_status ?? null,
+    members: first.group_type === "couple" ? orderCouplePartners(members) : members,
   };
 }
 

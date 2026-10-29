@@ -1,4 +1,5 @@
 import { coupleDisplayName } from "@/features/people/types";
+import { orderCouplePartners, type PartnerGender } from "@/features/people/partner-order";
 
 export type CounselingWorkspaceCoupleIdentityRow = {
   counseling_case_id: string;
@@ -8,6 +9,7 @@ export type CounselingWorkspaceCoupleIdentityRow = {
   first_name: string | null;
   last_name: string | null;
   photo_path: string | null;
+  gender?: PartnerGender;
 };
 
 export function counselingWorkspaceCoupleIdentity(rows: readonly CounselingWorkspaceCoupleIdentityRow[]) {
@@ -17,11 +19,12 @@ export function counselingWorkspaceCoupleIdentity(rows: readonly CounselingWorks
   if (rows.some((row) => row.counseling_case_id !== caseId || row.couple_group_id !== coupleId)) {
     throw new Error("Counseling case identity is inconsistent");
   }
-  const partners = rows.map((row) => {
+  const partners = orderCouplePartners(rows.map((row) => {
     const name = [row.first_name, row.last_name].filter(Boolean).join(" ").trim();
     if (!row.profile_id || !name) throw new Error("Counseling case identity is incomplete");
-    return { id: row.profile_id, firstName: row.first_name?.trim() || null, name, photoPath: row.photo_path };
-  });
-  const coupleName = coupleDisplayName(rows[0].group_name, rows.map((row) => ({ firstName: row.first_name, lastName: row.last_name })), []);
+    return { id: row.profile_id, firstName: row.first_name?.trim() || null, name, photoPath: row.photo_path, gender: row.gender ?? null };
+  }));
+  const orderedRows = orderCouplePartners(rows);
+  const coupleName = coupleDisplayName(rows[0].group_name, orderedRows.map((row) => ({ firstName: row.first_name, lastName: row.last_name, gender: row.gender ?? null })), []);
   return { caseId, coupleId, coupleName, partners };
 }

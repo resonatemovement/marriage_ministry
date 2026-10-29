@@ -56,6 +56,14 @@ describe("Couple display names", () => {
     ])).toBe("John Walker & Lindsey Walker");
   });
 
+  it("uses authoritative intake gender when ordering an invited partner", () => {
+    expect(coupleDisplayName("Pending Couple invitation", [
+      { firstName: "Casey", lastName: "Walker", email: "casey@example.com", gender: "female" },
+    ], [
+      { firstName: "Jordan", lastName: "Walker", email: "jordan@example.com", gender: "male" },
+    ])).toBe("Jordan Walker & Casey Walker");
+  });
+
   it("prefers full profile names and avoids duplicate members", () => {
     expect(coupleDisplayName("Pending Couple invitation", [
       { firstName: "John", lastName: "Walker", email: "john@example.com" },
@@ -77,9 +85,9 @@ describe("Couple display names", () => {
     expect(coupleDisplayName("Pending Couple invitation", [], [], intakeName)).toBe("Jacob Mitchel & Janice Price");
   });
 
-  it("prefers a saved Couple display override, but derives names when the stored name is the default", () => {
+  it("prefers current partner names over a stale saved Couple label", () => {
     const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
-    expect(coupleDisplayName(" Lee Family ", profiles, [])).toBe("Lee Family");
+    expect(coupleDisplayName(" Adam Butcher & Anna Chens ", profiles, [])).toBe("Jordan Lee & Casey Lee");
     expect(coupleDisplayName("Jordan Lee & Casey Lee", profiles, [])).toBe("Jordan Lee & Casey Lee");
   });
 
@@ -88,15 +96,11 @@ describe("Couple display names", () => {
     expect(coupleDisplayName(null, profiles, [])).toBe("Jordan Lee & Casey Lee");
   });
 
-  it("prefers a saved Couple display override, but derives names when the stored name is the default", () => {
-    const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
-    expect(coupleDisplayName(" Lee Family ", profiles, [])).toBe("Lee Family");
-    expect(coupleDisplayName("Jordan Lee & Casey Lee", profiles, [])).toBe("Jordan Lee & Casey Lee");
-  });
-
-  it("returns partner-derived names after a Couple override is cleared", () => {
-    const profiles = [{ firstName: "Jordan", lastName: "Lee", email: "jordan@example.test" }, { firstName: "Casey", lastName: "Lee", email: "casey@example.test" }];
-    expect(coupleDisplayName(null, profiles, [])).toBe("Jordan Lee & Casey Lee");
+  it("orders current profile names male-first instead of trusting a stale Couple label", () => {
+    expect(coupleDisplayName("Adam Butcher & Anna Chens", [
+      { firstName: "Ellen", lastName: "Parker", email: "ellen@example.test", gender: "female" },
+      { firstName: "Matt", lastName: "Murdock", email: "matt@example.test", gender: "male" },
+    ], [])).toBe("Matt Murdock & Ellen Parker");
   });
 });
 

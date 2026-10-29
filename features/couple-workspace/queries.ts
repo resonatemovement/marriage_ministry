@@ -2,6 +2,7 @@ import "server-only";
 
 import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { coupleDisplayName } from "@/features/people/types";
+import { orderCouplePartners } from "@/features/people/partner-order";
 import type { StagedMaterialBlock } from "@/features/session-builder/editor-model";
 import { participantHomeworkTitle, type HomeworkProgressStatus } from "@/features/homework/presentation";
 import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "@/features/homework/selection-question";
@@ -19,7 +20,7 @@ const string = (row: Row | null | undefined, key: string) => typeof row?.[key] =
 export type CoupleWorkspaceData = {
   caseId: string;
   coupleName: string;
-  partners: { id: string; name: string; photoUrl: string | null }[];
+  partners: { id: string; name: string; photoUrl: string | null; gender?: "male" | "female" | null }[];
   status: string;
   completed: boolean;
   team: { counselor: { caseId: string; id: string; name: string } | null };
@@ -58,7 +59,7 @@ export async function getCoupleWorkspaceData(authenticatedProfileId: string): Pr
   if (!teamRow) return null;
 
   const [caseResult, meetingsResult, caseSessionResult, counselor] = await Promise.all([
-    supabase.from("counseling_cases").select("id,status,closed_at,couple:groups!counseling_cases_couple_group_id_fkey(name,group_members(ended_at,profile:profiles(id,first_name,last_name,email,photo_path)))").eq("id", teamRow.counseling_case_id).maybeSingle(),
+    supabase.from("counseling_cases").select("id,status,closed_at,couple:groups!counseling_cases_couple_group_id_fkey(name,group_members(ended_at,profile:profiles(id,first_name,last_name,gender,email,photo_path)))").eq("id", teamRow.counseling_case_id).maybeSingle(),
     supabase.from("case_session_meetings").select("case_session_id,session_id,starts_at,location,completed_at,created_at").eq("counseling_case_id", teamRow.counseling_case_id).order("created_at"),
     supabase.from("case_sessions").select("id,session_id,actual_sequence,template_sequence_number,title,status,homework_assignment_revision_id").eq("counseling_case_id", teamRow.counseling_case_id).eq("status", "active").maybeSingle(),
     getCurrentCoupleCounselor(),
@@ -71,16 +72,17 @@ export async function getCoupleWorkspaceData(authenticatedProfileId: string): Pr
   const counselingCase = caseResult.data as unknown as Row;
   const couple = counselingCase.couple as Row | null;
   const members = rows(couple?.group_members).filter((member) => member.ended_at === null);
-  const partners = await Promise.all(members.flatMap((member) => {
+  const partnerRows = members.flatMap((member) => {
     const profile = member.profile as Row | null;
     const id = string(profile, "id");
     if (!id) return [];
     const name = [string(profile, "first_name"), string(profile, "last_name")].filter(Boolean).join(" ") || string(profile, "email") || "Partner";
-    return [{ id, name, photoPath: string(profile, "photo_path") }];
-  }).map(async (partner) => ({ id: partner.id, name: partner.name, photoUrl: await getProfilePhotoUrl(partner.photoPath) })));
+    return [{ id, name, photoPath: string(profile, "photo_path"), gender: string(profile, "gender") as "male" | "female" | null }];
+  });
+  const partners = await Promise.all(orderCouplePartners(partnerRows).map(async (partner) => ({ id: partner.id, name: partner.name, gender: partner.gender, photoUrl: await getProfilePhotoUrl(partner.photoPath) })));
   const coupleName = coupleDisplayName(string(couple, "name"), members.map((member) => {
     const profile = member.profile as Row | null;
-    return { firstName: string(profile, "first_name"), lastName: string(profile, "last_name"), email: string(profile, "email") };
+    return { firstName: string(profile, "first_name"), lastName: string(profile, "last_name"), email: string(profile, "email"), gender: string(profile, "gender") as "male" | "female" | null };
   }), []);
   const meetings = (meetingsResult.data ?? []).map((item) => ({ caseSessionId: item.case_session_id, sessionId: item.session_id, startsAt: item.starts_at, location: item.location, completedAt: item.completed_at }));
   const normalMeetings = meetings.filter((meeting) => meeting.sessionId !== null);

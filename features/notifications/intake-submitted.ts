@@ -7,6 +7,7 @@ import { createResendEmailProvider } from "./provider";
 import { eligibleIntakeRecipients, type IntakeRecipientProfile } from "./recipients";
 import { notificationTemplateDefaults, renderAdminIntakeSubmittedEmail, renderCoupleIntakeSubmittedEmail } from "./templates";
 import type { DeliveryStore } from "./types";
+import { orderCouplePartners } from "@/features/people/partner-order";
 
 type IntakeRow = {
   id: string;
@@ -16,7 +17,7 @@ type IntakeRow = {
   submitted_at: string;
   campus: { name: string } | null;
   campus_other: string | null;
-  people: { person_position: "requester" | "partner"; first_name: string; last_name: string; email: string }[] | null;
+  people: { person_position: "requester" | "partner"; first_name: string; last_name: string; email: string; gender?: "male" | "female" | null }[] | null;
 };
 type RoleRow = { profile_id: string; role: string };
 
@@ -57,7 +58,7 @@ export async function dispatchIntakeSubmittedNotifications(intakeRequestId: stri
   try {
     const client = createServiceRoleSupabaseClient();
     const [{ data: intakeData, error: intakeError }, { data: roleData, error: roleError }] = await Promise.all([
-      client.from("intake_requests" as never).select("id,campus_id,relationship_status,requested_support,submitted_at,campus_other,campus:campuses(name),people:intake_request_people(person_position,first_name,last_name,email)").eq("id", intakeRequestId).maybeSingle(),
+      client.from("intake_requests" as never).select("id,campus_id,relationship_status,requested_support,submitted_at,campus_other,campus:campuses(name),people:intake_request_people(person_position,first_name,last_name,email,gender)").eq("id", intakeRequestId).maybeSingle(),
       client.from("profile_roles").select("profile_id,role").in("role", ["admin", "super_admin", "campus_lead"]),
     ]);
     if (intakeError || roleError || !intakeData) throw new Error(intakeError?.message ?? roleError?.message ?? "Submitted Intake Request is unavailable.");
@@ -79,7 +80,7 @@ export async function dispatchIntakeSubmittedNotifications(intakeRequestId: stri
 
     const store = createDeliveryStore(client);
     const provider = createResendEmailProvider();
-    const coupleName = `${requester.first_name} ${requester.last_name} & ${partner.first_name} ${partner.last_name}`;
+    const coupleName = orderCouplePartners([requester, partner]).map((person) => `${person.first_name} ${person.last_name}`).join(" & ");
     const submittedDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(intake.submitted_at));
     const requestedSupport = intake.requested_support.map((support) => supportLabels[support] ?? support).join(", ");
     const attempts: Array<Promise<void>> = [

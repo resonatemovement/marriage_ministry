@@ -15,7 +15,7 @@ vi.mock("@/features/counseling-contacts/queries", () => ({ getCurrentCoupleCouns
 import { getCoupleWorkspaceData } from "./queries";
 
 const failure = { message: "policy failure", code: "42501", details: "RLS policy denied access", hint: "Review the read policy" };
-const caseData: { id: string; status: string; closed_at: string | null; couple: { name: string; group_members: never[] } } = { id: "case-id", status: "active", closed_at: null, couple: { name: "Alex & Jordan", group_members: [] } };
+const caseData: { id: string; status: string; closed_at: string | null; couple: { name: string; group_members: { ended_at: string | null; profile: { id: string; first_name: string; last_name: string; gender: "male" | "female"; email: string; photo_path: null } }[] } } = { id: "case-id", status: "active", closed_at: null, couple: { name: "Alex & Jordan", group_members: [] } };
 function result(label: "caseResult" | "meetingsResult" | "caseSessionResult" | "homeworkStatusResult", data: unknown) {
   return Promise.resolve(state.failed === label ? { data: null, error: failure } : { data, error: null });
 }
@@ -24,6 +24,7 @@ beforeEach(() => {
   state.failed = null;
   caseData.status = "active";
   caseData.closed_at = null;
+  caseData.couple = { name: "Alex & Jordan", group_members: [] };
   selection.homework = "";
   selection.ownProgressFilter = "";
   selection.activeCaseSession = true;
@@ -53,6 +54,25 @@ describe("Couple Workspace query diagnostics", () => {
     expect((await getCoupleWorkspaceData("partner-one"))?.completed).toBe(true);
     caseData.status = "inactive";
     expect((await getCoupleWorkspaceData("partner-one"))?.completed).toBe(false);
+  });
+
+  it("uses active current profiles, not a stale or historical Couple label", async () => {
+    caseData.couple = {
+      name: "Adam Butcher & Anna Chens",
+      group_members: [
+        { ended_at: null, profile: { id: "ellen-id", first_name: "Ellen", last_name: "Parker", gender: "female", email: "ellen@example.test", photo_path: null } },
+        { ended_at: "2026-01-01T00:00:00Z", profile: { id: "adam-id", first_name: "Adam", last_name: "Butcher", gender: "male", email: "adam@example.test", photo_path: null } },
+        { ended_at: null, profile: { id: "matt-id", first_name: "Matt", last_name: "Murdock", gender: "male", email: "matt@example.test", photo_path: null } },
+      ],
+    };
+
+    const data = await getCoupleWorkspaceData("matt-id");
+
+    expect(data?.coupleName).toBe("Matt Murdock & Ellen Parker");
+    expect(data?.partners.map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: "matt-id", name: "Matt Murdock" },
+      { id: "ellen-id", name: "Ellen Parker" },
+    ]);
   });
 
   it("does not query participant Homework assignments when the active Session has no revision", () => {

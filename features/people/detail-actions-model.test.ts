@@ -53,7 +53,7 @@ const admin: ProfilePeopleDetail = {
   campusId: null,
   campus: null,
   updatedAt: "2026-08-23T00:00:00.000Z",
-  member: { id: "admin", firstName: "Admin", lastName: "User", name: "Admin User", email: null, phone: null, roles: ["admin"], accountStatus: "Active", accountAccessState: "active_account", onboardingStatus: "Onboarding Complete", onboardingComplete: true, photoUrl: null },
+  member: { id: "admin", firstName: "Admin", lastName: "User", name: "Admin User", gender: null, email: null, phone: null, roles: ["admin"], accountStatus: "Active", accountAccessState: "active_account", onboardingStatus: "Onboarding Complete", onboardingComplete: true, photoUrl: null },
 };
 
 describe("availablePeopleDetailActions", () => {

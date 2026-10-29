@@ -17,5 +17,5 @@ export default async function CounselingContactDetailRoute({ params }: { params:
   const breadcrumbs = workspace === "couple"
     ? [{ label: "Workspace", href: "/workspace" }, { label: "Counselor" }, { label: detail.name, current: true as const }]
     : [{ label: "Workspace", href: "/workspace" }, { label: "Sessions", href: "/workspace" }, { label: detail.kind === "couple" ? "Couple" : detail.roleLabel }, { label: detail.name, current: true as const }];
-  return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}><ReadOnlyContactDetailPage detail={detail} breadcrumbs={breadcrumbs} /></WorkspaceShell>;
+  return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}><ReadOnlyContactDetailPage detail={detail} breadcrumbs={breadcrumbs} canEditDetails={workspace === "counselor"} /></WorkspaceShell>;
 }

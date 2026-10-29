@@ -117,19 +117,23 @@ describe("Counseling couple detail foundation", () => {
     expect(devSuperAdmin.indexOf("DEV Testing")).toBeGreaterThan(devSuperAdmin.indexOf("</aside></section>"));
   });
 
-  it("shows compact Homework status by partner first name without response content", () => {
+  it("shows each partner's full name with status below and read-only answers link", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
     expect(markup).toContain(">Homework</p>");
     expect(markup).toContain('text-brand-secondary">Homework</p>');
     expect(markup).toContain("Session 2 Homework");
-    expect(markup).toContain(">Anthony</p>");
+    expect(markup).toContain(">Anthony Jones</p>");
     expect(markup).toContain("Submitted");
+    expect(markup).toMatch(/<p class="break-words text-sm font-semibold text-text-primary">Anthony Jones<\/p><span class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2\.5 py-1 text-xs font-medium mt-1\.5 bg-success-soft text-success-strong">Submitted<\/span>/);
     expect(markup).toContain('href="/workspace/cases/case-1/homework/progress-anthony"');
+    expect(markup).toContain("border border-border bg-surface px-3 text-sm font-semibold text-text-primary");
     expect(markup).toContain("View Answers");
     expect(markup).not.toContain('href="/workspace/cases/case-1/homework/progress-amy"');
-    expect(markup).toContain(">Amy</p>");
+    expect(markup).toContain(">Amy Lee</p>");
     expect(markup).toContain("In Progress");
+    expect(markup).toMatch(/<p class="break-words text-sm font-semibold text-text-primary">Amy Lee<\/p><span class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2\.5 py-1 text-xs font-medium mt-1\.5 bg-info-soft text-info-strong">In Progress<\/span>/);
     expect(markup).not.toContain("homework response");
+    expect(markup).toContain("flex min-w-0 flex-col gap-3 py-3 first:pt-2 last:pb-0 sm:flex-row sm:items-center sm:justify-between");
     expect(markup.indexOf("Upcoming Meeting")).toBeLessThan(markup.indexOf(">Homework</p>"));
     expect(markup).not.toContain("Current Homework");
     expect(markup).toContain('data-homework-revision="homework-revision"');
@@ -137,7 +141,7 @@ describe("Counseling couple detail foundation", () => {
 
   it("offers Reopen only for eligible submitted Homework on the active Session", () => {
     const eligible = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, canReopenHomework: true }));
-    expect(eligible).toContain("Reopen Homework for Anthony");
+    expect(eligible).toContain("Reopen Homework for Anthony Jones");
     expect(eligible).not.toContain("Reopen Homework for Amy");
 
     const unauthorized = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
@@ -166,8 +170,8 @@ describe("Counseling couple detail foundation", () => {
 
     expect(markup).toContain('data-homework-revision="homework-revision"');
     expect(markup.match(/>Not Started<\/span>/g)).toHaveLength(2);
-    expect(markup).toContain(">Anthony</p>");
-    expect(markup).toContain(">Amy</p>");
+    expect(markup).toContain(">Anthony Jones</p>");
+    expect(markup).toContain(">Amy Lee</p>");
     expect(markup).not.toContain("Homework status unavailable.");
   });
 
