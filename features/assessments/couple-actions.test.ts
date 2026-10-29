@@ -40,7 +40,10 @@ describe("Couple Assessment server actions", () => {
 
   it("submits to server-calculated scoring and rejects duplicate malformed input before RPC", async () => {
     rpc.mockResolvedValue({ data: [{ category_key: "synthetic", category_label: "Synthetic", score: 1, rank: 1, is_primary: true }], error: null });
-    await expect(submitCoupleAssessment(attemptId)).resolves.toMatchObject({ success: true });
+    await expect(submitCoupleAssessment(attemptId)).resolves.toMatchObject({
+      success: true,
+      results: [{ label: "Synthetic", score: 1, rank: 1, isPrimary: true }],
+    });
     expect(rpc).toHaveBeenCalledWith("submit_assessment_attempt", { target_attempt_id: attemptId });
     rpc.mockClear();
     await expect(submitCoupleAssessment("not-an-id")).resolves.toMatchObject({ success: false });

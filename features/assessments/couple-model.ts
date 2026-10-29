@@ -17,6 +17,10 @@ export function assessmentStatus(attempt: { status: string } | null, hasQuestion
   return attempt.status === "submitted" ? "completed" : "in_progress";
 }
 
+export function assessmentResultsAreAvailable(status: CoupleAssessmentStatus, attemptId: string | null, submittedLocally: boolean): boolean {
+  return submittedLocally || (status === "completed" && !attemptId);
+}
+
 export function assessmentResumeIndex(questions: CoupleAssessmentQuestion[], answers: Record<string, string>): number {
   const lastAnswered = questions.reduce((last, question, index) => answers[question.id] ? index : last, -1);
   return Math.min(lastAnswered + 1, Math.max(questions.length - 1, 0));

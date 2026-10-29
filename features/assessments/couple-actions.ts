@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { CoupleAssessmentResult } from "./couple-model";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const unavailable = { success: false as const, error: "This Assessment could not be saved. Please try again." };
@@ -41,8 +42,14 @@ export async function submitCoupleAssessment(attemptId: string) {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("submit_assessment_attempt", { target_attempt_id: attemptId });
   if (error || !data?.length) return unavailable;
+  const results: CoupleAssessmentResult[] = data.map((row) => ({
+    label: row.category_label,
+    score: row.score,
+    rank: row.rank,
+    isPrimary: row.is_primary,
+  }));
   revalidatePath("/workspace/assessments");
   revalidatePath("/workspace/assessments/[assignmentId]", "page");
   revalidatePath("/workspace");
-  return { success: true as const, error: null };
+  return { success: true as const, error: null, results };
 }

@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, Check, ClipboardCheck, RotateCcw } from "lucide-
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsInDisplayOrder, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentHistoryItem, type CoupleAssessmentResult, type CoupleAssessmentStatus } from "./couple-model";
+import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsAreAvailable, assessmentResultsInDisplayOrder, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentHistoryItem, type CoupleAssessmentResult, type CoupleAssessmentStatus } from "./couple-model";
 import type { CoupleAssessmentData, CoupleAssessmentSummary } from "./couple-queries";
 import { saveCoupleAssessmentResponse, startCoupleAssessment, submitCoupleAssessment } from "./couple-actions";
 
@@ -58,6 +58,7 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState(assessment.attemptId);
+  const [submittedResults, setSubmittedResults] = useState<CoupleAssessmentResult[] | null>(null);
   const [answers, setAnswers] = useState(assessment.answers);
   const [savedAnswers, setSavedAnswers] = useState(assessment.answers);
   const [questionIndex, setQuestionIndex] = useState(() => assessmentResumeIndex(assessment.questions, assessment.answers));
@@ -66,7 +67,7 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
   const [submitting, setSubmitting] = useState(false);
   const submitLock = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const submitted = assessment.status === "completed" && !attemptId;
+  const submitted = assessmentResultsAreAvailable(assessment.status, attemptId, submittedResults !== null);
   const questions = assessment.questions;
   const question = questions[questionIndex];
 
@@ -80,6 +81,7 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     if (!result.success || !result.attemptId) { setStartError(result.error); return; }
     setAttemptId(result.attemptId);
     if (voluntaryRetake) {
+      setSubmittedResults(null);
       setAnswers(result.answers);
       setSavedAnswers(result.answers);
       setQuestionIndex(assessmentResumeIndex(assessment.questions, result.answers));
@@ -112,11 +114,10 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     submitLock.current = false;
     setSubmitting(false);
     if (!result.success) { setError(result.error); return; }
-    if (assessment.attemptId === null && assessment.status === "completed") {
-      setAttemptId(null);
-      setAnswers({});
-      setSavedAnswers({});
-    }
+    setAttemptId(null);
+    setAnswers({});
+    setSavedAnswers({});
+    setSubmittedResults(result.results);
     router.refresh();
   }
 
@@ -131,7 +132,7 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [question, currentAnswer, currentAnswerSaved]);
   if (assessment.status === "unavailable") return <AssessmentPageShell assessment={assessment}><Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">Assessment unavailable</h2><p className="mt-2 text-sm text-text-muted">This Assessment does not have published questions yet. Please contact your Counselor.</p></Card></AssessmentPageShell>;
-  if (submitted) return <AssessmentPageShell assessment={assessment}><div className="space-y-5"><AssessmentResults name={assessment.profileName} results={assessment.results} history={assessment.history} /><div className="flex flex-wrap gap-3"><button type="button" onClick={() => begin(true)} disabled={starting} className={actionClass(true)}>{starting ? "Starting…" : assessment.activeRetakeId ? "Continue Retake" : "Retake Assessment"}<RotateCcw className="size-4" aria-hidden="true" /></button></div>{startError ? <p role="alert" className="text-sm text-danger">{startError}</p> : null}{assessment.partnerResults ? <AssessmentResults name={assessment.partnerResults.name} results={assessment.partnerResults.results} submittedAt={assessment.partnerResults.submittedAt} /> : <p className="text-sm text-text-muted">Partner results are shared after both partners complete their initial Assessment.</p>}</div></AssessmentPageShell>;
+  if (submitted) return <AssessmentPageShell assessment={assessment}><div className="space-y-5"><AssessmentResults name={assessment.profileName} results={submittedResults ?? assessment.results} history={assessment.history} /><div className="flex flex-wrap gap-3"><button type="button" onClick={() => begin(true)} disabled={starting} className={actionClass(true)}>{starting ? "Starting…" : assessment.activeRetakeId ? "Continue Retake" : "Retake Assessment"}<RotateCcw className="size-4" aria-hidden="true" /></button></div>{startError ? <p role="alert" className="text-sm text-danger">{startError}</p> : null}{assessment.partnerResults ? <AssessmentResults name={assessment.partnerResults.name} results={assessment.partnerResults.results} submittedAt={assessment.partnerResults.submittedAt} /> : <p className="text-sm text-text-muted">Partner results are shared after both partners complete their initial Assessment.</p>}</div></AssessmentPageShell>;
   if (!attemptId) return <AssessmentPageShell assessment={assessment}><Card className="p-6"><p className="text-sm text-text-muted">Assigned for {assessment.sessionTitle}</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">Ready when you are</h2><p className="mt-2 text-sm text-text-muted">Your progress is saved as you answer, and you can return later.</p><button type="button" onClick={() => begin(false)} disabled={starting} className={`${actionClass(true)} mt-5`}>{starting ? "Starting…" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></button>{startError ? <p role="alert" className="mt-3 text-sm text-danger">{startError}</p> : null}</Card></AssessmentPageShell>;
   return <AssessmentPageShell assessment={assessment}>
     <div className="mb-5"><div className="flex justify-between gap-3 text-sm"><span className="font-medium text-text-primary">{review ? "Review your answers" : `Question ${questionIndex + 1} of ${questions.length}`}</span><span className="text-text-muted">{progress}%</span></div><div role="progressbar" aria-label="Assessment progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary transition-[width]" style={{ width: `${progress}%` }} /></div></div>

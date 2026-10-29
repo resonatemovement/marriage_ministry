@@ -5,7 +5,9 @@ begin;
 -- Capture existing actors, two active Session 1 Cases, and one Case awaiting its first Session.
 select set_config('assessment_test.admin', (
   select profile.id::text from public.profiles profile join public.profile_roles role_map on role_map.profile_id = profile.id
-  where profile.status = 'active' and role_map.role = 'admin' order by profile.id limit 1
+  where profile.status = 'active' and role_map.role = 'admin'
+    and not exists (select 1 from public.profile_roles counselor_role where counselor_role.profile_id = profile.id and counselor_role.role = 'counselor')
+  order by profile.id limit 1
 ), true);
 select set_config('assessment_test.super_admin', (
   select profile.id::text from public.profiles profile join public.profile_roles role_map on role_map.profile_id = profile.id
@@ -304,6 +306,7 @@ declare
   couple_a uuid := nullif(current_setting('assessment_test.couple_a'), '')::uuid;
   couple_b uuid := nullif(current_setting('assessment_test.couple_b'), '')::uuid;
   counselor_a uuid := nullif(current_setting('assessment_test.counselor_a'), '')::uuid;
+  admin_id uuid := nullif(current_setting('assessment_test.admin'), '')::uuid;
   unauthorized_counselor uuid := nullif(current_setting('assessment_test.unauthorized_counselor'), '')::uuid;
   schedule_a uuid := nullif(current_setting('assessment_test.schedule_a'), '')::uuid;
   schedule_b uuid := nullif(current_setting('assessment_test.schedule_b'), '')::uuid;
@@ -377,6 +380,9 @@ begin
   if row_count <> 0 then raise exception 'Couple read another participant''s answers'; end if;
   select count(*), sum(result.score) into row_count, score_total from public.submit_assessment_attempt(attempt_a) result;
   if row_count <> 5 or score_total <> 30 then raise exception 'Server scoring did not return five scores totaling 30'; end if;
+  if (select count(*) from public.assessment_attempt_scores result where result.attempt_id = attempt_a and result.is_primary) <> 5 then
+    raise exception 'Synthetic equal-score assessment did not mark all five tied categories as Primary';
+  end if;
   select count(*) into row_count from public.submit_assessment_attempt(attempt_a);
   if row_count <> 5 or (select count(*) from public.assessment_attempt_scores result where result.attempt_id = attempt_a) <> 5 then
     raise exception 'Resubmitting a submitted attempt duplicated or lost result rows';
@@ -468,6 +474,14 @@ begin
   select count(*) into row_count from public.assessment_responses response
   where response.attempt_id in (select attempt.id from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b));
   if row_count <> 0 then raise exception 'Counselor could read individual answers'; end if;
+
+  -- Admin-only scheduling capability does not grant participant result access.
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  select count(*) into row_count from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b);
+  if row_count <> 0 then raise exception 'Admin-only user read participant Assessment attempts'; end if;
+  select count(*) into row_count from public.assessment_attempt_scores result
+  where result.attempt_id in (select attempt.id from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b));
+  if row_count <> 0 then raise exception 'Admin-only user read participant Assessment results'; end if;
 
   perform set_config('request.jwt.claim.sub', unauthorized_counselor::text, true);
   select count(*) into row_count from public.assessment_attempts attempt where attempt.participant_assignment_id in (assignment_a, assignment_b);

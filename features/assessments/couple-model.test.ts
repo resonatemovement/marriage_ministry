@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsInDisplayOrder, assessmentStatus, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentQuestion } from "./couple-model";
+import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsAreAvailable, assessmentResultsInDisplayOrder, assessmentStatus, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentQuestion } from "./couple-model";
 
 const questions: CoupleAssessmentQuestion[] = [
   { id: "q1", position: 0, prompt: "One?", choices: [{ id: "a", position: 0, label: "A" }, { id: "b", position: 1, label: "B" }] },
@@ -14,6 +14,13 @@ describe("Couple Assessment experience model", () => {
     expect(assessmentStatus({ status: "in_progress" }, true)).toBe("in_progress");
     expect(assessmentStatus({ status: "submitted" }, true)).toBe("completed");
     expect(assessmentStatus({ status: "submitted" }, false)).toBe("unavailable");
+  });
+
+  it("shows authoritative results immediately after submission before refreshed server props arrive", () => {
+    expect(assessmentResultsAreAvailable("in_progress", "attempt-1", false)).toBe(false);
+    expect(assessmentResultsAreAvailable("in_progress", null, true)).toBe(true);
+    expect(assessmentResultsAreAvailable("completed", null, false)).toBe(true);
+    expect(assessmentResultsAreAvailable("completed", "retake-1", false)).toBe(false);
   });
 
   it("resumes at the question after the last saved response and sends a complete attempt to review", () => {
