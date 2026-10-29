@@ -36,6 +36,7 @@ beforeEach(() => {
       if (table === "counseling_cases") return { select: () => ({ eq: () => ({ maybeSingle: () => result("caseResult", caseData) }) }) };
       if (table === "case_session_meetings") return { select: () => ({ eq: () => ({ order: () => result("meetingsResult", selection.meetings) }) }) };
       if (table === "case_sessions") return { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => result("caseSessionResult", selection.activeCaseSession ? { id: "case-session-id", session_id: "session-id", actual_sequence: 1, template_sequence_number: 2, title: "Connection", status: "active", homework_assignment_revision_id: "revision-id" } : null) }) }) }) };
+      if (table === "assessment_participant_assignments") return { select: () => ({ eq: () => ({ eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }) }) };
       return { select: (columns: string) => {
         selection.homework = columns;
         return { eq: (column: string, revisionId: string) => ({ eq: (profileColumn: string, profileId: string) => {
