@@ -163,6 +163,7 @@ export type Database = {
           configured_by: string
           counseling_case_id: string
           id: string
+          progression_case_session_id: string | null
           required_for_progression: boolean
           schedule_source: Database["public"]["Enums"]["assessment_schedule_source"]
           session_id: string
@@ -176,6 +177,7 @@ export type Database = {
           configured_by: string
           counseling_case_id: string
           id?: string
+          progression_case_session_id?: string | null
           required_for_progression?: boolean
           schedule_source: Database["public"]["Enums"]["assessment_schedule_source"]
           session_id: string
@@ -189,6 +191,7 @@ export type Database = {
           configured_by?: string
           counseling_case_id?: string
           id?: string
+          progression_case_session_id?: string | null
           required_for_progression?: boolean
           schedule_source?: Database["public"]["Enums"]["assessment_schedule_source"]
           session_id?: string
@@ -228,6 +231,13 @@ export type Database = {
             columns: ["counseling_case_id"]
             isOneToOne: false
             referencedRelation: "counseling_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_case_schedules_progression_case_session_id_fkey"
+            columns: ["progression_case_session_id"]
+            isOneToOne: false
+            referencedRelation: "case_sessions"
             referencedColumns: ["id"]
           },
           {

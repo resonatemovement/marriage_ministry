@@ -2,7 +2,7 @@
 -- All fixtures and assertions run in one transaction and are rolled back at the end.
 begin;
 
--- Capture existing actors and two active Cases with an active Session 1, but do not mutate them.
+-- Capture existing actors, two active Session 1 Cases, and one Case awaiting its first Session.
 select set_config('assessment_test.admin', (
   select profile.id::text from public.profiles profile join public.profile_roles role_map on role_map.profile_id = profile.id
   where profile.status = 'active' and role_map.role = 'admin' order by profile.id limit 1
@@ -30,8 +30,49 @@ select set_config('assessment_test.case_b', (
     and (select count(*) from public.group_members member where member.group_id = counseling_case.couple_group_id and member.ended_at is null) = 2
   order by counseling_case.id limit 1
 ), true);
+select set_config('assessment_test.initial_case', (
+  select counseling_case.id::text from public.counseling_cases counseling_case
+  join public.case_session_meetings initial_meeting on initial_meeting.counseling_case_id = counseling_case.id
+    and initial_meeting.session_id is null and initial_meeting.completed_at is null
+  where counseling_case.closed_at is null
+    and not exists (select 1 from public.case_sessions case_session where case_session.counseling_case_id = counseling_case.id)
+    and exists (select 1 from public.case_assignments assignment where assignment.counseling_case_id = counseling_case.id and assignment.assignment_type = 'counselor' and assignment.ended_at is null)
+    and (select count(*) from public.group_members member where member.group_id = counseling_case.couple_group_id and member.ended_at is null) = 2
+    and not exists (select 1 from public.assessment_case_schedules schedule where schedule.counseling_case_id = counseling_case.id)
+  order by counseling_case.id limit 1
+), true);
+select set_config('assessment_test.initial_counselor', (
+  select member.profile_id::text from public.case_assignments assignment
+  join public.group_members member on member.group_id = assignment.assigned_group_id and member.ended_at is null
+  where assignment.counseling_case_id = nullif(current_setting('assessment_test.initial_case'), '')::uuid
+    and assignment.assignment_type = 'counselor' and assignment.ended_at is null
+  order by member.profile_id limit 1
+), true);
+select set_config('assessment_test.case_b_counselor', (
+  select member.profile_id::text from public.case_assignments assignment
+  join public.group_members member on member.group_id = assignment.assigned_group_id and member.ended_at is null
+  where assignment.counseling_case_id = nullif(current_setting('assessment_test.case_b'), '')::uuid
+    and assignment.assignment_type = 'counselor' and assignment.ended_at is null
+  order by member.profile_id limit 1
+), true);
 select set_config('assessment_test.session_1', (select id::text from public.sessions where sequence_number = 1 and status = 'published' order by id limit 1), true);
 select set_config('assessment_test.session_10', (select id::text from public.sessions where sequence_number = 10 and status = 'published' order by id limit 1), true);
+select set_config('assessment_test.session_final', (select id::text from public.sessions where is_final and status = 'published' order by id limit 1), true);
+select set_config('assessment_test.session_1_material', (
+  select block.id::text from public.session_material_blocks block
+  where block.session_id = nullif(current_setting('assessment_test.session_1'), '')::uuid
+  order by block.position limit 1
+), true);
+select set_config('assessment_test.session_10_material', (
+  select block.id::text from public.session_material_blocks block
+  where block.session_id = nullif(current_setting('assessment_test.session_10'), '')::uuid
+  order by block.position limit 1
+), true);
+select set_config('assessment_test.session_final_material', (
+  select block.id::text from public.session_material_blocks block
+  where block.session_id = nullif(current_setting('assessment_test.session_final'), '')::uuid
+  order by block.position limit 1
+), true);
 select set_config('assessment_test.version_1', (
   select version.id::text from public.assessment_versions version join public.assessment_definitions definition on definition.id = version.assessment_id
   where definition.slug = 'love_languages' and version.version_number = 1 and version.status = 'draft'
@@ -44,16 +85,27 @@ declare
   case_b uuid := nullif(current_setting('assessment_test.case_b'), '')::uuid;
   session_1 uuid := nullif(current_setting('assessment_test.session_1'), '')::uuid;
   session_10 uuid := nullif(current_setting('assessment_test.session_10'), '')::uuid;
+  session_final uuid := nullif(current_setting('assessment_test.session_final'), '')::uuid;
   version_1 uuid := nullif(current_setting('assessment_test.version_1'), '')::uuid;
 begin
   if nullif(current_setting('assessment_test.admin'), '') is null
     or nullif(current_setting('assessment_test.super_admin'), '') is null
-    or case_a is null or case_b is null or session_1 is null or session_10 is null or version_1 is null then
+    or case_a is null or case_b is null or nullif(current_setting('assessment_test.initial_case'), '') is null
+    or nullif(current_setting('assessment_test.initial_counselor'), '') is null
+    or nullif(current_setting('assessment_test.case_b_counselor'), '') is null
+    or session_1 is null or session_10 is null or session_final is null or version_1 is null then
     raise exception 'Assessment runtime test preconditions are not met';
   end if;
   if exists (select 1 from public.assessment_questions where assessment_version_id = version_1)
     or exists (select 1 from public.assessment_choices choice join public.assessment_questions question on question.id = choice.question_id where question.assessment_version_id = version_1) then
     raise exception 'Love Languages draft version 1 is not empty; refusing to alter existing test content';
+  end if;
+  if exists (select 1 from public.assessment_versions where status = 'published')
+    or not private.assessment_initial_requirements_complete((
+      select case_session.id from public.case_sessions case_session
+      where case_session.counseling_case_id = case_a and case_session.status = 'active'
+    )) then
+    raise exception 'An unavailable Assessment version blocked Session progression';
   end if;
 end;
 $$;
@@ -145,6 +197,8 @@ declare
   case_a uuid := nullif(current_setting('assessment_test.case_a'), '')::uuid;
   case_b uuid := nullif(current_setting('assessment_test.case_b'), '')::uuid;
   session_1 uuid := nullif(current_setting('assessment_test.session_1'), '')::uuid;
+  session_10 uuid := nullif(current_setting('assessment_test.session_10'), '')::uuid;
+  session_final uuid := nullif(current_setting('assessment_test.session_final'), '')::uuid;
   version_1 uuid := nullif(current_setting('assessment_test.version_1'), '')::uuid;
   version_2 uuid := nullif(current_setting('assessment_test.version_2'), '')::uuid;
   version_3 uuid := nullif(current_setting('assessment_test.version_3'), '')::uuid;
@@ -168,13 +222,42 @@ begin
   rejected := false;
   begin perform public.publish_assessment_version(version_5); exception when others then rejected := sqlerrm = 'Love Languages requires the five approved scoring categories'; end;
   if not rejected then raise exception 'Publishing an invalid Love Languages scoring key was not rejected'; end if;
+  perform set_config('request.jwt.claim.sub', current_setting('assessment_test.case_b_counselor'), true);
+  perform public.set_assessment_counselor_preference(assessment_id, session_final);
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
   perform public.publish_assessment_version(version_1);
 
   schedule_a := public.configure_case_assessment_schedule(case_a, assessment_id, version_1, session_1);
   perform set_config('assessment_test.schedule_a', schedule_a::text, true);
-  perform set_config('request.jwt.claim.sub', super_admin_id::text, true);
-  schedule_b := public.configure_case_assessment_schedule(case_b, assessment_id, version_1, session_1);
+  select schedule.id into schedule_b from public.assessment_case_schedules schedule
+  where schedule.counseling_case_id = case_b
+    and schedule.assessment_id = nullif(current_setting('assessment_test.assessment_id'), '')::uuid;
+  if schedule_b is null or not exists (
+    select 1 from public.assessment_case_schedules schedule
+    where schedule.id = schedule_b and schedule.session_id = session_final
+      and schedule.schedule_source = 'counselor_preference' and schedule.case_session_id is null
+  ) or exists (select 1 from public.assessment_participant_assignments where assessment_schedule_id = schedule_b) then
+    raise exception 'Future Counselor preference did not wait for Session activation';
+  end if;
   perform set_config('assessment_test.schedule_b', schedule_b::text, true);
+  perform set_config('request.jwt.claim.sub', current_setting('assessment_test.initial_counselor'), true);
+  perform set_config('assessment_test.initial_case_session', public.activate_first_case_session(
+    nullif(current_setting('assessment_test.initial_case'), '')::uuid,
+    session_1,
+    array[nullif(current_setting('assessment_test.session_1_material'), '')::uuid],
+    now() + interval '2 days',
+    now() + interval '2 days 1 hour'
+  )::text, true);
+  if not exists (
+    select 1 from public.assessment_case_schedules schedule
+    where schedule.counseling_case_id = nullif(current_setting('assessment_test.initial_case'), '')::uuid
+      and schedule.case_session_id = nullif(current_setting('assessment_test.initial_case_session'), '')::uuid
+      and schedule.progression_case_session_id = nullif(current_setting('assessment_test.initial_case_session'), '')::uuid
+  ) or (select count(*) from public.assessment_participant_assignments assignment
+    join public.assessment_case_schedules schedule on schedule.id = assignment.assessment_schedule_id
+    where schedule.counseling_case_id = nullif(current_setting('assessment_test.initial_case'), '')::uuid) <> 2 then
+    raise exception 'First Session activation did not assign both partners';
+  end if;
 end;
 $$;
 
@@ -338,6 +421,181 @@ begin
   if row_count <> 0 then raise exception 'Unassigned Counselor read Assessment attempts'; end if;
   select count(*) into row_count from public.assessment_attempt_scores result where result.attempt_id in (attempt_a, attempt_b);
   if row_count <> 0 then raise exception 'Unassigned Counselor read Assessment results'; end if;
+end;
+$$;
+
+reset role;
+
+-- Both initial submissions permit forward progression; no Homework contract is
+-- weakened because this test explicitly uses its existing Admin OVERRIDE.
+update public.homework_participant_progress progress
+set status = 'in_progress', submitted_at = null, reviewed_at = null
+where progress.assignment_revision_id = (
+  select case_session.homework_assignment_revision_id
+  from public.case_sessions case_session
+  where case_session.counseling_case_id = nullif(current_setting('assessment_test.case_a'), '')::uuid
+    and case_session.status = 'active'
+);
+update public.homework_participant_progress progress
+set status = 'in_progress', submitted_at = null, reviewed_at = null
+where progress.assignment_revision_id = (
+  select case_session.homework_assignment_revision_id
+  from public.case_sessions case_session
+  where case_session.counseling_case_id = nullif(current_setting('assessment_test.case_b'), '')::uuid
+    and case_session.status = 'active'
+);
+
+set local role authenticated;
+do $$
+declare
+  admin_id uuid := nullif(current_setting('assessment_test.admin'), '')::uuid;
+  case_a uuid := nullif(current_setting('assessment_test.case_a'), '')::uuid;
+  case_b uuid := nullif(current_setting('assessment_test.case_b'), '')::uuid;
+  session_10 uuid := nullif(current_setting('assessment_test.session_10'), '')::uuid;
+  session_final uuid := nullif(current_setting('assessment_test.session_final'), '')::uuid;
+  unauthorized_counselor uuid := nullif(current_setting('assessment_test.unauthorized_counselor'), '')::uuid;
+  schedule_b uuid := nullif(current_setting('assessment_test.schedule_b'), '')::uuid;
+  counselor_b uuid := nullif(current_setting('assessment_test.case_b_counselor'), '')::uuid;
+  counselor_a uuid := nullif(current_setting('assessment_test.counselor_a'), '')::uuid;
+  couple_a uuid := nullif(current_setting('assessment_test.couple_a'), '')::uuid;
+  schedule_a uuid := nullif(current_setting('assessment_test.schedule_a'), '')::uuid;
+  assignment_a uuid := nullif(current_setting('assessment_test.assignment_a'), '')::uuid;
+  current_case_session_id uuid;
+  next_case_session_id uuid;
+  row_count integer;
+  rejected boolean;
+  couple_ids uuid[];
+  couple_id uuid;
+  participant_assignment_id uuid;
+  attempt_id uuid;
+  question_row record;
+begin
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  select id into current_case_session_id from public.case_sessions
+  where counseling_case_id = case_a and status = 'active';
+  next_case_session_id := public.complete_case_session_schedule_next(
+    current_case_session_id, session_10,
+    array[nullif(current_setting('assessment_test.session_10_material'), '')::uuid],
+    now() + interval '3 days', now() + interval '3 days 1 hour', 'OVERRIDE'
+  );
+  if not exists (select 1 from public.case_sessions where id = current_case_session_id and status = 'completed')
+    or not exists (select 1 from public.case_sessions where id = next_case_session_id and status = 'active') then
+    raise exception 'Both initial Assessment submissions did not permit Session progression';
+  end if;
+
+  -- Moving an assigned Assessment preserves old access and history. A voluntary
+  -- retake does not add another progression requirement.
+  perform set_config('request.jwt.claim.sub', counselor_a::text, true);
+  perform public.configure_case_assessment_schedule(
+    case_a,
+    nullif(current_setting('assessment_test.assessment_id'), '')::uuid,
+    nullif(current_setting('assessment_test.version_1'), '')::uuid,
+    session_10
+  );
+  if not exists (
+    select 1 from public.assessment_case_schedules schedule
+    where schedule.id = schedule_a and schedule.case_session_id = next_case_session_id
+      and schedule.progression_case_session_id = next_case_session_id
+  ) or (select count(*) from public.assessment_participant_assignments assignment
+      where assignment.assessment_schedule_id = schedule_a) <> 2 then
+    raise exception 'Rescheduling removed assignments or failed to move the progression gate';
+  end if;
+  perform set_config('request.jwt.claim.sub', couple_a::text, true);
+  select public.start_assessment_attempt(assignment_a, true) into attempt_id;
+  if not exists (
+    select 1 from public.assessment_attempts attempt
+    where attempt.id = attempt_id and attempt.attempt_number = 2 and attempt.status = 'in_progress'
+  ) then raise exception 'Rescheduled Assessment was not accessible for a voluntary retake'; end if;
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  perform public.complete_counseling_program(next_case_session_id, 'OVERRIDE');
+  if not exists (select 1 from public.counseling_cases where id = case_a and closed_at is not null) then
+    raise exception 'Incomplete voluntary retake incorrectly blocked final Session completion';
+  end if;
+
+  -- The future Counselor-preference schedule waits for the explicitly
+  -- designated final Session to activate, then assigns both participants.
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  select id into current_case_session_id from public.case_sessions
+  where counseling_case_id = case_b and status = 'active';
+  perform set_config('request.jwt.claim.sub', unauthorized_counselor::text, true);
+  rejected := false;
+  begin
+    perform public.complete_case_session_schedule_next(
+      current_case_session_id, session_10,
+      array[nullif(current_setting('assessment_test.session_10_material'), '')::uuid],
+      now() + interval '4 days', now() + interval '4 days 1 hour', 'OVERRIDE'
+    );
+  exception when others then rejected := sqlerrm = 'Not authorized';
+  end;
+  if not rejected then raise exception 'Unassigned Counselor advanced another Case Session'; end if;
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  next_case_session_id := public.complete_case_session_schedule_next(
+    current_case_session_id, session_10,
+    array[nullif(current_setting('assessment_test.session_10_material'), '')::uuid],
+    now() + interval '4 days', now() + interval '4 days 1 hour', 'OVERRIDE'
+  );
+  perform set_config('request.jwt.claim.sub', counselor_b::text, true);
+  select count(*)::integer into row_count
+  from public.assessment_participant_assignments assignment
+  where assignment.assessment_schedule_id = schedule_b;
+  if row_count <> 2 or not exists (
+    select 1 from public.assessment_case_schedules schedule
+    where schedule.id = schedule_b and schedule.case_session_id = next_case_session_id
+      and schedule.progression_case_session_id = next_case_session_id
+      and schedule.session_id = session_final
+  ) then raise exception 'Final Session activation did not assign both partners (assignments %, schedule session %, progression session %, activated session %)',
+    row_count,
+    (select schedule.session_id from public.assessment_case_schedules schedule where schedule.id = schedule_b),
+    (select schedule.progression_case_session_id from public.assessment_case_schedules schedule where schedule.id = schedule_b),
+    next_case_session_id;
+  end if;
+
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  rejected := false;
+  begin perform public.complete_counseling_program(next_case_session_id, 'OVERRIDE');
+  exception when others then
+    rejected := sqlerrm = 'Both partners must submit the required initial Assessment before completing the program';
+  end;
+  if not rejected then raise exception 'Admin Homework OVERRIDE bypassed the final Assessment gate'; end if;
+
+  select array_agg(member.profile_id order by member.profile_id) into couple_ids
+  from public.group_members member
+  join public.counseling_cases counseling_case on counseling_case.couple_group_id = member.group_id
+  where counseling_case.id = case_b and member.ended_at is null;
+  if couple_ids is null or cardinality(couple_ids) <> 2 then raise exception 'Future Case Couple membership is unavailable'; end if;
+
+  foreach couple_id in array couple_ids loop
+    perform set_config('request.jwt.claim.sub', couple_id::text, true);
+    select id into participant_assignment_id from public.assessment_participant_assignments
+    where assessment_schedule_id = schedule_b and profile_id = couple_id;
+    attempt_id := public.start_assessment_attempt(participant_assignment_id, false);
+    for question_row in
+      select question.id as question_id, choice.id as choice_id
+      from public.assessment_questions question
+      join public.assessment_choices choice on choice.question_id = question.id and choice.position = 1
+      where question.assessment_version_id = nullif(current_setting('assessment_test.version_1'), '')::uuid
+      order by question.position
+    loop
+      perform public.save_assessment_response(attempt_id, question_row.question_id, question_row.choice_id);
+    end loop;
+    perform public.submit_assessment_attempt(attempt_id);
+    if couple_id = couple_ids[1] then
+      perform set_config('request.jwt.claim.sub', admin_id::text, true);
+      rejected := false;
+      begin perform public.complete_counseling_program(next_case_session_id, 'OVERRIDE');
+      exception when others then
+        rejected := sqlerrm = 'Both partners must submit the required initial Assessment before completing the program';
+      end;
+      if not rejected then raise exception 'Final completion proceeded after only one partner submitted'; end if;
+    end if;
+  end loop;
+
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  perform public.complete_counseling_program(next_case_session_id, 'OVERRIDE');
+  if not exists (
+    select 1 from public.counseling_cases
+    where id = case_b and closed_at is not null
+  ) then raise exception 'Final Session completion failed after both initial submissions'; end if;
 end;
 $$;
 
