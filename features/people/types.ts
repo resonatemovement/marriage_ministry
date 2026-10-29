@@ -58,8 +58,6 @@ export function coupleDisplayName(groupName: string | null, profiles: readonly P
   });
   const derivedName = names.length ? names.slice(0, 2).join(" & ") : null;
   const savedGroupName = groupName?.trim() || null;
-  const isPlaceholder = savedGroupName ? /^pending couple invitation$/i.test(savedGroupName) : false;
-  if (savedGroupName && !isPlaceholder && savedGroupName !== derivedName) return savedGroupName;
   return derivedName || intakeFallback || savedGroupName || "Pending Couple invitation";
 }
 
