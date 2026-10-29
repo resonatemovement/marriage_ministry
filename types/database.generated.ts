@@ -3160,6 +3160,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_case_assessment_catalog: {
+        Args: { target_case_id: string }
+        Returns: {
+          assessment_id: string
+          description: string
+          published_version_id: string
+          published_version_number: number
+          system_default_session_id: string
+          title: string
+        }[]
+      }
       get_counseling_contact_group: {
         Args: { target_case_id: string; target_group_id: string }
         Returns: {
@@ -3353,6 +3364,14 @@ export type Database = {
       reorder_session_material_blocks: {
         Args: { target_block_ids: string[]; target_session_id: string }
         Returns: undefined
+      }
+      reschedule_case_assessment_schedule: {
+        Args: {
+          target_assessment_id: string
+          target_case_id: string
+          target_session_id: string
+        }
+        Returns: string
       }
       reschedule_case_session_meeting: {
         Args: {

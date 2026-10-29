@@ -16,6 +16,7 @@ import { CounselingCoupleDetailPage } from "./couple-detail-page";
 vi.mock("./homework-reopen-actions", () => ({ reopenParticipantHomework: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName }: { partnerName: string }) => createElement("button", null, `Reopen Homework for ${partnerName}`) }));
+vi.mock("@/features/assessments/counselor-assessment-management", () => ({ CounselorAssessmentManagement: () => createElement("section", { "aria-label": "Assessments" }, "Assessment management") }));
 import type { CounselingSessionCard } from "./queries";
 
 const card: CounselingSessionCard = {
@@ -25,7 +26,7 @@ const card: CounselingSessionCard = {
   publishedSessions: [{ id: "session-1", number: 1, title: "Foundations", isFinal: false }, { id: "session-2", number: 2, title: "Communication", isFinal: false }],
   team: { campusLead: { id: "lead-team", name: "Davis & Morgan" }, coach: { id: "coach-team", name: "James & Gina Jacobs" }, counselor: { id: "counselor-team", name: "Taylor & Jordan Reed" } },
   homework: { title: "Session 2 Homework", complete: false, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
-  materialSessions: [{ id: "case-session", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }, { id: "case-session-completed", title: "Trust", actualSequence: 3, templateSequence: 3, status: "completed" }],
+  materialSessions: [{ id: "case-session", sessionId: "session-2", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }, { id: "case-session-completed", sessionId: "session-3", title: "Trust", actualSequence: 3, templateSequence: 3, status: "completed" }],
 };
 
 describe("Counseling couple detail foundation", () => {
@@ -69,6 +70,13 @@ describe("Counseling couple detail foundation", () => {
     expect(visibleMarkup).not.toContain("Communication");
     expect(visibleMarkup).not.toContain("Completed");
     expect(visibleMarkup).not.toContain("Active");
+  });
+
+  it("keeps Assessment management in a dedicated section separate from Homework and Session Materials", () => {
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, assessmentManagement: { assessments: [], sessions: [], preferences: {} } }));
+    expect(markup.indexOf('aria-label="Assessments"')).toBeLessThan(markup.indexOf('aria-label="Homework"'));
+    expect(markup.indexOf('aria-label="Homework"')).toBeLessThan(markup.indexOf('aria-label="Session Materials"'));
+    expect(markup).toContain("Assessment management");
   });
 
   it("uses the Schedule Next Session label for Session 0 while retaining its existing completion flow", () => {
