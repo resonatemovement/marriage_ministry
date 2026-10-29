@@ -119,7 +119,7 @@ interface CoupleGenderRpcClient {
 }
 
 interface CoupleDetailsRpcClient {
-  rpc(functionName: "update_couple_partner_details", args: { target_couple_group_id: string; target_profile_id: string; target_first_name: string; target_last_name: string; target_phone: string; target_gender: "male" | "female" | null }): Promise<{ data: boolean | null; error: { message: string } | null }>;
+  rpc(functionName: "update_couple_partner_details", args: { target_couple_group_id: string; target_profile_id: string; target_first_name: string; target_last_name: string; target_phone: string; target_gender: "male" | "female" }): Promise<{ data: boolean | null; error: { message: string } | null }>;
 }
 
 export async function updateCouplePartnerDetails(formData: FormData): Promise<ActionResult> {
@@ -129,10 +129,10 @@ export async function updateCouplePartnerDetails(formData: FormData): Promise<Ac
   const lastName = formValue(formData, "lastName");
   const phone = formValue(formData, "phone");
   const genderValue = formValue(formData, "gender");
-  const gender = genderValue === "" ? null : genderValue;
+  const gender = genderValue;
 
-  if (!coupleGroupId || !profileId || !firstName || firstName.length > 80 || !lastName || lastName.length > 80 || !isValidPhone(phone) || (gender !== null && gender !== "male" && gender !== "female")) {
-    return invalid("Enter a first and last name and a valid phone number.");
+  if (!coupleGroupId || !profileId || !firstName || firstName.length > 80 || !lastName || lastName.length > 80 || !isValidPhone(phone) || (gender !== "male" && gender !== "female")) {
+    return invalid("Enter a first and last name, a valid phone number, and choose a gender.");
   }
 
   await requireOneOfWorkspaces(["admin", "counselor"], `/people/${coupleGroupId}`);

@@ -159,7 +159,7 @@ describe("updateCouplePartnerDetails", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspace/contacts");
   });
 
-  it("keeps legacy null gender nullable while validating required names and phone", async () => {
+  it("rejects a missing gender before calling the details RPC", async () => {
     const form = new FormData();
     form.set("coupleGroupId", coupleId);
     form.set("profileId", providerId);
@@ -167,14 +167,13 @@ describe("updateCouplePartnerDetails", () => {
     form.set("lastName", "Chen");
     form.set("phone", "5555551212");
     form.set("gender", "");
-    mocks.rpc.mockResolvedValue({ data: true, error: null });
     const { updateCouplePartnerDetails } = await import("./detail-actions");
 
-    await expect(updateCouplePartnerDetails(form)).resolves.toEqual({ success: true });
-    expect(mocks.rpc).toHaveBeenCalledWith("update_couple_partner_details", expect.objectContaining({ target_gender: null }));
+    await expect(updateCouplePartnerDetails(form)).resolves.toMatchObject({ error: expect.any(String) });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed details before RPC and fails closed on database authorization errors", async () => {
+  it("rejects invalid gender and malformed details before RPC and fails closed on authorization errors", async () => {
     const form = new FormData();
     form.set("coupleGroupId", coupleId);
     form.set("profileId", providerId);
@@ -188,6 +187,10 @@ describe("updateCouplePartnerDetails", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
 
     form.set("phone", "5555551212");
+    form.set("gender", "invalid");
+    await expect(updateCouplePartnerDetails(form)).resolves.toMatchObject({ error: expect.any(String) });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
     form.set("gender", "male");
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "Not authorized to update this Couple" } });
     await expect(updateCouplePartnerDetails(form)).resolves.toEqual({ error: "The change could not be saved. Please try again." });

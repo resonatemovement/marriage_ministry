@@ -13,7 +13,7 @@ import { updateCouplePartnerDetails } from "./detail-actions";
 import { hasPartnerDetailsChanges, validatePartnerDetails, type PartnerDetailsFields } from "./partner-details-editor-model";
 
 type EditableGender = "male" | "female" | null;
-type Field = "firstName" | "lastName" | "phone";
+type Field = keyof PartnerDetailsFields;
 
 function fieldsFromProps(firstName: string, lastName: string, phone: string, gender: EditableGender): PartnerDetailsFields {
   return { firstName, lastName, phone: formatPhoneInput(phone), gender: gender ?? "" };
@@ -39,7 +39,7 @@ export function PartnerDetailsEditor({ coupleGroupId, profileId, firstName, last
   const valid = Object.keys(errors).length === 0;
 
   function setField(field: Field, value: string) {
-    setValues((current) => ({ ...current, [field]: value }));
+    setValues((current) => ({ ...current, [field]: value as PartnerDetailsFields[typeof field] }));
   }
 
   function save() {
@@ -101,8 +101,8 @@ export function PartnerDetailsEditor({ coupleGroupId, profileId, firstName, last
           </label>
           <div className="grid gap-1.5 text-sm font-medium text-text-primary">
             <label htmlFor={`partner-gender-${profileId}`}>Gender</label>
-            <Select value={values.gender} onValueChange={(gender) => setValues((current) => ({ ...current, gender: gender as PartnerDetailsFields["gender"] }))}>
-              <SelectTrigger id={`partner-gender-${profileId}`} aria-label={`Gender for ${firstName} ${lastName}`}>
+            <Select value={values.gender} onValueChange={(gender) => setField("gender", gender as PartnerDetailsFields["gender"])}>
+              <SelectTrigger id={`partner-gender-${profileId}`} aria-label={`Gender for ${firstName} ${lastName}`} aria-invalid={Boolean(fieldError("gender"))} aria-describedby={fieldError("gender") ? `partner-gender-error-${profileId}` : undefined} onBlur={() => setTouched((current) => ({ ...current, gender: true }))}>
                 <SelectValue placeholder="Not specified" />
               </SelectTrigger>
               <SelectContent>
@@ -110,6 +110,7 @@ export function PartnerDetailsEditor({ coupleGroupId, profileId, firstName, last
                 <SelectItem value="female">Female</SelectItem>
               </SelectContent>
             </Select>
+            {fieldError("gender") ? <span id={`partner-gender-error-${profileId}`} role="alert" className="font-normal text-danger-strong">{fieldError("gender")}</span> : null}
           </div>
           <div className="flex flex-wrap justify-end gap-3 pt-2">
             <button type="button" onClick={() => setOpen(false)} disabled={pending} className="min-h-10 rounded-md px-3 text-sm font-semibold text-text-muted hover:bg-surface-muted">Cancel</button>

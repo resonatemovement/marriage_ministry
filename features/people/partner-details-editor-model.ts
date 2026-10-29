@@ -8,10 +8,12 @@ export type PartnerDetailsFields = {
   gender: "male" | "female" | "";
 };
 
-export type PartnerDetailsErrors = Partial<Record<"firstName" | "lastName" | "phone", string>>;
+export type PartnerDetailsErrors = Partial<Record<keyof PartnerDetailsFields, string>>;
 
 export function validatePartnerDetails(fields: PartnerDetailsFields): PartnerDetailsErrors {
-  return validateOnboarding(fields);
+  const errors: PartnerDetailsErrors = validateOnboarding(fields);
+  if (fields.gender !== "male" && fields.gender !== "female") errors.gender = "Choose a gender.";
+  return errors;
 }
 
 export function hasPartnerDetailsChanges(current: PartnerDetailsFields, original: PartnerDetailsFields) {

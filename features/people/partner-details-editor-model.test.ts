@@ -15,11 +15,22 @@ describe("partner details editor model", () => {
     });
   });
 
+  it("requires a gender while accepting an existing selected gender", () => {
+    expect(validatePartnerDetails({ ...valid, gender: "" })).toEqual({ gender: "Choose a gender." });
+    expect(validatePartnerDetails({ ...valid, gender: "male" })).toEqual({});
+  });
+
   it("detects only valid, normalized field changes and preserves nullable legacy gender", () => {
     const original: PartnerDetailsFields = { firstName: "Taylor", lastName: "Chen", phone: "+15555551212", gender: "" };
     expect(hasPartnerDetailsChanges({ ...original, phone: "(555) 555-1212" }, original)).toBe(false);
     expect(hasPartnerDetailsChanges({ ...original, gender: "female" }, original)).toBe(true);
     expect(hasPartnerDetailsChanges({ ...original, firstName: "Jordan" }, original)).toBe(true);
+  });
+
+  it("accepts a prepopulated gender without treating it as a change", () => {
+    const original: PartnerDetailsFields = { ...valid, gender: "female" };
+    expect(validatePartnerDetails(original)).toEqual({});
+    expect(hasPartnerDetailsChanges(original, original)).toBe(false);
   });
 
   it("renders the approved editable fields and keeps email read-only", () => {
@@ -33,5 +44,6 @@ describe("partner details editor model", () => {
     expect(editor).toContain("disabled={pending || !valid || !changed}");
     expect(editor).toContain("onBlur={() => setTouched");
     expect(editor).toContain("aria-describedby");
+    expect(editor).toContain('fieldError("gender")');
   });
 });
