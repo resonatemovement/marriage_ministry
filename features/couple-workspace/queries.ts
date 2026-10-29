@@ -12,6 +12,7 @@ import { signedResourceAccess } from "@/features/resource-library/server";
 import type { ResourceCategory } from "@/features/resource-library/policy";
 import type { Json } from "@/types/database.generated";
 import type { ParticipantHomework, ParticipantHomeworkAnswer } from "./homework-participant";
+import { getCoupleAssessmentSummaries, type CoupleAssessmentSummary } from "@/features/assessments/couple-queries";
 
 type Row = Record<string, unknown>;
 const rows = (value: unknown): Row[] => Array.isArray(value) ? value as Row[] : [];
@@ -31,6 +32,7 @@ export type CoupleWorkspaceData = {
   homeworkRequired: boolean;
   homeworkRevisionId: string | null;
   homework: { status: HomeworkProgressStatus } | null;
+  assessments: CoupleAssessmentSummary[];
 };
 export type Meeting = { startsAt: string; location: string };
 
@@ -96,8 +98,10 @@ export async function getCoupleWorkspaceData(authenticatedProfileId: string): Pr
     console.error("[Couple Workspace] Query failure: homeworkStatusResult", { message: homeworkStatusResult.error.message, code: homeworkStatusResult.error.code, details: homeworkStatusResult.error.details, hint: homeworkStatusResult.error.hint });
     throw new Error("Couple Workspace is unavailable");
   }
+  const caseId = string(counselingCase, "id")!;
+  const assessments = await getCoupleAssessmentSummaries(caseId, authenticatedProfileId);
   return {
-    caseId: string(counselingCase, "id")!,
+    caseId,
     coupleName,
     partners,
     status: string(counselingCase, "status") ?? "active",
@@ -110,6 +114,7 @@ export async function getCoupleWorkspaceData(authenticatedProfileId: string): Pr
     initialMeeting: initialMeeting ? { startsAt: initialMeeting.startsAt, location: initialMeeting.location } : null,
     nextMeeting: currentMeeting ? { startsAt: currentMeeting.startsAt, location: currentMeeting.location } : initialMeeting ? { startsAt: initialMeeting.startsAt, location: initialMeeting.location } : null,
     homework: homeworkStatusResult?.data?.status ? { status: homeworkStatusResult.data.status as HomeworkProgressStatus } : null,
+    assessments,
   };
 }
 
