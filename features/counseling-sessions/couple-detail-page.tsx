@@ -21,6 +21,8 @@ import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 import { MeetingRealtime } from "./meeting-realtime";
 import { CaseLifecycleRealtime } from "./case-lifecycle-realtime";
 import { ReopenHomeworkButton } from "./homework-reopen-button";
+import { CounselorAssessmentManagement } from "@/features/assessments/counselor-assessment-management";
+import type { CounselorAssessment, CounselorAssessmentSession } from "@/features/assessments/counselor-management-model";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
   return <GroupedAvatars people={couplePhotoSlots(card.partners)} label={`${card.coupleName} partner photos`} />;
@@ -32,7 +34,7 @@ function PrepareEnrichCard({ caseId, document }: { caseId: string; document: Pre
 
 type MeetingNotificationRow = MeetingNotificationDelivery;
 
-export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [] }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[] }) {
+export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessmentManagement = null, canManageAssessmentPreference = false, canReadAssessmentResults = false, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [] }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; assessmentManagement?: { assessments: CounselorAssessment[]; sessions: CounselorAssessmentSession[]; preferences: Record<string, string> } | null; canManageAssessmentPreference?: boolean; canReadAssessmentResults?: boolean; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[] }) {
   const presentation = counselingSessionPresentation(card.state);
   const progressPercent = counselingProgressPercent(presentation.progress, card.state.kind === "completed");
   const caseStatus = counselingStatusLabel(card.status, true, false) ?? card.status;
@@ -91,6 +93,8 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, isAdmin
             <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Previous Meetings</p>
             <ol className="mt-2 space-y-2">{card.state.pastMeetings.map((meeting, index) => <li key={meeting.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm"><span className="font-medium text-text-primary">Meeting {index + 1} · {meeting.completedAt ? "Completed" : "Scheduled"}</span><span className="text-text-muted">{formatCounselingMeetingDateTime(meeting.startsAt)}</span></li>)}</ol>
           </div> : null}
+
+          {assessmentManagement ? <CounselorAssessmentManagement caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManagePreference={canManageAssessmentPreference} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} /> : null}
 
           <section aria-label="Homework" className="mt-4 border-t border-border pt-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Homework</p>

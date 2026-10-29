@@ -29,6 +29,7 @@ describe("completed Couple Session review", () => {
     expect(reviewRoute).toContain("getCompletedCoupleSessionReview()");
     expect(reviewRoute).toContain("<CoupleSessionReview data={data}");
     expect(sessionRoute).toContain("getCoupleSessionViewData(identity.id, caseSessionId)");
-    expect(sessionRoute).toContain("<CoupleSessionView session={session}");
+    expect(sessionRoute).toContain("<CoupleSessionView key={");
+    expect(sessionRoute).toContain("session={session}");
   });
 });

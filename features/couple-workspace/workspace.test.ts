@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => createElement("img", props) }));
 vi.mock("@/features/counseling-sessions/meeting-realtime", () => ({ MeetingRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-meeting-case": caseId }) }));
 vi.mock("@/features/counseling-sessions/case-lifecycle-realtime", () => ({ CaseLifecycleRealtime: ({ caseId }: { caseId: string }) => createElement("i", { "data-lifecycle-case": caseId }) }));
@@ -23,6 +24,7 @@ const data = {
   homeworkRevisionId: "homework-revision",
   initialMeeting: null, nextMeeting: { startsAt: "2026-10-10T18:00:00.000Z", location: "Fremont" },
   homework: { title: "Listening practice", status: "not_started" as const },
+  assessments: [],
 };
 const formattedMeeting = (startsAt: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startsAt));
 
@@ -66,6 +68,8 @@ describe("CoupleWorkspace", () => {
     expect(html).toContain('href="/workspace"');
     expect(html).toContain('aria-current="page"');
     expect(html).toContain('class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]"');
+    expect(html).toContain("Assessments");
+    expect(html).toContain("No Assessments assigned");
     expect(html).toContain('class="space-y-6"');
     expect(html).toContain('rounded-lg border border-black/[0.04] bg-surface');
     expect(html.indexOf("Couple Workspace")).toBeLessThan(html.indexOf("Alex &amp; Jordan"));
