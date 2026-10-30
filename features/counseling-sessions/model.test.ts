@@ -45,6 +45,14 @@ describe("counseling Sessions card state", () => {
     expect(state.caseSession).toBe(caseSession);
     expect(state.caseSession?.actualSequence).toBe(1);
   });
+  it("resolves the authoritative predecessor across Initial and earlier Session meetings", () => {
+    const firstSession = { ...caseSession, id: "case-session-one", actualSequence: 1 };
+    const secondSession = { ...caseSession, id: "case-session-two", sessionId: "two", actualSequence: 2, templateSequence: 2, title: "Communication" };
+    const initialMeeting = { ...initial, startsAt: "2026-10-02T18:00:00Z" };
+    const firstMeeting = { ...one, caseSessionId: firstSession.id, startsAt: "2026-10-09T18:00:00Z", completedAt: "2026-10-09T19:00:00Z" };
+    const activeMeeting = { ...one, id: "two-meeting", sessionId: "two", caseSessionId: secondSession.id, startsAt: "2026-10-16T18:00:00Z" };
+    expect(sessionCardState("active", sessions, [initialMeeting, firstMeeting, activeMeeting], [], [firstSession, secondSession]).previousMeeting).toEqual(firstMeeting);
+  });
   it("offers completion for an active Session and retains case closure semantics", () => { expect(sessionCardState("active", sessions, [one], [{ sessionId: "one", complete: true }], [caseSession]).action).toBe("complete-session"); expect(sessionCardState("finished", sessions, [one], [], [caseSession]).action).toBeNull(); expect(canManageSessions(["campus_lead"])).toBe(true); expect(canManageSessions(["coach"])).toBe(true); expect(canManageSessions(["counselor"])).toBe(true); expect(canManageSessions(["couple"])).toBe(false); });
   it("preserves explicit final designation on the assigned Session snapshot", () => {
     expect(sessionCardState("active", sessions, [one], [], [{ ...caseSession, isFinal: true }]).caseSession?.isFinal).toBe(true);

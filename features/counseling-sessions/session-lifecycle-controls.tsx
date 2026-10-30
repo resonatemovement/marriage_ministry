@@ -16,8 +16,8 @@ import { homeworkProgressLabel } from "@/features/homework/presentation";
 import { MeetingNotificationResendMenuItems, resendableMeetingNotificationPartners, type MeetingNotificationDelivery, type MeetingNotificationPartner } from "./meeting-notification-status";
 
 import { closeCounselingCaseIncomplete, completeCounselingProgram, completeInitialMeeting, completeSessionScheduleNext, rescheduleSessionMeeting, scheduleFollowupMeeting, scheduleInitialMeeting } from "./actions";
-import { COUNSELING_TIME_ZONE, counselingDateOnly } from "./meeting-date-time";
-import { meetingTimeDefaults, validateMeetingSchedule, type MeetingPeriod } from "./scheduling-validation";
+import { COUNSELING_TIME_ZONE } from "./meeting-date-time";
+import { meetingTimeDefaults, minimumMeetingDate as getMinimumMeetingDate, validateMeetingSchedule, type MeetingPeriod } from "./scheduling-validation";
 import { recommendedSessionContentIds, sessionContentListNeedsScroll, toggleSessionContentId } from "./session-content-selection";
 import type { CounselingSessionCard } from "./queries";
 
@@ -55,6 +55,7 @@ function inlineDomainError(error: string) {
   if (error.includes("Session Resource is unavailable")) return "A selected Session Resource is unavailable. Choose another Session or contact an Admin.";
   if (error.includes("Select a reason for closing") || error.includes("Select a valid counseling case closure reason")) return "Select a valid reason for closing this counseling case.";
   if (error.includes("Add notes when the closure reason is Other")) return "Add notes when the closure reason is Other.";
+  if (error.includes("after the previous meeting")) return "Choose a Meeting date and time after the previous Meeting.";
   if (error.includes("valid meeting time") || error.includes("Meeting date") || error.includes("Meeting time")) return "Choose a valid future Meeting date and time.";
   if (error.includes("Schedule the Initial Meeting first")) return "Schedule the Initial Meeting before activating the first Session.";
   if (error.includes("already complete") || error.includes("already active") || error.includes("no longer active") || error.includes("closed or unavailable")) return "This counseling step is no longer available. Refresh the case and try again.";
@@ -78,6 +79,12 @@ function localMeetingValue(value: string | undefined, part: "date" | "time") {
   return part === "date" ? `${get("year")}-${get("month")}-${get("day")}` : `${get("hour")}:${get("minute")}`;
 }
 
+function previousMeetingStartForMode(mode: Mode, card: LifecycleCard) {
+  if (mode === "complete-initial" || mode === "complete-session" || mode === "schedule-followup") return card.state.meeting?.startsAt ?? null;
+  if (mode === "reschedule-meeting") return card.state.previousMeeting?.startsAt ?? null;
+  return null;
+}
+
 export function SessionLifecycleControls({ card, partners = [], deliveries = [] }: { card: LifecycleCard; partners?: MeetingNotificationPartner[]; deliveries?: MeetingNotificationDelivery[] }) {
   const initialSessionId = card.state.nextSession?.id ?? card.publishedSessions[0]?.id ?? "";
   const initialSession = card.publishedSessions.find((session) => session.id === initialSessionId);
@@ -88,8 +95,9 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
   const [minimumMeetingDate, setMinimumMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
   const [meetingPeriod, setMeetingPeriod] = useState<MeetingPeriod>("");
-  const [dateError, setDateError] = useState<string | null>(null);
-  const [timeError, setTimeError] = useState<string | null>(null);
+  const [dateTouched, setDateTouched] = useState(false);
+  const [timeTouched, setTimeTouched] = useState(false);
+  const [previousMeetingStartsAt, setPreviousMeetingStartsAt] = useState<string | null>(null);
   const [overrideConfirmation, setOverrideConfirmation] = useState("");
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [closureReason, setClosureReason] = useState("");
@@ -108,6 +116,11 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
   const homeworkComplete = !homeworkRequired || card.homework?.complete === true;
   const homeworkBlocked = !homeworkComplete;
   const overrideValid = card.isAdmin && overrideConfirmation === "OVERRIDE";
+  const scheduleValidation = open && open !== "complete-program" && open !== "close-case"
+    ? validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod, new Date(), previousMeetingStartsAt)
+    : null;
+  const dateError = dateTouched ? scheduleValidation?.dateError ?? null : null;
+  const timeError = timeTouched ? scheduleValidation?.timeError ?? null : null;
   const primaryMode: Mode | null = isInitial
     ? meeting ? "complete-initial" : "schedule-initial"
     : isAuthored ? isFinalSession ? "complete-program" : "complete-session" : null;
@@ -130,20 +143,23 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
     setMeetingDate("");
     setMeetingTime("");
     setMeetingPeriod("");
-    setDateError(null);
-    setTimeError(null);
+    setDateTouched(false);
+    setTimeTouched(false);
+    setPreviousMeetingStartsAt(null);
   };
 
   const openMode = (nextMode: Mode) => {
     setMode(nextMode);
-    setMinimumMeetingDate(counselingDateOnly(new Date()));
+    const previousStartAt = previousMeetingStartForMode(nextMode, card);
+    setPreviousMeetingStartsAt(previousStartAt);
+    setMinimumMeetingDate(getMinimumMeetingDate(new Date(), previousStartAt));
     setError(null);
     setMeetingDate(nextMode.startsWith("reschedule") ? localMeetingValue(meeting?.startsAt, "date") : "");
     const timeDefaults = meetingTimeDefaults(nextMode.startsWith("reschedule") ? "reschedule" : "new", nextMode.startsWith("reschedule") ? localMeetingValue(meeting?.startsAt, "time") : null);
     setMeetingTime(timeDefaults.time);
     setMeetingPeriod(timeDefaults.period);
-    setDateError(null);
-    setTimeError(null);
+    setDateTouched(false);
+    setTimeTouched(false);
     if (nextMode === "complete-initial" || nextMode === "complete-session") {
       const nextSessionId = card.state.nextSession?.id ?? card.publishedSessions[0]?.id ?? "";
       const nextSession = card.publishedSessions.find((session) => session.id === nextSessionId);
@@ -169,14 +185,10 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
       return;
     }
     if (open !== "complete-program" && open !== "close-case") {
-      const validation = validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod);
+      setDateTouched(true);
+      setTimeTouched(true);
+      const validation = validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod, new Date(), previousMeetingStartsAt);
       if (validation.displayTime) setMeetingTime(validation.displayTime);
-      if (validation.dateError) {
-        setDateError(validation.dateError);
-      }
-      if (validation.timeError || !validation.time) {
-        setTimeError(validation.timeError ?? "Meeting time is required.");
-      }
       if (validation.dateError || validation.timeError || !validation.time) {
         return;
       }
@@ -284,21 +296,22 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
           </section> : null}
           {open !== "complete-program" && open !== "close-case" && !nextSessionUnavailable && (open !== "complete-session" || homeworkComplete || overrideValid) ? <>
             <input type="hidden" name="date" value={meetingDate} />
-            <DatePicker label="Meeting date" value={meetingDate} required minDate={minimumMeetingDate} error={dateError} onChange={(value) => { setMeetingDate(value); setDateError(null); setError(null); }} />
+            <DatePicker label="Meeting date" value={meetingDate} required minDate={minimumMeetingDate} error={dateError} onBlur={() => setDateTouched(true)} onChange={(value) => { setMeetingDate(value); setError(null); }} />
             <TimeInput
               label="Meeting time (required)"
               name="time"
               value={meetingTime}
               period={meetingPeriod}
               error={timeError}
-              onChange={(value) => { setMeetingTime(value); setTimeError(null); setError(null); }}
-              onPeriodChange={(period) => { setMeetingPeriod(period); setTimeError(null); setError(null); }}
+              onChange={(value) => { setMeetingTime(value); setError(null); }}
+              onPeriodChange={(period) => { setMeetingPeriod(period); setTimeTouched(true); setError(null); }}
+              onBlur={() => setTimeTouched(true)}
             />
           </> : null}
           {open === "close-case" ? <section className="grid gap-3 rounded-md border border-danger-strong/30 bg-danger-soft/40 p-3"><p className="text-sm font-semibold text-danger-strong">This ends counseling without normal program completion. Session history, meetings, materials, and Homework responses will be preserved.</p><div className="grid gap-1.5"><label htmlFor="closure-reason" className="text-sm font-medium">Reason{card.isAdmin ? " (optional for Admin)" : ""}</label><input type="hidden" name="closureReason" value={closureReason} /><Select value={closureReason} onValueChange={setClosureReason}><SelectTrigger id="closure-reason" className="w-full"><SelectValue placeholder="Select a reason" /></SelectTrigger><SelectContent>{["Couple withdrew", "Unable to contact couple", "Couple relocated", "Referred elsewhere", "Counseling relationship ended", "Other"].map((reason) => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent></Select></div>{closureReason === "Other" ? <label className="grid gap-1.5 text-sm font-medium">Notes<textarea required name="closureNotes" rows={3} className="rounded-md border border-border bg-white px-3 py-2" /></label> : <input type="hidden" name="closureNotes" value="" />}</section> : null}
           {open === "complete-initial" && !card.publishedSessions.length ? <p role="alert" className="text-sm text-danger-strong">A published Session with Material and Homework is required.</p> : null}
           {error && error !== "Meeting date is required." ? <p role="alert" className="text-sm text-danger-strong">{error}</p> : null}
-          {!nextSessionUnavailable ? <button disabled={pending || ((open === "complete-initial" || open === "complete-session") && (!sessionId || selectedMaterialBlockIds.length === 0)) || ((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid)) || (open === "close-case" && !closureReason && !card.isAdmin)} className="min-h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">{pending ? "Saving…" : title[open]}</button> : null}
+          {!nextSessionUnavailable ? <button disabled={pending || Boolean(scheduleValidation && (scheduleValidation.dateError || scheduleValidation.timeError || !scheduleValidation.time)) || ((open === "complete-initial" || open === "complete-session") && (!sessionId || selectedMaterialBlockIds.length === 0)) || ((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid)) || (open === "close-case" && !closureReason && !card.isAdmin)} className="min-h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">{pending ? "Saving…" : title[open]}</button> : null}
         </form> : null}
       </SheetContent>
     </Sheet>

@@ -11,11 +11,12 @@ function formatDigitsWhileTyping(value: string) {
   return value;
 }
 
-export function TimeInput({ value, period, onChange, onPeriodChange, error, label = "Meeting time (required)", name = "time" }: {
+export function TimeInput({ value, period, onChange, onPeriodChange, onBlur, error, label = "Meeting time (required)", name = "time" }: {
   value: string;
   period: "AM" | "PM" | "";
   onChange: (value: string) => void;
   onPeriodChange: (period: "AM" | "PM") => void;
+  onBlur?: () => void;
   error?: string | null;
   label?: string;
   name?: string;
@@ -63,6 +64,7 @@ export function TimeInput({ value, period, onChange, onPeriodChange, error, labe
         autoComplete="off"
         placeholder="hh:mm"
         value={value}
+        onBlur={onBlur}
         aria-required="true"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}

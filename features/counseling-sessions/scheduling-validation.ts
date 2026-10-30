@@ -57,14 +57,25 @@ export function validateCanonicalMeetingStart(date: string | null, time: string 
   return { instant, dateError: null, timeError: null } as const;
 }
 
-export function validateMeetingSchedule(date: string | null, time: string | null, period: MeetingPeriod | null, now = new Date()) {
+export function minimumMeetingDate(now: Date, previousMeetingStartsAt: string | null = null) {
+  const today = counselingDateOnly(now);
+  if (!previousMeetingStartsAt) return today;
+  const previousMeetingDate = counselingDateOnly(new Date(previousMeetingStartsAt));
+  return previousMeetingDate > today ? previousMeetingDate : today;
+}
+
+export function validateMeetingSchedule(date: string | null, time: string | null, period: MeetingPeriod | null, now = new Date(), previousMeetingStartsAt: string | null = null) {
   const normalizedTime = normalizeMeetingTime(time, period);
   const start = validateCanonicalMeetingStart(date, normalizedTime.time, now);
+  const previousStart = previousMeetingStartsAt ? Date.parse(previousMeetingStartsAt) : NaN;
+  const previousDate = Number.isFinite(previousStart) ? counselingDateOnly(new Date(previousStart)) : null;
+  const isBeforePreviousDate = Boolean(date && previousDate && date < previousDate);
+  const isNotAfterPreviousMeeting = Number.isFinite(previousStart) && start.instant !== null && start.instant.getTime() <= previousStart;
   return {
     date: date ?? "",
     time: normalizedTime.time,
     displayTime: normalizedTime.displayTime,
-    dateError: start.dateError,
-    timeError: normalizedTime.error ?? start.timeError,
+    dateError: start.dateError ?? (isBeforePreviousDate ? "Meeting date cannot be before the previous meeting." : null),
+    timeError: normalizedTime.error ?? start.timeError ?? (!isBeforePreviousDate && isNotAfterPreviousMeeting ? "Meeting must be scheduled after the previous meeting." : null),
   } as const;
 }
