@@ -55,7 +55,7 @@ function inlineDomainError(error: string) {
   if (error.includes("Session Resource is unavailable")) return "A selected Session Resource is unavailable. Choose another Session or contact an Admin.";
   if (error.includes("Select a reason for closing") || error.includes("Select a valid counseling case closure reason")) return "Select a valid reason for closing this counseling case.";
   if (error.includes("Add notes when the closure reason is Other")) return "Add notes when the closure reason is Other.";
-  if (error.includes("after the previous meeting")) return "Choose a Meeting date and time after the previous Meeting.";
+  if (error.includes("after the previous meeting")) return "Choose a Meeting date after the previous Meeting.";
   if (error.includes("valid meeting time") || error.includes("Meeting date") || error.includes("Meeting time")) return "Choose a valid future Meeting date and time.";
   if (error.includes("Schedule the Initial Meeting first")) return "Schedule the Initial Meeting before activating the first Session.";
   if (error.includes("already complete") || error.includes("already active") || error.includes("no longer active") || error.includes("closed or unavailable")) return "This counseling step is no longer available. Refresh the case and try again.";

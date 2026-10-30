@@ -61,7 +61,10 @@ export function minimumMeetingDate(now: Date, previousMeetingStartsAt: string | 
   const today = counselingDateOnly(now);
   if (!previousMeetingStartsAt) return today;
   const previousMeetingDate = counselingDateOnly(new Date(previousMeetingStartsAt));
-  return previousMeetingDate > today ? previousMeetingDate : today;
+  const [year, month, day] = previousMeetingDate.split("-").map(Number);
+  const nextDay = new Date(Date.UTC(year!, month! - 1, day! + 1));
+  const earliestAfterPrevious = `${nextDay.getUTCFullYear()}-${String(nextDay.getUTCMonth() + 1).padStart(2, "0")}-${String(nextDay.getUTCDate()).padStart(2, "0")}`;
+  return earliestAfterPrevious > today ? earliestAfterPrevious : today;
 }
 
 export function validateMeetingSchedule(date: string | null, time: string | null, period: MeetingPeriod | null, now = new Date(), previousMeetingStartsAt: string | null = null) {
@@ -69,13 +72,12 @@ export function validateMeetingSchedule(date: string | null, time: string | null
   const start = validateCanonicalMeetingStart(date, normalizedTime.time, now);
   const previousStart = previousMeetingStartsAt ? Date.parse(previousMeetingStartsAt) : NaN;
   const previousDate = Number.isFinite(previousStart) ? counselingDateOnly(new Date(previousStart)) : null;
-  const isBeforePreviousDate = Boolean(date && previousDate && date < previousDate);
-  const isNotAfterPreviousMeeting = Number.isFinite(previousStart) && start.instant !== null && start.instant.getTime() <= previousStart;
+  const isNotAfterPreviousDate = Boolean(date && previousDate && date <= previousDate);
   return {
     date: date ?? "",
     time: normalizedTime.time,
     displayTime: normalizedTime.displayTime,
-    dateError: start.dateError ?? (isBeforePreviousDate ? "Meeting date cannot be before the previous meeting." : null),
-    timeError: normalizedTime.error ?? start.timeError ?? (!isBeforePreviousDate && isNotAfterPreviousMeeting ? "Meeting must be scheduled after the previous meeting." : null),
+    dateError: start.dateError ?? (isNotAfterPreviousDate ? "Meeting date must be after the previous meeting date." : null),
+    timeError: normalizedTime.error ?? start.timeError,
   } as const;
 }
