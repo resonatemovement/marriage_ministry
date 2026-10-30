@@ -6,15 +6,14 @@ import { DayPicker, type DayPickerProps } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
 function Calendar({ className, classNames, showOutsideDays = true, components, ...props }: DayPickerProps) {
-  return <DayPicker showOutsideDays={showOutsideDays} className={cn("p-3", className)} classNames={{
+  return <DayPicker showOutsideDays={showOutsideDays} navLayout="around" className={cn("p-3", className)} classNames={{
     root: "w-full",
     months: "flex flex-col",
-    month: "space-y-3",
-    month_caption: "relative flex h-9 items-center justify-center",
+    month: "relative space-y-3",
+    month_caption: "relative mx-10 flex h-9 items-center justify-center",
     caption_label: "text-sm font-semibold",
-    nav: "absolute inset-x-0 top-0 flex items-center justify-between",
-    button_previous: "grid size-8 place-items-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary",
-    button_next: "grid size-8 place-items-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary",
+    button_previous: "absolute left-0 top-0 z-10 grid size-10 place-items-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-text-primary aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent focus-visible:bg-surface-muted focus-visible:text-text-primary",
+    button_next: "absolute right-0 top-0 z-10 grid size-10 place-items-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-text-primary aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent focus-visible:bg-surface-muted focus-visible:text-text-primary",
     month_grid: "w-full border-collapse",
     weekdays: "border-b border-border",
     weekday: "h-8 w-9 text-center text-xs font-medium text-text-muted",

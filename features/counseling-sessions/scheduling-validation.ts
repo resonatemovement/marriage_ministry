@@ -57,14 +57,27 @@ export function validateCanonicalMeetingStart(date: string | null, time: string 
   return { instant, dateError: null, timeError: null } as const;
 }
 
-export function validateMeetingSchedule(date: string | null, time: string | null, period: MeetingPeriod | null, now = new Date()) {
+export function minimumMeetingDate(now: Date, previousMeetingStartsAt: string | null = null) {
+  const today = counselingDateOnly(now);
+  if (!previousMeetingStartsAt) return today;
+  const previousMeetingDate = counselingDateOnly(new Date(previousMeetingStartsAt));
+  const [year, month, day] = previousMeetingDate.split("-").map(Number);
+  const nextDay = new Date(Date.UTC(year!, month! - 1, day! + 1));
+  const earliestAfterPrevious = `${nextDay.getUTCFullYear()}-${String(nextDay.getUTCMonth() + 1).padStart(2, "0")}-${String(nextDay.getUTCDate()).padStart(2, "0")}`;
+  return earliestAfterPrevious > today ? earliestAfterPrevious : today;
+}
+
+export function validateMeetingSchedule(date: string | null, time: string | null, period: MeetingPeriod | null, now = new Date(), previousMeetingStartsAt: string | null = null) {
   const normalizedTime = normalizeMeetingTime(time, period);
   const start = validateCanonicalMeetingStart(date, normalizedTime.time, now);
+  const previousStart = previousMeetingStartsAt ? Date.parse(previousMeetingStartsAt) : NaN;
+  const previousDate = Number.isFinite(previousStart) ? counselingDateOnly(new Date(previousStart)) : null;
+  const isNotAfterPreviousDate = Boolean(date && previousDate && date <= previousDate);
   return {
     date: date ?? "",
     time: normalizedTime.time,
     displayTime: normalizedTime.displayTime,
-    dateError: start.dateError,
+    dateError: start.dateError ?? (isNotAfterPreviousDate ? "Meeting date must be after the previous meeting date." : null),
     timeError: normalizedTime.error ?? start.timeError,
   } as const;
 }

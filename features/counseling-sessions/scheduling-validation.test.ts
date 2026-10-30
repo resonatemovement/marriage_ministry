@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { counselingDateOnly, counselingDateTimeInstant } from "./meeting-date-time";
-import { formatMeetingTime, meetingTimeDefaults, normalizeMeetingTime, validateCanonicalMeetingStart, validateMeetingSchedule } from "./scheduling-validation";
+import { formatMeetingTime, meetingTimeDefaults, minimumMeetingDate, normalizeMeetingTime, validateCanonicalMeetingStart, validateMeetingSchedule } from "./scheduling-validation";
 
 describe("lifecycle meeting-time validation", () => {
   it("normalizes editable hh:mm and AM/PM to canonical HH:mm", () => {
@@ -67,5 +67,26 @@ describe("lifecycle meeting-time validation", () => {
     expect(counselingDateTimeInstant("2026-03-08", "02:30")).toBeNull();
     expect(validateCanonicalMeetingStart("2026-10-15", "10:00", new Date("2026-10-15T20:00:00.000Z")).timeError).toBe("Meeting time must be in the future.");
     expect(validateCanonicalMeetingStart("2026-10-16", "09:00", new Date("2026-10-15T20:00:00.000Z")).instant?.toISOString()).toBe("2026-10-16T16:00:00.000Z");
+  });
+
+  it("requires the next Session to be on a calendar date after its predecessor", () => {
+    const now = new Date("2026-10-30T16:00:00.000Z");
+    const previous = "2026-11-01T18:00:00.000Z"; // 10:00 AM in Los Angeles after the DST change.
+    expect(minimumMeetingDate(now, previous)).toBe("2026-11-02");
+    for (const time of ["09:00", "10:00", "10:01", "11:00"]) {
+      expect(validateMeetingSchedule("2026-11-01", time, "AM", now, previous).dateError).toBe("Meeting date must be after the previous meeting date.");
+    }
+    expect(validateMeetingSchedule("2026-10-31", "12:00", "PM", now, previous).dateError).toBe("Meeting date must be after the previous meeting date.");
+    expect(validateMeetingSchedule("2026-11-02", "09:00", "AM", now, previous)).toMatchObject({ dateError: null, timeError: null });
+  });
+
+  it("calculates the following Los Angeles calendar day across DST boundaries without adding 24 hours", () => {
+    const now = new Date("2026-10-30T16:00:00.000Z");
+    expect(minimumMeetingDate(now, "2026-11-01T18:00:00.000Z")).toBe("2026-11-02");
+    const springNow = new Date("2026-03-01T17:00:00.000Z");
+    expect(minimumMeetingDate(springNow, "2026-03-07T20:00:00.000Z")).toBe("2026-03-08");
+    expect(minimumMeetingDate(springNow, "2026-03-08T19:00:00.000Z")).toBe("2026-03-09");
+    expect(validateMeetingSchedule("2026-11-02", "09:00", "AM", now, "2026-11-01T18:00:00.000Z")).toMatchObject({ dateError: null, timeError: null });
+    expect(validateMeetingSchedule("2026-03-08", "09:00", "AM", springNow, "2026-03-07T20:00:00.000Z")).toMatchObject({ dateError: null, timeError: null });
   });
 });

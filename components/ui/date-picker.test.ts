@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formatDateInput, parseDateInput } from "./date-picker";
 
 const source = readFileSync("components/ui/date-picker.tsx", "utf8");
+const calendarSource = readFileSync("components/ui/calendar.tsx", "utf8");
 
 describe("shared shadCN DatePicker", () => {
   it("renders selected dates in MM/DD/YYYY format", () => {
@@ -37,8 +38,23 @@ describe("shared shadCN DatePicker", () => {
   it("supports an optional calendar minimum date without changing unrelated date pickers", () => {
     expect(source).toContain("minDate?: string");
     expect(source).toContain("disabled={minimumDate ? { before: minimumDate } : undefined}");
+    expect(source).toContain("startMonth={minimumDate}");
     expect(source).toContain("defaultMonth={calendarMonth}");
     expect(source).toContain("(touched || externalError ? inputError : null)");
+  });
+
+  it("keeps future-date navigation at or after the supplied minimum month", () => {
+    expect(source).toContain("startMonth={minimumDate}");
+    expect(source).toContain("disabled={minimumDate ? { before: minimumDate } : undefined}");
+  });
+
+  it("renders centered 40px navigation hit targets above the caption with disabled semantics", () => {
+    expect(calendarSource).toContain('navLayout="around"');
+    expect(calendarSource).toContain('month: "relative space-y-3"');
+    expect(calendarSource).toContain('month_caption: "relative mx-10 flex h-9 items-center justify-center"');
+    expect(calendarSource).toContain('button_previous: "absolute left-0 top-0 z-10 grid size-10 place-items-center');
+    expect(calendarSource).toContain('button_next: "absolute right-0 top-0 z-10 grid size-10 place-items-center');
+    expect(calendarSource).toContain("aria-disabled:cursor-not-allowed aria-disabled:opacity-40");
   });
 
   it("uses a subtle accessible focus border without a blue outline or ring", () => {

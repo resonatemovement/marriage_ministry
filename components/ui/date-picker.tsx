@@ -114,7 +114,7 @@ export function DatePicker({ value, onChange, onBlur, label = "Wedding Date", re
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={8} className="w-[min(19rem,calc(100vw-2rem))] p-0">
-          <Calendar mode="single" selected={selected} defaultMonth={calendarMonth} disabled={minimumDate ? { before: minimumDate } : undefined} onSelect={selectDate} />
+          <Calendar mode="single" selected={selected} defaultMonth={calendarMonth} startMonth={minimumDate} disabled={minimumDate ? { before: minimumDate } : undefined} onSelect={selectDate} />
           <div className="flex justify-end border-t border-border p-2">{selected && !required ? <button type="button" onClick={() => { lastEmittedValue.current = ""; setInputValue(""); setInputError(null); onChange(""); }} className="inline-flex min-h-9 items-center gap-1 rounded-sm px-2 text-xs font-semibold text-text-muted hover:bg-surface-muted hover:text-text-primary focus-visible:bg-surface-muted focus-visible:text-text-primary"><X className="size-3" aria-hidden="true" />Clear date</button> : null}</div>
         </PopoverContent>
       </Popover>

@@ -39,10 +39,10 @@ describe("lifecycle scheduling date control", () => {
 
   it("validates required date/time inline before invoking the existing lifecycle actions", () => {
     expect(controls).toContain("validateMeetingSchedule(");
-    expect(controls).toContain("validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod)");
+    expect(controls).toContain("validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod, new Date(), previousMeetingStartsAt)");
     expect(controls).not.toContain('formData.get("time")');
-    expect(controls).toContain("setDateError(validation.dateError)");
-    expect(controls).toContain("setTimeError(validation.timeError ?? \"Meeting time is required.\")");
+    expect(controls).toContain("setDateTouched(true)");
+    expect(controls).toContain("setTimeTouched(true)");
     expect(controls).toContain('formData.set("time", validation.time)');
     expect(controls.indexOf("if (validation.timeError || !validation.time)")).toBeLessThan(controls.indexOf("startTransition(async () => {"));
     expect(actions).toContain("validateCanonicalMeetingStart(date, time)");
@@ -63,21 +63,24 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain("value={meetingTime}");
     expect(controls).toContain("period={meetingPeriod}");
     expect(controls).toContain("setMeetingTime(value)");
-    expect(controls).toContain("validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod)");
+    expect(controls).toContain("validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod, new Date(), previousMeetingStartsAt)");
     expect(controls).toContain("if (result?.error) {\n        const domainError = inlineDomainError(result.error);");
     expect(controls).toContain("if (domainError) setError(domainError);");
     expect(controls).toContain("showErrorToast(failureMessage(open!));");
     expect(controls).toContain("showSuccessToast(successMessage(open!));");
     expect(controls).toContain('formData.set("time", validation.time)');
-    expect(controls).toContain("setTimeError(validation.timeError ?? \"Meeting time is required.\")");
+    expect(controls).toContain("setPreviousMeetingStartsAt(previousStartAt)");
   });
 
-  it("does not validate while interacting with the time or AM/PM fields; submit runs shared validation", () => {
+  it("shows field errors after blur and disables invalid schedule submissions", () => {
     expect(timeInput).toContain("onChange={handleChange}");
-    expect(timeInput).not.toContain("onBlur");
-    expect(controls).not.toContain("onBlur={() => {");
-    expect(controls).toContain("validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod)");
-    expect(controls).toContain("if (validation.timeError || !validation.time)");
+    expect(timeInput).toContain("onBlur={onBlur}");
+    expect(controls).toContain("onBlur={() => setDateTouched(true)}");
+    expect(controls).toContain("onBlur={() => setTimeTouched(true)}");
+    expect(controls).toContain("const dateError = dateTouched ? scheduleValidation?.dateError ?? null : null");
+    expect(controls).toContain("const timeError = timeTouched ? scheduleValidation?.timeError ?? null : null");
+    expect(controls).toContain("Boolean(scheduleValidation && (scheduleValidation.dateError || scheduleValidation.timeError || !scheduleValidation.time))");
+    expect(controls).toContain("if (validation.dateError || validation.timeError || !validation.time)");
   });
 
   it("uses PM defaults for new meeting flows and the saved local time for reschedules", () => {
@@ -105,7 +108,7 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain("setMeetingTime(validation.displayTime)");
     expect(timeInput).toContain("inputMode=\"numeric\"");
     expect(timeInput).toContain("onChange={handleChange}");
-    expect(controls).toContain("onChange={(value) => { setMeetingTime(value); setTimeError(null); setError(null); }}");
+    expect(controls).toContain("onChange={(value) => { setMeetingTime(value); setError(null); }}");
   });
 
   it("admits Super Admin to all exposed schedule actions while preserving existing Admin and case-scoped staff paths", () => {
@@ -166,7 +169,7 @@ describe("lifecycle scheduling date control", () => {
     expect(close).not.toContain("showSuccessToast");
     expect(controls).toContain("if (validation.dateError || validation.timeError || !validation.time) {");
     expect(controls).toContain("return;\n      }\n      formData.set(\"date\", validation.date)");
-    expect(controls).toContain("disabled={pending || ((open === \"complete-initial\"");
+    expect(controls).toContain("disabled={pending || Boolean(scheduleValidation && (scheduleValidation.dateError || scheduleValidation.timeError || !scheduleValidation.time))");
   });
 
   it("retains explicit final-session completion and server lifecycle action selection", () => {
