@@ -11,7 +11,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./workspace-queries", () => ({ getCurrentCoachCaseScope: mocks.getCurrentCoachCaseScope }));
 vi.mock("@/lib/storage/profile-photo", () => ({ getProfilePhotoUrl: vi.fn() }));
 
-import { getCounselingSessionCards } from "./queries";
+import { getCounselingSessionCard, getCounselingSessionCards } from "./queries";
 
 function createQuery(table: string) {
   const query: Record<string, unknown> = {};
@@ -44,6 +44,20 @@ describe("Counseling Sessions Coach workspace query scope", () => {
     expect(mocks.filters).toContainEqual({ table: "case_session_meetings", method: "in", args: ["counseling_case_id", ["assigned-case"]] });
     expect(mocks.filters).toContainEqual({ table: "case_sessions", method: "in", args: ["counseling_case_id", ["assigned-case"]] });
     expect(mocks.filters).toContainEqual({ table: "homework_assignments", method: "in", args: ["counseling_case_id", ["assigned-case"]] });
+  });
+
+  it("keeps a direct Case-card lookup scoped in the active Coach workspace", async () => {
+    await getCounselingSessionCard("unassigned-case", "coach");
+
+    expect(mocks.getCurrentCoachCaseScope).toHaveBeenCalledOnce();
+    expect(mocks.filters).toContainEqual({ table: "counseling_cases", method: "in", args: ["id", ["assigned-case"]] });
+  });
+
+  it("preserves the existing unscoped Admin visibility path", async () => {
+    await getCounselingSessionCard("admin-visible-case", "admin");
+
+    expect(mocks.getCurrentCoachCaseScope).not.toHaveBeenCalled();
+    expect(mocks.filters.some(({ table, method }) => table === "counseling_cases" && method === "in")).toBe(false);
   });
 
   it("leaves non-Coach workspace visibility behavior unchanged", async () => {

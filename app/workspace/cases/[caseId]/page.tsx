@@ -19,7 +19,7 @@ export default async function CounselingCaseDetailRoute({ params }: { params: Pr
   const isAdmin = identity.roles.some((role) => role === "admin" || role === "super_admin");
   const canResetCounselingJourney = identity.roles.includes("super_admin") && isDevCounselingProject();
   if (!isAdmin && !counselingWorkspaces.includes(workspace as typeof counselingWorkspaces[number])) redirect("/workspace");
-  const card = await getCounselingSessionCard(caseId);
+  const card = await getCounselingSessionCard(caseId, workspace);
   if (!card) notFound();
   const coachScope = workspace === "coach" ? await getCurrentCoachCaseScope() : null;
   const canManageAssessments = isAdmin || workspace === "counselor";
