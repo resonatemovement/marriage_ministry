@@ -31,7 +31,7 @@ export async function getCurrentCoachCaseScope(): Promise<CoachCaseScope> {
     .from("case_assignments")
     .select("counseling_case_id,assigned_group_id,assignment_type,ended_at")
     .in("assigned_group_id", activeCoachTeamIds)
-    .in("assignment_type", ["coach", "counselor"])
+    .eq("assignment_type", "counselor")
     .is("ended_at", null);
   if (assignmentsResult.error) throw new Error("Workspace Case assignments are unavailable");
 

@@ -50,6 +50,15 @@ describe("Counseling case detail route", () => {
     expect(mocks.getCard).toHaveBeenCalledWith("case-1", "coach");
   });
 
+  it("hides a directly requested Case when it is outside the active Coach scope", async () => {
+    mocks.workspace = "coach";
+    mocks.roles = ["super_admin", "coach"];
+    mocks.card = null;
+
+    await expect(CounselingCaseDetailRoute({ params: Promise.resolve({ caseId: "john-stacy-case" }) })).rejects.toThrow("not found");
+    expect(mocks.getCard).toHaveBeenCalledWith("john-stacy-case", "coach");
+  });
+
   it("keeps the existing Super Admin workspace lookup unscoped", async () => {
     mocks.getCard.mockClear();
     mocks.workspace = "admin";

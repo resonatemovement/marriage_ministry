@@ -24,13 +24,11 @@ export function coachCaseScope(
       assignment.ended_at !== null ||
       !assignment.assigned_group_id ||
       !activeTeamIds.has(assignment.assigned_group_id) ||
-      (assignment.assignment_type !== "coach" && assignment.assignment_type !== "counselor")
+      assignment.assignment_type !== "counselor"
     ) return;
 
     caseIds.add(assignment.counseling_case_id);
-    // The existing contact RPC authorizes Coach members through the active
-    // Counselor-of-record assignment, not the separate Coach assignment.
-    if (assignment.assignment_type === "counselor") coupleContactCaseIds.add(assignment.counseling_case_id);
+    coupleContactCaseIds.add(assignment.counseling_case_id);
   });
 
   return { caseIds: [...caseIds], coupleContactCaseIds: [...coupleContactCaseIds] };
