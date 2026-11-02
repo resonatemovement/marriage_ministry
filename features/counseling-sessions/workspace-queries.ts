@@ -1,11 +1,42 @@
 import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { coachCaseScope, type CoachCaseAssignment, type CoachCaseScope } from "./coach-case-scope";
 
 type Row = Record<string, unknown>;
 const value = (row: Row | null | undefined, key: string) => typeof row?.[key] === "string" ? row[key] as string : null;
 
 export type CampusLeadCoach = { id: string; name: string; campus: string | null };
+
+/** Resolves the signed-in Coach's active-team Case scope; database RLS remains authoritative. */
+export async function getCurrentCoachCaseScope(): Promise<CoachCaseScope> {
+  const supabase = await createServerSupabaseClient();
+  const { data: claims, error: claimsError } = await supabase.auth.getClaims();
+  const profileId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
+  if (claimsError || !profileId) throw new Error("Workspace team data is unavailable");
+
+  const teamsResult = await supabase
+    .from("groups")
+    .select("id,group_members!inner(profile_id,ended_at)")
+    .eq("group_type", "coach_team" as never)
+    .eq("active", true)
+    .eq("group_members.profile_id", profileId)
+    .is("group_members.ended_at", null);
+  if (teamsResult.error) throw new Error("Workspace team data is unavailable");
+
+  const activeCoachTeamIds = (teamsResult.data ?? []).map((team) => team.id);
+  if (!activeCoachTeamIds.length) return { caseIds: [], coupleContactCaseIds: [] };
+
+  const assignmentsResult = await supabase
+    .from("case_assignments")
+    .select("counseling_case_id,assigned_group_id,assignment_type,ended_at")
+    .in("assigned_group_id", activeCoachTeamIds)
+    .eq("assignment_type", "counselor")
+    .is("ended_at", null);
+  if (assignmentsResult.error) throw new Error("Workspace Case assignments are unavailable");
+
+  return coachCaseScope((assignmentsResult.data ?? []) as CoachCaseAssignment[], activeCoachTeamIds);
+}
 
 /** Reads only the signed-in Campus Lead's active Coach-team assignments; RLS remains authoritative. */
 export async function getCurrentCampusLeadCoaches(): Promise<CampusLeadCoach[]> {

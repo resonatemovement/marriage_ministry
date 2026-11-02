@@ -34,7 +34,7 @@ function PrepareEnrichCard({ caseId, document }: { caseId: string; document: Pre
 
 type MeetingNotificationRow = MeetingNotificationDelivery;
 
-export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessmentManagement = null, canManageAssessmentPreference = false, canReadAssessmentResults = false, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [] }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; assessmentManagement?: { assessments: CounselorAssessment[]; sessions: CounselorAssessmentSession[]; preferences: Record<string, string> } | null; canManageAssessmentPreference?: boolean; canReadAssessmentResults?: boolean; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[] }) {
+export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessmentManagement = null, canManageAssessmentPreference = false, canReadAssessmentResults = false, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [], showCoupleContactLink = true }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; assessmentManagement?: { assessments: CounselorAssessment[]; sessions: CounselorAssessmentSession[]; preferences: Record<string, string> } | null; canManageAssessmentPreference?: boolean; canReadAssessmentResults?: boolean; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[]; showCoupleContactLink?: boolean }) {
   const presentation = counselingSessionPresentation(card.state);
   const progressPercent = counselingProgressPercent(presentation.progress, card.state.kind === "completed");
   const caseStatus = counselingStatusLabel(card.status, true, false) ?? card.status;
@@ -60,6 +60,14 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
   const activeHomeworkRevisionId = card.state.caseSession?.status === "active"
     ? card.state.caseSession.homeworkAssignmentRevisionId
     : null;
+  const coupleIdentityContent = <>
+    <PartnerPhotos card={card} />
+    <div className="min-w-0">
+      <p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Counseling case</p>
+      <h1 className="font-heading mt-1 text-3xl font-bold text-text-primary">{card.coupleName}</h1>
+      <p className="mt-2 text-sm text-text-muted">Counseling Sessions and care details for this couple.</p>
+    </div>
+  </>;
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <MeetingRealtime caseId={card.caseId} />
@@ -68,7 +76,17 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
     <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href="/workspace">Sessions</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{card.coupleName}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="space-y-6">
-        <Card className="p-5 sm:p-7"><Link href={`/workspace/contacts/${card.caseId}/${card.coupleId}`} className="flex flex-col gap-5 rounded-md sm:flex-row sm:items-center"><PartnerPhotos card={card} /><div className="min-w-0"><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Counseling case</p><h1 className="font-heading mt-1 text-3xl font-bold text-text-primary">{card.coupleName}</h1><p className="mt-2 text-sm text-text-muted">Counseling Sessions and care details for this couple.</p></div></Link></Card>
+        <Card className="p-5 sm:p-7">
+          {showCoupleContactLink ? (
+            <Link href={`/workspace/contacts/${card.caseId}/${card.coupleId}`} className="flex flex-col gap-5 rounded-md sm:flex-row sm:items-center">
+              {coupleIdentityContent}
+            </Link>
+          ) : (
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+              {coupleIdentityContent}
+            </div>
+          )}
+        </Card>
 
         <Card className="p-5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">

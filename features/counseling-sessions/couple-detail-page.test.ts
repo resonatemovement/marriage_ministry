@@ -30,6 +30,12 @@ const card: CounselingSessionCard = {
 };
 
 describe("Counseling couple detail foundation", () => {
+  it("keeps assigned Coach case identity visible but omits an inaccessible Couple contact link", () => {
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, showCoupleContactLink: false }));
+    expect(markup).toContain("Anthony Jones &amp; Amy Lee");
+    expect(markup).not.toContain(`href="/workspace/contacts/${card.caseId}/${card.coupleId}"`);
+  });
+
   it("shows the couple, partner photo fallback, current Session, status, and meeting", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
     expect(markup).toContain("Anthony Jones &amp; Amy Lee");
