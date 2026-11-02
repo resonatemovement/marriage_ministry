@@ -9,6 +9,7 @@ import { getCounselorAssessmentManagement } from "@/features/assessments/counsel
 import { isDevCounselingProject } from "@/features/counseling-sessions/dev-reset";
 import { getMeetingNotificationRows } from "@/features/notifications/meeting-notifications";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentCoachCaseScope } from "@/features/counseling-sessions/workspace-queries";
 
 const counselingWorkspaces = ["campus_lead", "coach", "counselor"] as const;
 
@@ -20,6 +21,7 @@ export default async function CounselingCaseDetailRoute({ params }: { params: Pr
   if (!isAdmin && !counselingWorkspaces.includes(workspace as typeof counselingWorkspaces[number])) redirect("/workspace");
   const card = await getCounselingSessionCard(caseId);
   if (!card) notFound();
+  const coachScope = workspace === "coach" ? await getCurrentCoachCaseScope() : null;
   const canManageAssessments = isAdmin || workspace === "counselor";
   const canReadAssessmentResults = identity.roles.includes("counselor");
   const [prepareEnrich, assessmentManagement] = await Promise.all([
@@ -29,5 +31,5 @@ export default async function CounselingCaseDetailRoute({ params }: { params: Pr
   const meetingNotifications = card.state.meeting ? await getMeetingNotificationRows(caseId, card.state.meeting.id) : [];
   const supabase = await createServerSupabaseClient();
   const { data: canReopenHomework } = await supabase.rpc("get_homework_reopen_eligibility", { target_case_id: caseId });
-  return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}><CounselingCoupleDetailPage card={card} prepareEnrich={prepareEnrich} assessmentManagement={assessmentManagement} canManageAssessmentPreference={identity.roles.includes("counselor")} canReadAssessmentResults={canReadAssessmentResults} isAdmin={isAdmin} canReopenHomework={canReopenHomework === true} canResetCounselingJourney={canResetCounselingJourney} meetingNotifications={meetingNotifications} /></WorkspaceShell>;
+  return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}><CounselingCoupleDetailPage card={card} prepareEnrich={prepareEnrich} assessmentManagement={assessmentManagement} canManageAssessmentPreference={identity.roles.includes("counselor")} canReadAssessmentResults={canReadAssessmentResults} isAdmin={isAdmin} canReopenHomework={canReopenHomework === true} canResetCounselingJourney={canResetCounselingJourney} meetingNotifications={meetingNotifications} showCoupleContactLink={workspace !== "coach" || coachScope?.coupleContactCaseIds.includes(caseId) === true} /></WorkspaceShell>;
 }

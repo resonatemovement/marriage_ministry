@@ -22,7 +22,7 @@ export default async function WorkspaceRoute() {
 
   if (workspace === "campus_lead" || workspace === "coach" || workspace === "counselor") {
     const [cards, coaches] = await Promise.all([
-      getCounselingSessionCards(),
+      getCounselingSessionCards(workspace),
       workspace === "campus_lead" ? getCurrentCampusLeadCoaches() : Promise.resolve(null),
     ]);
     return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}>

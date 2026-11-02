@@ -9,6 +9,8 @@ import { counselingSessionQueryFailure } from "./query-diagnostics";
 import { projectCounselingHomeworkProgress, type CounselingHomeworkProgress } from "./homework-query-projection";
 import { counselingWorkspaceCoupleIdentity, type CounselingWorkspaceCoupleIdentityRow } from "./workspace-identity";
 import type { SubmittedHomeworkReview } from "./submitted-homework-review";
+import { getCurrentCoachCaseScope } from "./workspace-queries";
+import type { WorkspaceId } from "@/lib/workspaces";
 
 type Row = Record<string, unknown>;
 const rows = (value: unknown): Row[] => Array.isArray(value) ? value as Row[] : [];
@@ -19,14 +21,26 @@ export type CounselingTeam = { campusLead: CounselingTeamMember | null; coach: C
 export type CounselingHomework = { title: string; complete: boolean; partners: { progressId: string; profileId: string; name: string; status: HomeworkProgressStatus }[] };
 export type CounselingSessionCard = { caseId: string; coupleId: string; coupleName: string; partners: CounselingSessionPartner[]; status: string; state: ReturnType<typeof sessionCardState>; publishedSessions: Session[]; team: CounselingTeam; homework: CounselingHomework | null; materialSessions: { id: string; sessionId: string; title: string; actualSequence: number; templateSequence: number; status: "active" | "completed" }[] };
 
-export async function getCounselingSessionCards(): Promise<CounselingSessionCard[]> {
+export async function getCounselingSessionCards(workspace?: WorkspaceId): Promise<CounselingSessionCard[]> {
   const supabase = await createServerSupabaseClient();
+  const coachScope = workspace === "coach" ? await getCurrentCoachCaseScope() : null;
+  if (coachScope && coachScope.caseIds.length === 0) return [];
+  const caseQuery = supabase.from("counseling_cases").select("id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(id,name))");
+  const meetingsQuery = supabase.from("case_session_meetings").select("id,counseling_case_id,session_id,case_session_id,starts_at,ends_at,location,completed_at,created_at");
+  const caseSessionsQuery = supabase.from("case_sessions").select("id,counseling_case_id,session_id,actual_sequence,template_sequence_number,title,status,is_final,homework_assignment_revision_id,material_released_at,homework_released_at");
+  const homeworkAssignmentsQuery = supabase.from("homework_assignments").select("counseling_case_id,homework_assignment_revisions(id,ended_at,homework_participant_progress(id,profile_id,status))").is("unassigned_at", null);
+  if (coachScope) {
+    caseQuery.in("id", coachScope.caseIds);
+    meetingsQuery.in("counseling_case_id", coachScope.caseIds);
+    caseSessionsQuery.in("counseling_case_id", coachScope.caseIds);
+    homeworkAssignmentsQuery.in("counseling_case_id", coachScope.caseIds);
+  }
   const [caseResult, sessionsResult, meetingsResult, caseSessionsResult, assignmentsResult, materialOptionsResult] = await Promise.all([
-    supabase.from("counseling_cases").select("id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(id,name))").order("updated_at", { ascending: false }),
+    caseQuery.order("updated_at", { ascending: false }),
     supabase.from("sessions").select("id,sequence_number,title,status,is_final").order("sequence_number"),
-    supabase.from("case_session_meetings").select("id,counseling_case_id,session_id,case_session_id,starts_at,ends_at,location,completed_at,created_at").order("created_at").order("id"),
-    supabase.from("case_sessions").select("id,counseling_case_id,session_id,actual_sequence,template_sequence_number,title,status,is_final,homework_assignment_revision_id,material_released_at,homework_released_at").order("actual_sequence"),
-    supabase.from("homework_assignments").select("counseling_case_id,homework_assignment_revisions(id,ended_at,homework_participant_progress(id,profile_id,status))").is("unassigned_at", null),
+    meetingsQuery.order("created_at").order("id"),
+    caseSessionsQuery.order("actual_sequence"),
+    homeworkAssignmentsQuery,
     supabase.rpc("get_published_session_material_options"),
   ]);
   const noIdentityFailure = { error: null };
