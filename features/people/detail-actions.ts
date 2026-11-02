@@ -34,6 +34,12 @@ async function ensureAndAssign(supabase: Awaited<ReturnType<typeof createServerS
   return (supabase as unknown as EnsureCaseRpcClient).rpc("ensure_and_assign_counseling_case", { target_couple_group_id: coupleGroupId, target_group_id: groupId, target_profile_id: profileId, target_assignment_type: assignmentType, reassignment_reason: reason });
 }
 
+async function isCampusLeadAssignmentCandidate(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, coupleGroupId: string, campusId: string | null) {
+  if (!campusId) return false;
+  const { data, error } = await supabase.rpc("get_campus_lead_assignment_candidates", { target_campus_id: campusId });
+  return !error && (data ?? []).some((candidate) => candidate.couple_group_id === coupleGroupId && candidate.assignment_eligible);
+}
+
 interface SupervisionRpcClient {
   rpc(
     functionName: "assign_counselor_coach_supervision",
@@ -277,10 +283,15 @@ export async function assignCoupleToCounselorOfRecord(formData: FormData): Promi
   const supabase = await createServerSupabaseClient();
   const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", teamGroupId).eq("active", true).in("group_type", ["counselor_team", "coach_team", "campus_lead_team" as "counselor_team"]).maybeSingle();
   if (!target) return invalid("Choose an eligible counseling team.");
-  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
-  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
-  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
-  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, (invitations ?? []).map((invitation) => invitation.status)) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const isAdmin = identity.workspaces.includes("admin");
+  if (!isAdmin) {
+    if (!await isCampusLeadAssignmentCandidate(supabase, coupleGroupId, target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  } else {
+    const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+    const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: "group_id", value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+    const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+    if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, (invitations ?? []).map((invitation) => invitation.status))) return invalid("Choose an eligible same-campus Couple.");
+  }
   const { error } = await ensureAndAssign(supabase, coupleGroupId, teamGroupId, null, "counselor");
   if (error) return safeMutationError();
   revalidatePath(`/people/${teamGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };
@@ -294,11 +305,15 @@ export async function assignCoupleToCoachTeam(formData: FormData): Promise<Actio
   const supabase = await createServerSupabaseClient();
   const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", coachGroupId).eq("group_type", "coach_team").eq("active", true).maybeSingle();
   if (!target) return invalid("Choose a Coach team.");
-  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
-  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
-  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
-  const invitationStatuses = (invitations ?? []).map((invitation) => invitation.status);
-  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, invitationStatuses) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const isAdmin = identity.workspaces.includes("admin");
+  if (!isAdmin) {
+    if (!await isCampusLeadAssignmentCandidate(supabase, coupleGroupId, target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  } else {
+    const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+    const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: "group_id", value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+    const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+    if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, (invitations ?? []).map((invitation) => invitation.status))) return invalid("Choose an eligible same-campus Couple.");
+  }
   const { error } = await ensureAndAssign(supabase, coupleGroupId, coachGroupId, null, "coach");
   if (error) return safeMutationError();
   revalidatePath(`/people/${coachGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };
@@ -312,11 +327,15 @@ export async function assignCoupleToCounselorTeam(formData: FormData): Promise<A
   const supabase = await createServerSupabaseClient();
   const { data: target } = await supabase.from("groups").select("id,group_type,campus_id").eq("id", counselorGroupId).eq("group_type", "counselor_team").eq("active", true).maybeSingle();
   if (!target) return invalid("Choose a Counselor team.");
-  const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
-  const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
-  const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
-  const invitationStatuses = (invitations ?? []).map((invitation) => invitation.status);
-  if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, invitationStatuses) || (identity.workspaces.includes("campus_lead") && !identity.workspaces.includes("admin") && couple.campus_id !== target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  const isAdmin = identity.workspaces.includes("admin");
+  if (!isAdmin) {
+    if (!await isCampusLeadAssignmentCandidate(supabase, coupleGroupId, target.campus_id)) return invalid("Choose an eligible same-campus Couple.");
+  } else {
+    const { data: couple } = await supabase.from("groups").select("id,group_type,campus_id,group_members(ended_at,profile:profiles(status,onboarding_completed_at,first_name,last_name,email,campus_id,phone,photo_path))").eq("id", coupleGroupId).eq("group_type", "couple").eq("active", true).maybeSingle();
+    const invitationClient = supabase as unknown as { from: (table: "invitations") => { select: (columns: string) => { eq: (column: "group_id", value: string) => Promise<{ data: Array<{ status: string }> | null; error: { message: string } | null }> } } };
+    const { data: invitations } = await invitationClient.from("invitations").select("status").eq("group_id", coupleGroupId);
+    if (!couple || !isAssignmentReadyCouple(couple.group_members as Array<{ ended_at?: string | null; profile?: { status?: string | null; onboarding_completed_at?: string | null } | null }>, (invitations ?? []).map((invitation) => invitation.status))) return invalid("Choose an eligible same-campus Couple.");
+  }
   const { error } = await ensureAndAssign(supabase, coupleGroupId, counselorGroupId, null, "counselor");
   if (error) return safeMutationError();
   revalidatePath(`/people/${counselorGroupId}`); revalidatePath(`/people/${coupleGroupId}`); revalidatePath("/people"); return { success: true };

@@ -37,6 +37,7 @@ function query(data: unknown, table = "unknown") {
     select: () => builder,
     eq: (column: string, value: unknown) => { mocks.filters.push({ table, method: "eq", column, value }); return builder; },
     is: (column: string, value: unknown) => { mocks.filters.push({ table, method: "is", column, value }); return builder; },
+    in: (column: string, value: unknown) => { mocks.filters.push({ table, method: "in", column, value }); return builder; },
     maybeSingle: async () => result,
   };
   return builder;
@@ -79,6 +80,52 @@ describe("unassignCounselorOfRecord", () => {
 
     await expect(unassignCounselorOfRecord(formData(providerId))).resolves.toEqual({ error: "This Couple is no longer assigned to this team." });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("Campus Lead Couple assignment candidates", () => {
+  beforeEach(() => {
+    mocks.from.mockReset();
+    mocks.revalidatePath.mockReset();
+    mocks.requireOneOfWorkspaces.mockReset();
+    mocks.rpc.mockReset();
+    mocks.filters.length = 0;
+  });
+
+  it("uses the scoped candidate RPC before assigning and never reads an unassigned Couple profile", async () => {
+    mocks.requireOneOfWorkspaces.mockResolvedValue({ workspaces: ["campus_lead"] });
+    mocks.from.mockReturnValue(query({ id: providerId, group_type: "coach_team", campus_id: "campus-1" }, "groups"));
+    mocks.rpc
+      .mockResolvedValueOnce({ data: [{ couple_group_id: coupleId, assignment_eligible: true }], error: null })
+      .mockResolvedValueOnce({ data: "assignment-id", error: null });
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("teamGroupId", providerId);
+    const { assignCoupleToCounselorOfRecord } = await import("./detail-actions");
+
+    await expect(assignCoupleToCounselorOfRecord(form)).resolves.toEqual({ success: true });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "get_campus_lead_assignment_candidates", { target_campus_id: "campus-1" });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "ensure_and_assign_counseling_case", {
+      target_couple_group_id: coupleId,
+      target_group_id: providerId,
+      target_profile_id: null,
+      target_assignment_type: "counselor",
+      reassignment_reason: undefined,
+    });
+    expect(mocks.from).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a Couple outside the authorized candidate result without calling the assignment RPC", async () => {
+    mocks.requireOneOfWorkspaces.mockResolvedValue({ workspaces: ["campus_lead"] });
+    mocks.from.mockReturnValue(query({ id: providerId, group_type: "coach_team", campus_id: "campus-1" }, "groups"));
+    mocks.rpc.mockResolvedValueOnce({ data: [], error: null });
+    const form = new FormData();
+    form.set("coupleGroupId", coupleId);
+    form.set("teamGroupId", providerId);
+    const { assignCoupleToCounselorOfRecord } = await import("./detail-actions");
+
+    await expect(assignCoupleToCounselorOfRecord(form)).resolves.toEqual({ error: "Choose an eligible same-campus Couple." });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 });
 

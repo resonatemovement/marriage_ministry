@@ -3160,6 +3160,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_campus_lead_assignment_candidates: {
+        Args: { target_campus_id: string }
+        Returns: {
+          assignment_eligible: boolean
+          campus_id: string
+          campus_name: string
+          case_status: string
+          couple_group_id: string
+          group_name: string
+          partners: Json
+        }[]
+      }
       get_case_assessment_catalog: {
         Args: { target_case_id: string }
         Returns: {
