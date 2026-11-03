@@ -142,5 +142,5 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
 }
 
 function AssessmentPageShell({ assessment, children }: { assessment: CoupleAssessmentData; children: React.ReactNode }) {
-  return <main className="mx-auto max-w-3xl p-5 sm:p-8"><Link href="/workspace/assessments" className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-brand-secondary hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All Assessments</Link><header className="mb-5 mt-3"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{assessment.sessionTitle}</p><h1 className="font-heading mt-1 text-3xl font-bold text-text-primary">{assessment.title}</h1></header>{children}</main>;
+  return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10"><Link href="/workspace/assessments" className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-brand-secondary hover:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />All Assessments</Link><header className="mb-5 mt-3"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{assessment.sessionTitle}</p><h1 className="font-heading mt-1 text-3xl font-bold text-text-primary">{assessment.title}</h1></header>{children}</main>;
 }

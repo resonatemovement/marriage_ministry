@@ -39,6 +39,8 @@ describe("Couple Assessment presentation", () => {
     expect(html).toContain("First option");
     expect(html).toContain("Second option");
     expect(html).toContain('aria-valuenow="50"');
+    expect(html).toContain('class="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10"');
+    expect(html).toContain('href="/workspace/assessments"');
     expect(html).toMatch(/<button type="button" disabled=""[^>]*>Next/);
   });
 
@@ -85,6 +87,7 @@ describe("Couple Assessment presentation", () => {
       history: [{ attemptNumber: 1, submittedAt: "2026-10-28T21:00:00.000Z", results: [{ label: "Care", score: 9, rank: 1, isPrimary: true }] }],
       activeRetakeId: "unfinished-retake", activeRetakeAnswers: { q1: "a" },
     } }));
+    expect(html).toContain('class="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10"');
     expect(html).toContain("Continue Retake");
     expect(html).toContain("Care");
     expect(html).toContain("Partner results are shared after both partners complete their initial Assessment.");

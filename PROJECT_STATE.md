@@ -1,7 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: main
+Current working branch: feature/love-languages-full-width
 Repository: resonatemovement/marriage_ministry
+
+## Love Languages Assessment content width (November 3, 2026)
+
+- On `feature/love-languages-full-width`, replaced the Couple assessment experience's narrow `max-w-3xl` shell with the existing Couple Workspace convention, `max-w-[1100px] p-5 sm:p-8 lg:p-10`. This widens the assessment heading/back link, progress indicator, question and results cards, answer choices, and navigation while preserving the same responsive spacing used by Couple Workspace and Session pages. Assessment list already uses this convention.
+- No question content, scoring, autosave, navigation, assignment, permissions, or database logic changed. Focused Assessment presentation tests passed (6); Couple Session layout regression tests passed (12); typecheck, lint, and `git diff --check` passed. No database-writing tests were run.
+- Release preflight: `origin/main` was `f91cac6`; Vercel project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is connected to `resonatemovement/marriage_ministry` on `main`, and is the only project in the `resonate-movement` team. Its current deployment is READY at `f91cac6`. This Vercel project's internal target is named `production`; it is the dedicated DEV project, not actual Resonate PROD. Changes are not yet committed, merged, or deployed. Next: commit the focused changes, fast-forward `main`, push to GitHub, verify the DEV deployment reaches READY at the pushed SHA, delete the merged feature branch, and finish on clean `main`. All seven existing stashes remain preserved.
 
 ## Obsolete DEV Coach Team removal (November 3, 2026)
 
