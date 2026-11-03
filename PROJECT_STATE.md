@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: feature/love-languages-results-layout
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Love Languages responsive results layout (November 3, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - On `feature/love-languages-results-layout`, kept a lone signed-in partner result at the existing full content width. When authorized partner results are present, the existing result cards render in equal `md:grid-cols-2` columns and stack below that breakpoint. The signed-in partner remains first; that partner's retake/resume action is grouped only with their own result. Each card retains its name, completion date, history where applicable, score ordering, and Primary labels.
 - No result-sharing gate, scoring, submission, retake behavior, permissions, privacy, or database code changed.
 - Validation: all Assessment tests passed (59 across 12 files), including single-result width, dual responsive columns/order, completion dates, Primary indicators, and one signed-in-partner retake control. `npm run typecheck`, `npm run lint`, and `git diff --check` passed. No database-writing or authenticated browser/device tests were run.
-- Release status: implementation is validated but not yet committed, merged, pushed, or deployed. Based on `origin/main` at `8dfa777`; all seven existing stashes are preserved. Next: selectively commit the component/test/docs changes, fast-forward merge to `main`, verify and push only to the dedicated `marriage-ministry-dev` Vercel project, confirm READY at the pushed SHA, delete the merged local branch, and verify clean synchronized `main`.
+- Release: feature commit `9994bc1` (`fix: make assessment results responsive`) was fast-forwarded into `main` and pushed to `origin/main`. Read-only Vercel checks confirmed project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is connected to `resonatemovement/marriage_ministry` with deployment branch `main`, and it is the only project under the `resonate-movement` team. Git-triggered deployment `dpl_8VMf4VbscLzZrSacwkfgLu6ASWUG` reached `READY` at SHA `9994bc18093e6b4451222ee0dc6083546aa706ff`. Vercel's target label is `production` inside this dedicated DEV project; actual Resonate PROD was not accessed. No database changes were made. All seven pre-existing stashes are preserved. The feature branch remains until documentation closeout and final Git checks; next: commit/push the release documentation update, verify `main` is clean and synchronized and the doc-triggered DEV deployment is READY, then delete the merged local feature branch.
 
 ## Love Languages answer selection UX (November 3, 2026)
 
