@@ -48,22 +48,39 @@ async function signIn(url: string, publishableKey: string, email: string, passwo
 }
 
 async function getFixtureGroups(client: AuthenticatedClient): Promise<FixtureGroups> {
-  const names = ["DEV Test Coach Team", "DEV Test Coach Team Two", "DEV Test Counselor Team", "DEV Test Couple"];
-  const { data, error } = await client.from("groups").select("id, name").in("name", names).eq("active", true);
+  const names = ["DEV Test Coach Team Two", "DEV Test Counselor Team", "DEV Test Couple"];
+  const { data, error } = await client.from("groups").select("id, name, campus_id").in("name", names).eq("active", true);
   failIfError(error, "Unable to read DEV supervision fixture groups");
 
   const byName = new Map((data ?? []).map((group) => [group.name, group.id]));
-  const fixture = {
-    coach: byName.get("DEV Test Coach Team"),
-    coach2: byName.get("DEV Test Coach Team Two"),
-    counselor: byName.get("DEV Test Counselor Team"),
-    couple: byName.get("DEV Test Couple"),
-  };
-  if (Object.values(fixture).some((id) => !id)) {
+  const coach = byName.get("DEV Test Coach Team Two");
+  const counselor = byName.get("DEV Test Counselor Team");
+  const couple = byName.get("DEV Test Couple");
+  if (!coach || !counselor || !couple) {
     throw new Error("DEV supervision fixture groups are incomplete. Run npm run setup:test-users first.");
   }
 
-  return fixture as FixtureGroups;
+  const { data: coachTeams, error: coachTeamsError } = await client
+    .from("groups")
+    .select("id, campus_id, group_members(ended_at)")
+    .eq("group_type", "coach_team")
+    .eq("active", true)
+    .eq("campus_id", (data ?? []).find((group) => group.id === coach)?.campus_id ?? "");
+  failIfError(coachTeamsError, "Unable to read active Coach teams for supervision reassignment");
+  const secondCoach = (coachTeams ?? []).find((team) =>
+    team.id !== coach && (team.group_members ?? []).filter((member) => member.ended_at === null).length === 2,
+  );
+  if (!secondCoach) {
+    throw new Error("Supervision reassignment verification requires a second existing active Coach team; no team was created.");
+  }
+
+  const fixture = {
+    coach,
+    coach2: secondCoach.id,
+    counselor,
+    couple,
+  };
+  return fixture;
 }
 
 async function callSupervisionRpc(url: string, publishableKey: string, accessToken: string, counselorGroupId: string, coachGroupId: string) {

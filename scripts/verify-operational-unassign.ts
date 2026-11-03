@@ -20,10 +20,10 @@ async function verify() {
   if (new URL(url).hostname !== `${DEV_PROJECT_REF}.supabase.co`) throw new Error("Operational unassign verification refused outside approved DEV");
   const sessions = await Promise.all(users.map((credentials) => signedIn(url, publishableKey, credentials)));
   const [admin, superAdmin, campusLead, coach, counselor, couple, author] = sessions;
-  const { data: groups, error: groupError } = await admin.value.from("groups").select("id,name").in("name", ["DEV Test Campus Lead Team", "DEV Test Coach Team", "DEV Test Counselor Team"]);
+  const { data: groups, error: groupError } = await admin.value.from("groups").select("id,name").in("name", ["DEV Test Campus Lead Team", "DEV Test Coach Team Two", "DEV Test Counselor Team"]);
   fail(groupError, "Read fixture groups");
   const byName = new Map((groups ?? []).map((group) => [group.name, group.id]));
-  const lead = byName.get("DEV Test Campus Lead Team"), coachTeam = byName.get("DEV Test Coach Team"), counselorTeam = byName.get("DEV Test Counselor Team");
+  const lead = byName.get("DEV Test Campus Lead Team"), coachTeam = byName.get("DEV Test Coach Team Two"), counselorTeam = byName.get("DEV Test Counselor Team");
   if (!lead || !coachTeam || !counselorTeam) throw new Error("Operational fixture groups are incomplete");
   const snapshot = async () => {
     const { data: members, error: membersError } = await admin.value.from("group_members").select("group_id,profile_id").in("group_id", [lead, coachTeam, counselorTeam]).is("ended_at", null);

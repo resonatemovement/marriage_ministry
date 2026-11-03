@@ -46,7 +46,7 @@ const testUsers: readonly TestUser[] = [
 
 type TestUserKey = TestUser["key"];
 type TestUserIds = Record<TestUserKey, string>;
-type FixtureIds = { campus: string; couple: string; coach: string; coach2: string; counselor: string; campusLead: string; case: string };
+type FixtureIds = { campus: string; couple: string };
 
 function requireEnvironmentVariable(name: string) {
   const value = process.env[name];
@@ -194,7 +194,7 @@ async function ensureMemberships(admin: ReturnType<typeof createAdminClient>, gr
   }
 }
 
-async function ensureCase(admin: ReturnType<typeof createAdminClient>, fixture: Omit<FixtureIds, "case">, ids: TestUserIds) {
+async function ensureCase(admin: ReturnType<typeof createAdminClient>, fixture: FixtureIds, ids: TestUserIds) {
   const { data, error } = await admin.from("counseling_cases").select("id").eq("couple_group_id", fixture.couple);
   failIfError(error, "Unable to read DEV test counseling case");
   const cases = data ?? [];
@@ -209,20 +209,6 @@ async function ensureCase(admin: ReturnType<typeof createAdminClient>, fixture: 
   return caseId;
 }
 
-async function ensureAssignment(admin: ReturnType<typeof createAdminClient>, url: string, publishableKey: string, adminEmail: string, adminPassword: string, caseId: string, coachGroupId: string) {
-  const { data: assignments, error: assignmentError } = await admin.from("case_assignments").select("id").eq("counseling_case_id", caseId).eq("assignment_type", "coach").eq("assigned_group_id", coachGroupId).is("ended_at", null);
-  failIfError(assignmentError, "Unable to read DEV test counseling case assignment");
-  const activeAssignments = assignments ?? [];
-  if (activeAssignments.length > 1) throw new Error("Duplicate active DEV test Coach assignments found");
-  if (activeAssignments[0]) return;
-
-  const adminClient = createPublicClient(url, publishableKey);
-  const { error: signInError } = await adminClient.auth.signInWithPassword({ email: adminEmail, password: adminPassword });
-  failIfError(signInError, "Unable to sign in the DEV Admin test user");
-  const { error } = await adminClient.rpc("assign_counseling_case", { target_case_id: caseId, target_group_id: coachGroupId, target_assignment_type: "coach", reassignment_reason: "DEV test-user setup" });
-  failIfError(error, "Unable to assign the DEV test counseling case");
-}
-
 async function setup() {
   const configuration = getConfiguration();
   const admin = createAdminClient(configuration.url, configuration.secretKey);
@@ -232,14 +218,11 @@ async function setup() {
   await ensureCompletedTestCoupleOnboarding(admin, ids);
   await ensureCampusLeadAssignments(admin, configuration.users, ids, campus);
   const couple = await ensureGroup(admin, campus, "couple", "DEV Test Couple");
-  const coach = await ensureGroup(admin, campus, "coach_team", "DEV Test Coach Team");
   const coach2 = await ensureGroup(admin, campus, "coach_team", "DEV Test Coach Team Two");
   const counselor = await ensureGroup(admin, campus, "counselor_team", "DEV Test Counselor Team");
   const campusLead = await ensureGroup(admin, campus, "campus_lead_team", "DEV Test Campus Lead Team");
-  await Promise.all([ensureMemberships(admin, couple, [ids.couple1, ids.couple2]), ensureMemberships(admin, coach, [ids.coach, ids.coach2]), ensureMemberships(admin, coach2, [ids.multiRole, ids.coach3]), ensureMemberships(admin, counselor, [ids.counselor, ids.counselor2]), ensureMemberships(admin, campusLead, [ids.campusLead, ids.campusLead2])]);
-  const caseId = await ensureCase(admin, { campus, couple, coach, coach2, counselor, campusLead }, ids);
-  const adminUser = configuration.users.find((user) => user.key === "admin")!;
-  await ensureAssignment(admin, configuration.url, configuration.publishableKey, adminUser.emailAddress, adminUser.passwordValue, caseId, coach);
+  await Promise.all([ensureMemberships(admin, couple, [ids.couple1, ids.couple2]), ensureMemberships(admin, coach2, [ids.multiRole, ids.coach3]), ensureMemberships(admin, counselor, [ids.counselor, ids.counselor2]), ensureMemberships(admin, campusLead, [ids.campusLead, ids.campusLead2])]);
+  await ensureCase(admin, { campus, couple }, ids);
   console.log("DEV test-user setup completed.");
 }
 
@@ -345,10 +328,9 @@ async function verify() {
   const { data: coupleProfiles, error: coupleProfilesError } = await profileReader.from("profiles").select("id,status,onboarding_completed_at").in("id", [ids.couple1, ids.couple2]);
   failIfError(coupleProfilesError, "Unable to verify completed onboarding for the DEV test Couple");
   if ((coupleProfiles ?? []).length !== 2 || (coupleProfiles ?? []).some((profile) => profile.status !== "active" || !profile.onboarding_completed_at)) throw new Error("DEV test Couple members must have active profiles with completed onboarding");
-  const coach = await readRequiredGroup(admin, "coach_team", "DEV Test Coach Team");
   const coach2 = await readRequiredGroup(admin, "coach_team", "DEV Test Coach Team Two");
   const campusLead = await readRequiredGroup(admin, "campus_lead_team", "DEV Test Campus Lead Team");
-  await Promise.all([verifyMemberships(admin, couple, [ids.couple1, ids.couple2]), verifyMemberships(admin, coach, [ids.coach, ids.coach2]), verifyMemberships(admin, coach2, [ids.multiRole, ids.coach3]), verifyMemberships(admin, await readRequiredGroup(admin, "counselor_team", "DEV Test Counselor Team"), [ids.counselor, ids.counselor2]), verifyMemberships(admin, campusLead, [ids.campusLead, ids.campusLead2])]);
+  await Promise.all([verifyMemberships(admin, couple, [ids.couple1, ids.couple2]), verifyMemberships(admin, coach2, [ids.multiRole, ids.coach3]), verifyMemberships(admin, await readRequiredGroup(admin, "counselor_team", "DEV Test Counselor Team"), [ids.counselor, ids.counselor2]), verifyMemberships(admin, campusLead, [ids.campusLead, ids.campusLead2])]);
   const campus = await readRequiredCampus(admin);
   for (const user of configuration.users.filter((candidate) => candidate.roles.includes("campus_lead"))) {
     const scope = await admin.from("campus_lead_assignments" as never).select("campus_id").eq("profile_id", ids[user.key]).is("ended_at", null);
@@ -361,10 +343,6 @@ async function verify() {
   failIfError(caseError, "Unable to verify DEV test counseling case");
   const testCases = cases ?? [];
   if (testCases.length !== 1) throw new Error("DEV test counseling case is missing or duplicated");
-  const caseId = testCases[0].id;
-  const { data: assignments, error: assignmentError } = await admin.from("case_assignments").select("id").eq("counseling_case_id", caseId).eq("assigned_group_id", coach).eq("assignment_type", "coach").is("ended_at", null);
-  failIfError(assignmentError, "Unable to verify DEV test case assignment");
-  if ((assignments ?? []).length !== 1) throw new Error("DEV test counseling case does not have one active Coach assignment");
   await verifyRls(configuration.url, configuration.publishableKey, configuration.users);
   console.log("DEV test users and role access verified.");
 }

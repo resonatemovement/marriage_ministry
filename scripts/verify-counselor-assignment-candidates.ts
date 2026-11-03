@@ -20,11 +20,11 @@ async function main() {
   fail(error, "Unable to read DEV assignment candidates");
   const rows = groups ?? [];
   const richardAnna = rows.find((group) => group.group_type === "couple" && (group.group_members ?? []).filter((member) => member.ended_at === null).map((member) => { const profile = Array.isArray(member.profile) ? member.profile[0] : member.profile; return `${profile?.first_name} ${profile?.last_name}`; }).sort().join(" & ") === "Anna Lee & Richard Price");
-  const coach = rows.find((group) => group.group_type === "coach_team" && group.name === "DEV Test Coach Team");
-  if (!richardAnna || !coach) throw new Error("Required Richard Price & Anna Lee / DEV Test Coach Team fixtures are unavailable.");
+  const coach = rows.find((group) => group.group_type === "coach_team" && group.name === "DEV Test Coach Team Two");
+  if (!richardAnna || !coach) throw new Error("Required Richard Price & Anna Lee / DEV Test Coach Team Two fixtures are unavailable.");
   const coupleMembers = richardAnna.group_members ?? [];
   if (!readyMembers(coupleMembers as Array<{ ended_at: string | null; profile: unknown }>, richardAnna.invitations ?? [])) throw new Error("Richard Price & Anna Lee is not assignment-ready.");
-  if (!readyMembers((coach.group_members ?? []) as Array<{ ended_at: string | null; profile: unknown }>, coach.invitations ?? [])) throw new Error("DEV Test Coach Team is not operationally ready.");
+  if (!readyMembers((coach.group_members ?? []) as Array<{ ended_at: string | null; profile: unknown }>, coach.invitations ?? [])) throw new Error("DEV Test Coach Team Two is not operationally ready.");
   const counselingCase = Array.isArray(richardAnna.counseling_cases) ? richardAnna.counseling_cases[0] : richardAnna.counseling_cases;
   const assignments = counselingCase?.case_assignments ?? [];
   if (assignments.some((assignment) => assignment.assignment_type === "counselor" && assignment.ended_at === null)) throw new Error("Richard Price & Anna Lee already has an active Counselor-of-record.");
@@ -32,7 +32,7 @@ async function main() {
   const { data: campuses, error: campusError } = await admin.from("campuses").select("id,name").in("id", [coach.campus_id, richardAnna.campus_id]);
   fail(campusError, "Unable to read candidate campuses");
   const labels = new Map((campuses ?? []).map((campus) => [campus.id, campus.name]));
-  console.log(`DEV Richard Price & Anna Lee (${labels.get(richardAnna.campus_id) ?? "Campus not assigned"}) is eligible for DEV Test Coach Team (${labels.get(coach.campus_id) ?? "Campus not assigned"}) without creating an assignment.`);
+  console.log(`DEV Richard Price & Anna Lee (${labels.get(richardAnna.campus_id) ?? "Campus not assigned"}) is eligible for DEV Test Coach Team Two (${labels.get(coach.campus_id) ?? "Campus not assigned"}) without creating an assignment.`);
 }
 
 await main();

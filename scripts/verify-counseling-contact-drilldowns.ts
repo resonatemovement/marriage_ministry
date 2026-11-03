@@ -32,34 +32,30 @@ async function verify() {
     signedIn(url, publishableKey, "TEST_COUNSELOR_EMAIL", "TEST_COUNSELOR_PASSWORD"),
     signedIn(url, publishableKey, "TEST_COACH_3_EMAIL", "TEST_COACH_3_PASSWORD"),
   ]);
-  const { data: groups, error: groupError } = await admin.value.from("groups").select("id,name").in("name", ["DEV Test Couple", "DEV Test Coach Team", "DEV Test Counselor Team"]);
+  const { data: groups, error: groupError } = await admin.value.from("groups").select("id,name").in("name", ["DEV Test Couple", "DEV Test Coach Team Two", "DEV Test Counselor Team"]);
   fail(groupError, "Read DEV contact fixtures");
   const ids = new Map((groups ?? []).map((group) => [group.name, group.id]));
-  const coupleGroup = ids.get("DEV Test Couple"), coachGroup = ids.get("DEV Test Coach Team"), counselorGroup = ids.get("DEV Test Counselor Team");
+  const coupleGroup = ids.get("DEV Test Couple"), coachGroup = ids.get("DEV Test Coach Team Two"), counselorGroup = ids.get("DEV Test Counselor Team");
   if (!coupleGroup || !coachGroup || !counselorGroup) throw new Error("DEV contact fixtures are incomplete. Run npm run setup:test-users first.");
   const { data: counselingCase, error: caseError } = await admin.value.from("counseling_cases").select("id").eq("couple_group_id", coupleGroup).single();
   fail(caseError, "Read DEV Couple case");
   if (!counselingCase) throw new Error("DEV contact case is missing.");
 
-  try {
-    fail((await admin.value.rpc("ensure_and_assign_counseling_case", { target_couple_group_id: coupleGroup, target_group_id: counselorGroup, target_profile_id: null, target_assignment_type: "counselor" })).error, "Assign DEV Counselor contact fixture");
-    const allowedCounselor = await contact(url, publishableKey, couple.token, counselingCase.id, counselorGroup);
-    if (!allowedCounselor.ok || !(await allowedCounselor.json() as unknown[]).length) throw new Error("Couple could not retrieve assigned Counselor contact details");
-    for (const [label, groupId] of [["Coach", coachGroup], ["own Couple", coupleGroup]] as const) {
-      if (await hasContact(await contact(url, publishableKey, couple.token, counselingCase.id, groupId))) {
-        throw new Error(`Couple retrieved ${label} contact details`);
-      }
+  fail((await admin.value.rpc("ensure_and_assign_counseling_case", { target_couple_group_id: coupleGroup, target_group_id: counselorGroup, target_profile_id: null, target_assignment_type: "counselor" })).error, "Assign DEV Counselor contact fixture");
+  const allowedCounselor = await contact(url, publishableKey, couple.token, counselingCase.id, counselorGroup);
+  if (!allowedCounselor.ok || !(await allowedCounselor.json() as unknown[]).length) throw new Error("Couple could not retrieve assigned Counselor contact details");
+  for (const [label, groupId] of [["Coach", coachGroup], ["own Couple", coupleGroup]] as const) {
+    if (await hasContact(await contact(url, publishableKey, couple.token, counselingCase.id, groupId))) {
+      throw new Error(`Couple retrieved ${label} contact details`);
     }
-    const allowedCouple = await contact(url, publishableKey, counselor.token, counselingCase.id, coupleGroup);
-    const partners = await allowedCouple.json() as unknown[];
-    if (!allowedCouple.ok || partners.length !== 2) throw new Error("Assigned Counselor could not retrieve both Couple contacts");
-    if (await hasContact(await contact(url, publishableKey, unassignedCareMember.token, counselingCase.id, coupleGroup))) throw new Error("Unassigned care-team user retrieved Couple contact details");
-    if (await hasContact(await contact(url, publishableKey, counselor.token, "00000000-0000-0000-0000-000000000000", coupleGroup))) throw new Error("Counselor retrieved contact details for an unrelated case");
-    if (await hasContact(await contact(url, publishableKey, null, counselingCase.id, counselorGroup))) throw new Error("Unauthenticated caller retrieved protected contact details");
-  } finally {
-    fail((await admin.value.rpc("ensure_and_assign_counseling_case", { target_couple_group_id: coupleGroup, target_group_id: coachGroup, target_profile_id: null, target_assignment_type: "coach" })).error, "Restore DEV Coach fixture assignment");
   }
-  console.log("DEV counseling contact allow/deny contract verified and fixture assignment restored.");
+  const allowedCouple = await contact(url, publishableKey, counselor.token, counselingCase.id, coupleGroup);
+  const partners = await allowedCouple.json() as unknown[];
+  if (!allowedCouple.ok || partners.length !== 2) throw new Error("Assigned Counselor could not retrieve both Couple contacts");
+  if (await hasContact(await contact(url, publishableKey, unassignedCareMember.token, counselingCase.id, coupleGroup))) throw new Error("Unassigned care-team user retrieved Couple contact details");
+  if (await hasContact(await contact(url, publishableKey, counselor.token, "00000000-0000-0000-0000-000000000000", coupleGroup))) throw new Error("Counselor retrieved contact details for an unrelated case");
+  if (await hasContact(await contact(url, publishableKey, null, counselingCase.id, counselorGroup))) throw new Error("Unauthenticated caller retrieved protected contact details");
+  console.log("DEV counseling contact allow/deny contract verified with the existing Coach team fixture.");
 }
 
 await verify();
