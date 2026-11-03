@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsAreAvailable, assessmentResultsInDisplayOrder, assessmentStatus, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentQuestion } from "./couple-model";
+import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsAreAvailable, assessmentResultsInDisplayOrder, assessmentStatus, coupleAssessmentNavigationReducer, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentQuestion } from "./couple-model";
 
 const questions: CoupleAssessmentQuestion[] = [
   { id: "q1", position: 0, prompt: "One?", choices: [{ id: "a", position: 0, label: "A" }, { id: "b", position: 1, label: "B" }] },
@@ -43,6 +43,17 @@ describe("Couple Assessment experience model", () => {
     expect(nextAssessmentQuestionIndex(2, 3)).toBe(2);
     expect(previousAssessmentQuestionIndex(2, 3)).toBe(1);
     expect(previousAssessmentQuestionIndex(0, 3)).toBe(0);
+  });
+
+  it("opens the selected review question and returns directly to review without losing navigation context", () => {
+    const initial = { questionIndex: 0, review: true, openedFromReview: false };
+    const selected = coupleAssessmentNavigationReducer(initial, { type: "open-review-question", questionIndex: 1 });
+    expect(selected).toEqual({ questionIndex: 1, review: false, openedFromReview: true });
+    expect(questions[selected.questionIndex].id).toBe("q2");
+
+    const returned = coupleAssessmentNavigationReducer(selected, { type: "return-to-review" });
+    expect(returned).toEqual({ questionIndex: 1, review: true, openedFromReview: false });
+    expect(coupleAssessmentNavigationReducer({ ...initial, review: false }, { type: "go-to-question", questionIndex: 1 })).toEqual({ questionIndex: 1, review: false, openedFromReview: false });
   });
 
   it("sorts server-calculated results by score and retains every tied primary", () => {

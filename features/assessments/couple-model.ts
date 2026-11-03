@@ -11,6 +11,29 @@ export type CoupleAssessmentResult = { label: string; score: number; rank: numbe
 export type CoupleAssessmentHistoryItem = { attemptNumber: number; submittedAt: string; results: CoupleAssessmentResult[] };
 export type CoupleAssessmentPartnerResults = { name: string; submittedAt: string; results: CoupleAssessmentResult[] };
 
+export type CoupleAssessmentNavigation = { questionIndex: number; review: boolean; openedFromReview: boolean };
+export type CoupleAssessmentNavigationAction =
+  | { type: "open-review-question"; questionIndex: number }
+  | { type: "return-to-review" }
+  | { type: "show-review" }
+  | { type: "go-to-question"; questionIndex: number }
+  | { type: "resume"; questionIndex: number };
+
+export function coupleAssessmentNavigationReducer(state: CoupleAssessmentNavigation, action: CoupleAssessmentNavigationAction): CoupleAssessmentNavigation {
+  switch (action.type) {
+    case "open-review-question":
+      return { questionIndex: action.questionIndex, review: false, openedFromReview: true };
+    case "return-to-review":
+      return { ...state, review: true, openedFromReview: false };
+    case "show-review":
+      return { ...state, review: true };
+    case "go-to-question":
+      return { ...state, questionIndex: action.questionIndex };
+    case "resume":
+      return { questionIndex: action.questionIndex, review: false, openedFromReview: false };
+  }
+}
+
 export function assessmentStatus(attempt: { status: string } | null, hasQuestions: boolean): CoupleAssessmentStatus {
   if (!hasQuestions) return "unavailable";
   if (!attempt) return "not_started";

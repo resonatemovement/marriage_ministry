@@ -42,6 +42,27 @@ describe("Couple Assessment presentation", () => {
     expect(html).toContain('class="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10"');
     expect(html).toContain('href="/workspace/assessments"');
     expect(html).toMatch(/<button type="button" disabled=""[^>]*>Next/);
+    expect(html).not.toContain("Back to Review");
+  });
+
+  it("renders all 30 numbered review tiles with accessible answer status and completion checks", () => {
+    const questions = Array.from({ length: 30 }, (_, index) => ({
+      id: `q${index + 1}`,
+      position: index,
+      prompt: `Question ${index + 1}?`,
+      choices: [{ id: `q${index + 1}-a`, position: 0, label: "First" }, { id: `q${index + 1}-b`, position: 1, label: "Second" }],
+    }));
+    const answers = Object.fromEntries(questions.map((item) => [item.id, item.choices[0].id]));
+    const html = renderToStaticMarkup(createElement(CoupleAssessmentExperience, { assessment: {
+      ...assessment, questions, attemptId: "attempt", status: "in_progress", answers,
+    } }));
+
+    for (let number = 1; number <= 30; number += 1) {
+      expect(html).toContain(`aria-label="Question ${number}, answered"`);
+      expect(html).toContain(`<span>${number}</span>`);
+    }
+    expect(html.match(/text-success-strong/g)).toHaveLength(30);
+    expect(html).toContain("grid-cols-5 gap-2 sm:grid-cols-10");
   });
 
   it("renders an unavailable state instead of exposing an empty draft questionnaire", () => {
