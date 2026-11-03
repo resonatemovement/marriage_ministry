@@ -6,6 +6,7 @@ import { assessmentStatus, type CoupleAssessmentHistoryItem, type CoupleAssessme
 export type CoupleAssessmentSummary = {
   assignmentId: string;
   title: string;
+  description: string | null;
   sessionTitle: string;
   status: CoupleAssessmentStatus;
 };
@@ -44,12 +45,12 @@ export async function getCoupleAssessmentSummaries(caseId: string, profileId: st
   const scheduleRows = schedules ?? [];
   if (!scheduleRows.length) return [];
   const [{ data: definitions, error: definitionsError }, { data: sessions, error: sessionsError }, { data: attempts, error: attemptsError }] = await Promise.all([
-    supabase.from("assessment_definitions").select("id,title").in("id", [...new Set(scheduleRows.map((row) => row.assessment_id))]),
+    supabase.from("assessment_definitions").select("id,title,description").in("id", [...new Set(scheduleRows.map((row) => row.assessment_id))]),
     supabase.from("sessions").select("id,title").in("id", [...new Set(scheduleRows.map((row) => row.session_id))]),
     supabase.from("assessment_attempts").select("id,participant_assignment_id,status,attempt_number").in("participant_assignment_id", assignmentRows.map((row) => row.id)).eq("profile_id", profileId).eq("attempt_number", 1),
   ]);
   if (definitionsError || sessionsError || attemptsError) throw new Error("Assessments are unavailable.");
-  const definitionById = new Map((definitions ?? []).map((row) => [row.id, row.title]));
+  const definitionById = new Map((definitions ?? []).map((row) => [row.id, { title: row.title, description: row.description }]));
   const sessionById = new Map((sessions ?? []).map((row) => [row.id, row.title]));
   const attemptByAssignment = new Map((attempts ?? []).map((row) => [row.participant_assignment_id, row]));
   const versions = [...new Set(scheduleRows.filter((row) => row.case_session_id).map((row) => row.assessment_version_id))];
@@ -71,7 +72,8 @@ export async function getCoupleAssessmentSummaries(caseId: string, profileId: st
     const attempt = attemptByAssignment.get(assignment.id) ?? null;
     const counts = usableQuestionCounts.get(schedule.assessment_version_id);
     const hasQuestions = Boolean(schedule.case_session_id && counts?.total && counts.usable === counts.total);
-    return [{ assignmentId: assignment.id, title: definitionById.get(schedule.assessment_id) ?? "Assessment", sessionTitle: sessionById.get(schedule.session_id) ?? "Assigned Session", status: assessmentStatus(attempt, hasQuestions) }];
+    const definition = definitionById.get(schedule.assessment_id);
+    return [{ assignmentId: assignment.id, title: definition?.title ?? "Assessment", description: definition?.description ?? null, sessionTitle: sessionById.get(schedule.session_id) ?? "Assigned Session", status: assessmentStatus(attempt, hasQuestions) }];
   });
 }
 
@@ -86,7 +88,7 @@ export async function getCoupleAssessment(profileId: string, assignmentId: strin
   if (scheduleError) throw new Error("Assessment is unavailable.");
   if (!schedule) return null;
   const [{ data: definition, error: definitionError }, { data: session, error: sessionError }, { data: attempts, error: attemptsError }, { data: profile, error: profileError }] = await Promise.all([
-    supabase.from("assessment_definitions").select("title").eq("id", schedule.assessment_id).maybeSingle(),
+    supabase.from("assessment_definitions").select("title,description").eq("id", schedule.assessment_id).maybeSingle(),
     supabase.from("sessions").select("title").eq("id", schedule.session_id).maybeSingle(),
     supabase.from("assessment_attempts").select("id,status,attempt_number,submitted_at").eq("participant_assignment_id", assignment.id).eq("profile_id", profileId).order("attempt_number", { ascending: false }),
     supabase.from("profiles").select("first_name,last_name").eq("id", profileId).maybeSingle(),
@@ -143,7 +145,7 @@ export async function getCoupleAssessment(profileId: string, assignmentId: strin
     }
   }
   return {
-    assignmentId: assignment.id, title: definition?.title ?? "Assessment", sessionTitle: session?.title ?? "Assigned Session",
+    assignmentId: assignment.id, title: definition?.title ?? "Assessment", description: definition?.description ?? null, sessionTitle: session?.title ?? "Assigned Session",
     status: assessmentStatus(initialAttempt, questions.length > 0 && questions.every((question) => question.choices.length === 2)),
     profileName: [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your",
     attemptId: initialAttempt?.status === "in_progress" ? initialAttempt.id : null,

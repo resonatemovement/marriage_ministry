@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -13,7 +14,7 @@ import type { CoupleAssessmentData } from "./couple-queries";
 const question = { id: "q1", position: 0, prompt: "Synthetic question?", choices: [{ id: "a", position: 0, label: "First option" }, { id: "b", position: 1, label: "Second option" }] };
 const secondQuestion = { id: "q2", position: 1, prompt: "Another synthetic question?", choices: [{ id: "c", position: 0, label: "Third option" }, { id: "d", position: 1, label: "Fourth option" }] };
 const assessment: CoupleAssessmentData = {
-  assignmentId: "assignment", title: "Synthetic Assessment", sessionTitle: "Session 1", status: "not_started",
+  assignmentId: "assignment", title: "Synthetic Assessment", description: null, sessionTitle: "Session 1", status: "not_started",
   profileName: "Alex Example", attemptId: null, activeRetakeId: null, activeRetakeAnswers: {},
   questions: [question], answers: {}, results: [], history: [], partnerResults: null,
 };
@@ -21,15 +22,36 @@ const assessment: CoupleAssessmentData = {
 describe("Couple Assessment presentation", () => {
   it("shows independent assignment status and links to the participant's own assessment", () => {
     const html = renderToStaticMarkup(createElement(AssessmentList, { assessments: [
-      { assignmentId: "own-assignment", title: "Love Languages", sessionTitle: "Session 1", status: "in_progress" },
-      { assignmentId: "done", title: "Completed Assessment", sessionTitle: "Session 2", status: "completed" },
-      { assignmentId: "empty", title: "Unpublished", sessionTitle: "Session 1", status: "unavailable" },
+      { assignmentId: "own-assignment", title: "Love Languages", description: "Discover how you prefer to give and receive love.", sessionTitle: "testing", status: "in_progress" },
+      { assignmentId: "done", title: "Completed Assessment", description: null, sessionTitle: "Session 2", status: "completed" },
+      { assignmentId: "empty", title: "Unpublished", description: null, sessionTitle: "Session 1", status: "unavailable" },
     ] }));
     expect(html).toContain("In Progress");
     expect(html).toContain('href="/workspace/assessments/own-assignment"');
     expect(html).toContain("Continue Assessment");
     expect(html).toContain("View Results");
     expect(html).toContain("not available yet");
+    expect(html).toContain("Discover how you prefer to give and receive love.");
+    expect(html).not.toContain(">testing</p>");
+    expect(html).toContain("Session 2");
+    expect(html).not.toContain('id="assessments-heading"');
+  });
+
+  it("uses the generic Assessment eyebrow on results instead of a Session title", () => {
+    const html = renderToStaticMarkup(createElement(CoupleAssessmentExperience, { assessment: {
+      ...assessment, title: "Love Languages", sessionTitle: "testing", status: "completed", attemptId: null,
+      results: [{ label: "Words", score: 8, rank: 1, isPrimary: true }],
+    } }));
+    expect(html).toContain(">ASSESSMENT</p><h1");
+    expect(html).toContain("Love Languages");
+    expect(html).not.toContain(">testing</p>");
+  });
+
+  it("keeps the main Assessments page title and introduction without a duplicate list heading", () => {
+    const page = readFileSync("app/workspace/assessments/page.tsx", "utf8");
+    expect(page.match(/<h1/g)).toHaveLength(1);
+    expect(page).toContain("Complete your assigned Assessments privately at your own pace.");
+    expect(page).toContain("<AssessmentList assessments={assessments} />");
   });
 
   it("renders a single paired-choice question with progress and a disabled Next before an answer", () => {
