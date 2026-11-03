@@ -1,10 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "../types/database.generated.ts";
+import { realtimeFixtureGroupName, requiredRealtimeFixtureRunId } from "./realtime-fixture-names.ts";
 
 const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 const CAMPUS_CODE = "DEV_TEST";
-const COUPLE_NAME = "DEV — Realtime Meetings Test";
 const COUNSELOR_TEAM_NAME = "DEV — Realtime Meetings Counselor Team";
 const PRESERVED_HOMEWORK_CASE_ID = "9e789f4d-8536-4883-97e8-23cadb9f8508";
 
@@ -20,8 +20,8 @@ type FixtureUser = {
 const fixtureUsers = {
   counselorOne: { emailEnv: "PHASE3D_MEETINGS_COUNSELOR_1_EMAIL", passwordEnv: "PHASE3D_REALTIME_COUNSELOR_1_PASSWORD", firstName: "Meeting", lastName: "Counselor One", role: "counselor" },
   counselorTwo: { emailEnv: "PHASE3D_MEETINGS_COUNSELOR_2_EMAIL", passwordEnv: "PHASE3D_REALTIME_COUNSELOR_2_PASSWORD", firstName: "Meeting", lastName: "Counselor Two", role: "counselor" },
-  partnerA: { emailEnv: "PHASE3D_MEETINGS_PARTNER_A_EMAIL", passwordEnv: "PHASE3D_REALTIME_PARTNER_A_PASSWORD", firstName: "Meeting", lastName: "Partner A", role: "couple" },
-  partnerB: { emailEnv: "PHASE3D_MEETINGS_PARTNER_B_EMAIL", passwordEnv: "PHASE3D_REALTIME_PARTNER_B_PASSWORD", firstName: "Meeting", lastName: "Partner B", role: "couple" },
+  partnerA: { emailEnv: "REALTIME_MEETINGS_PARTNER_A_EMAIL", passwordEnv: "REALTIME_MEETINGS_PARTNER_A_PASSWORD", firstName: "Meeting", lastName: "Partner A", role: "couple" },
+  partnerB: { emailEnv: "REALTIME_MEETINGS_PARTNER_B_EMAIL", passwordEnv: "REALTIME_MEETINGS_PARTNER_B_PASSWORD", firstName: "Meeting", lastName: "Partner B", role: "couple" },
 } as const satisfies Record<string, FixtureUser>;
 
 type UserKey = keyof typeof fixtureUsers;
@@ -266,6 +266,7 @@ async function verifyFixture(admin: AdminClient, config: ReturnType<typeof confi
 
 async function run() {
   const config = configuration();
+  const coupleName = realtimeFixtureGroupName("DEV — Realtime Meetings Run", requiredRealtimeFixtureRunId());
   const admin = createClient<Database>(config.url, config.secretKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const existingAuth = await authUsers(admin);
   const adminIdentity = existingAuth.find((user) => user.email?.toLowerCase() === config.adminEmail.toLowerCase());
@@ -277,7 +278,7 @@ async function run() {
 
   const users = await ensureUsers(admin);
   await ensureProfilesAndRoles(admin, users, campus.id, adminIdentity.id);
-  const coupleGroupId = await ensureGroup(admin, campus.id, "couple", COUPLE_NAME);
+  const coupleGroupId = await ensureGroup(admin, campus.id, "couple", coupleName);
   const counselorGroupId = await ensureGroup(admin, campus.id, "counselor_team", COUNSELOR_TEAM_NAME);
   await ensureMemberships(admin, coupleGroupId, "couple", [users.partnerA.id, users.partnerB.id]);
   await ensureMemberships(admin, counselorGroupId, "counselor_team", [users.counselorOne.id, users.counselorTwo.id]);
@@ -288,7 +289,7 @@ async function run() {
   console.log(JSON.stringify({
     projectRef: DEV_PROJECT_REF,
     campus: { id: campus.id, name: campus.name, code: campus.code },
-    case: { id: caseId, name: COUPLE_NAME, status: "active", meetings: 0, caseSessions: 0 },
+    case: { id: caseId, name: coupleName, status: "active", meetings: 0, caseSessions: 0 },
     coupleGroupId,
     counselorGroupId,
     counselorAssignmentId: assignmentId,
