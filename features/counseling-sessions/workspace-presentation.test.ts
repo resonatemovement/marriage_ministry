@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campusLeadCoachRows, counselingCoachDetailHref } from "./workspace-presentation";
+import { campusLeadCoachRows, coachCounselorDetailHref, coachCounselorRows, counselingCoachDetailHref } from "./workspace-presentation";
 import { counselingSessionsContentClassName, counselingSessionsGridClassName, counselingSessionsHeaderClassName, counselingSessionsRailClassName, counselingSessionsWorkspaceClassName, sessionCardContainerClassName, sessionCardNavigationClassName } from "./presentation";
 
 describe("Counseling Workspace presentation", () => {
@@ -39,5 +39,13 @@ describe("Counseling Workspace presentation", () => {
     ]);
     expect(JSON.stringify(rows)).not.toContain("Assign Coach");
     expect(JSON.stringify(rows)).not.toContain("No eligible coaches are available");
+  });
+
+  it("renders supervised Counselor teams with the shared relationship panel conventions", () => {
+    expect(coachCounselorDetailHref("counselor-a")).toBe("/workspace/counselors/counselor-a");
+    expect(coachCounselorRows([{ id: "counselor-a", name: "John & Stacy Wu", campus: "Oakland" }, { id: "counselor-b", name: "Fremont Counselors", campus: null }])).toEqual([
+      { id: "counselor-a", name: "John & Stacy Wu", metadata: "Counselor · Oakland", href: "/workspace/counselors/counselor-a" },
+      { id: "counselor-b", name: "Fremont Counselors", metadata: "Counselor · Campus not assigned", href: "/workspace/counselors/counselor-b" },
+    ]);
   });
 });

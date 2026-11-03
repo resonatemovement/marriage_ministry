@@ -7,14 +7,10 @@ type Row = Record<string, unknown>;
 const value = (row: Row | null | undefined, key: string) => typeof row?.[key] === "string" ? row[key] as string : null;
 
 export type CampusLeadCoach = { id: string; name: string; campus: string | null };
+export type CoachCounselor = { id: string; name: string; campus: string | null };
+export type CoachCounselorDetail = CoachCounselor & { members: { id: string; name: string }[] };
 
-/** Resolves the signed-in Coach's active-team Case scope; database RLS remains authoritative. */
-export async function getCurrentCoachCaseScope(): Promise<CoachCaseScope> {
-  const supabase = await createServerSupabaseClient();
-  const { data: claims, error: claimsError } = await supabase.auth.getClaims();
-  const profileId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
-  if (claimsError || !profileId) throw new Error("Workspace team data is unavailable");
-
+async function getActiveCoachTeamIds(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, profileId: string): Promise<string[]> {
   const teamsResult = await supabase
     .from("groups")
     .select("id,group_members!inner(profile_id,ended_at)")
@@ -23,8 +19,17 @@ export async function getCurrentCoachCaseScope(): Promise<CoachCaseScope> {
     .eq("group_members.profile_id", profileId)
     .is("group_members.ended_at", null);
   if (teamsResult.error) throw new Error("Workspace team data is unavailable");
+  return (teamsResult.data ?? []).map((team) => team.id);
+}
 
-  const activeCoachTeamIds = (teamsResult.data ?? []).map((team) => team.id);
+/** Resolves the signed-in Coach's active-team Case scope; database RLS remains authoritative. */
+export async function getCurrentCoachCaseScope(): Promise<CoachCaseScope> {
+  const supabase = await createServerSupabaseClient();
+  const { data: claims, error: claimsError } = await supabase.auth.getClaims();
+  const profileId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
+  if (claimsError || !profileId) throw new Error("Workspace team data is unavailable");
+
+  const activeCoachTeamIds = await getActiveCoachTeamIds(supabase, profileId);
   if (!activeCoachTeamIds.length) return { caseIds: [], coupleContactCaseIds: [] };
 
   const assignmentsResult = await supabase
@@ -36,6 +41,65 @@ export async function getCurrentCoachCaseScope(): Promise<CoachCaseScope> {
   if (assignmentsResult.error) throw new Error("Workspace Case assignments are unavailable");
 
   return coachCaseScope((assignmentsResult.data ?? []) as CoachCaseAssignment[], activeCoachTeamIds);
+}
+
+/** Lists only Counselor teams actively supervised by the signed-in Coach's active team. */
+export async function getCurrentCoachCounselors(): Promise<CoachCounselor[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data: claims, error: claimsError } = await supabase.auth.getClaims();
+  const profileId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
+  if (claimsError || !profileId) throw new Error("Workspace team data is unavailable");
+
+  const coachTeamIds = await getActiveCoachTeamIds(supabase, profileId);
+  if (!coachTeamIds.length) return [];
+
+  const assignmentsResult = await supabase
+    .from("supervision_assignments")
+    .select("counselor_group:groups!supervision_assignments_counselor_group_id_fkey(id,name,group_type,active,campus:campuses(name))")
+    .in("coach_group_id", coachTeamIds)
+    .is("ended_at", null);
+  if (assignmentsResult.error) throw new Error("Workspace team data is unavailable");
+
+  return (assignmentsResult.data ?? [])
+    .flatMap((assignment) => {
+      const team = (assignment as unknown as Row).counselor_group as Row | null;
+      const campus = team?.campus as Row | null;
+      if (!team || value(team, "group_type") !== "counselor_team" || team.active !== true) return [];
+      const id = value(team, "id");
+      const name = value(team, "name");
+      return id && name ? [{ id, name, campus: value(campus, "name") }] : [];
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/** Returns only a supervised Counselor team's identity and member names, never its Couple assignments. */
+export async function getCurrentCoachCounselorDetail(counselorTeamId: string): Promise<CoachCounselorDetail | null> {
+  const counselors = await getCurrentCoachCounselors();
+  const authorizedTeam = counselors.find((team) => team.id === counselorTeamId);
+  if (!authorizedTeam) return null;
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("groups")
+    .select("id,name,group_type,active,group_members(ended_at,profile:profiles(id,first_name,last_name))")
+    .eq("id", counselorTeamId)
+    .eq("group_type", "counselor_team" as never)
+    .eq("active", true)
+    .maybeSingle();
+  if (error) throw new Error("Workspace team data is unavailable");
+  if (!data) return null;
+
+  const detail = data as unknown as Row;
+  const members = (Array.isArray(detail.group_members) ? detail.group_members as Row[] : [])
+    .filter((membership) => membership.ended_at === null && membership.profile)
+    .flatMap((membership) => {
+      const profile = membership.profile as Row;
+      const id = value(profile, "id");
+      const name = [value(profile, "first_name"), value(profile, "last_name")].filter(Boolean).join(" ");
+      return id && name ? [{ id, name }] : [];
+    });
+
+  return { ...authorizedTeam, members };
 }
 
 /** Reads only the signed-in Campus Lead's active Coach-team assignments; RLS remains authoritative. */
