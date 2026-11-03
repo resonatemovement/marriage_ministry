@@ -16,12 +16,7 @@ function statusLabel(status: CounselorAssessment["partners"][number]["status"]) 
 
 function Scores({ scores }: { scores: CounselorAssessment["partners"][number]["latestScores"] }) {
   if (!scores.length) return <p className="mt-2 text-sm text-text-muted">No completed results yet.</p>;
-  return <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">{scores.map((score) => <li key={score.label} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md bg-surface-muted px-3 py-2 text-sm"><span className="font-medium text-text-primary">{score.label}{score.isPrimary ? <span className="ml-1.5 text-xs font-semibold text-brand-secondary">Primary</span> : null}</span><span className="tabular-nums text-text-secondary">{score.score}</span></li>)}</ul>;
-}
-
-function History({ history }: { history: CounselorAssessment["partners"][number]["history"] }) {
-  if (!history.length) return null;
-  return <details className="mt-3 rounded-md border border-border px-3 py-2"><summary className="cursor-pointer text-sm font-semibold text-text-primary">View score history ({history.length})</summary><ol className="mt-2 grid gap-3">{history.map((item) => <li key={item.attemptNumber} className="border-t border-border pt-2"><p className="text-xs text-text-muted">Attempt {item.attemptNumber} · {new Date(item.submittedAt).toLocaleDateString()}</p><Scores scores={item.scores} /></li>)}</ol></details>;
+  return <ul className="mt-2 space-y-2">{scores.map((score) => <li key={score.label} className="flex w-full min-w-0 items-center justify-between gap-3 rounded-md bg-surface-muted px-3 py-2 text-sm"><span className="min-w-0 font-medium text-text-primary">{score.label}{score.isPrimary ? <span className="ml-1.5 text-xs font-semibold text-brand-secondary">Primary</span> : null}</span><span className="shrink-0 tabular-nums text-text-secondary">{score.score}</span></li>)}</ul>;
 }
 
 function CaseSchedule({ caseId, assessment, sessions, completedSessionIds, preferenceSessionId, canManagePreference }: {
@@ -96,12 +91,13 @@ function CaseSchedule({ caseId, assessment, sessions, completedSessionIds, prefe
   </div>;
 }
 
-export function CounselorAssessmentManagement({ caseId, assessments, sessions, preferences, canReadResults, canManagePreference, activeCaseSessionId, completedSessionIds = [] }: {
+export function CounselorAssessmentManagement({ caseId, assessments, sessions, preferences, canReadResults, canManageSchedule, canManagePreference, activeCaseSessionId, completedSessionIds = [] }: {
   caseId: string;
   assessments: CounselorAssessment[];
   sessions: CounselorAssessmentSession[];
   preferences: Record<string, string>;
   canReadResults: boolean;
+  canManageSchedule: boolean;
   canManagePreference: boolean;
   activeCaseSessionId: string | null;
   completedSessionIds?: string[];
@@ -113,9 +109,9 @@ export function CounselorAssessmentManagement({ caseId, assessments, sessions, p
       const blocking = canReadResults && assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId);
       return <Card key={assessment.id} className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h4 className="font-heading text-base font-bold text-text-primary">{assessment.title}</h4>{assessment.description ? <p className="mt-1 text-sm text-text-muted">{assessment.description}</p> : null}</div><Badge className={assessment.schedule ? "bg-info-soft text-info-strong" : "bg-surface-muted text-text-muted"}>{assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}</Badge></div>
-        {!assessment.publishedVersionId && !assessment.schedule ? <p role="status" className="mt-3 rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted">No published version is available yet. This Assessment cannot be assigned until a usable version is published.</p> : <><CaseSchedule caseId={caseId} assessment={assessment} sessions={sessions} completedSessionIds={completedSessionIds} preferenceSessionId={preferences[assessment.id] ?? null} canManagePreference={canManagePreference} />{assessment.schedule && !assessment.publishedVersionId ? <p role="status" className="mt-2 text-xs text-text-muted">The existing pinned version remains available to participants; no new version is published for new assignments.</p> : null}</>}
-        {assessment.schedule && canReadResults ? <div className="mt-4 border-t border-border pt-3"><h5 className="text-sm font-semibold text-text-primary">Partner status and results</h5>{blocking ? <p role="status" className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This Assessment is blocking Session advancement. Both partners must submit their initial attempt.</p> : null}<ul className="mt-2 grid gap-3 sm:grid-cols-2">{assessment.partners.map((partner) => <li key={partner.profileId} className="min-w-0 rounded-md border border-border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-text-primary">{partner.name}</p><Badge className={partner.status === "completed" ? "bg-success-soft text-success-strong" : "bg-amber-50 text-amber-900"}>{statusLabel(partner.status)}</Badge></div><Scores scores={partner.latestScores} /><History history={partner.history} /></li>)}</ul></div> : null}
-        {assessment.schedule && !canReadResults ? <p className="mt-3 border-t border-border pt-3 text-sm text-text-muted">Partner completion status and results are available only to the assigned Counselor.</p> : null}
+        {canManageSchedule ? <>{!assessment.publishedVersionId && !assessment.schedule ? <p role="status" className="mt-3 rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted">No published version is available yet. This Assessment cannot be assigned until a usable version is published.</p> : <><CaseSchedule caseId={caseId} assessment={assessment} sessions={sessions} completedSessionIds={completedSessionIds} preferenceSessionId={preferences[assessment.id] ?? null} canManagePreference={canManagePreference} />{assessment.schedule && !assessment.publishedVersionId ? <p role="status" className="mt-2 text-xs text-text-muted">The existing pinned version remains available to participants; no new version is published for new assignments.</p> : null}</>}</> : null}
+        {assessment.schedule && canReadResults ? <div className="mt-4 border-t border-border pt-3"><h5 className="text-sm font-semibold text-text-primary">Partner status and results</h5>{blocking ? <p role="status" className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This Assessment is blocking Session advancement. Both partners must submit their initial attempt.</p> : null}<ul className="mt-2 grid gap-3">{assessment.partners.map((partner) => <li key={partner.profileId} className="min-w-0 rounded-md border border-border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-text-primary">{partner.name}</p><Badge className={partner.status === "completed" ? "bg-success-soft text-success-strong" : "bg-amber-50 text-amber-900"}>{statusLabel(partner.status)}</Badge></div><Scores scores={partner.latestScores} /></li>)}</ul></div> : null}
+        {assessment.schedule && !canReadResults ? <p className="mt-3 border-t border-border pt-3 text-sm text-text-muted">Partner completion status and results are unavailable in this view.</p> : null}
       </Card>;
     })}</div>
   </section>;

@@ -28,19 +28,23 @@ const assessment: CounselorAssessment = {
 };
 
 describe("Counselor Assessment management presentation", () => {
-  it("shows independent partner status, latest tied-primary scores, history, and the progression gate without answer content", () => {
+  it("shows independent partner status, latest tied-primary scores, and the progression gate without answer content", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [assessment], sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }],
-      preferences: {}, canReadResults: true, canManagePreference: true, activeCaseSessionId: "case-session-1",
+      preferences: {}, canReadResults: true, canManageSchedule: true, canManagePreference: true, activeCaseSessionId: "case-session-1",
     }));
     expect(markup).toContain("Assessments");
     expect(markup).toContain("Alex A");
     expect(markup).toContain("Blake B");
     expect(markup).toContain("Submitted");
     expect(markup).toContain("In Progress");
-    expect(markup.match(/Primary/g)).toHaveLength(4);
+    expect(markup.match(/Primary/g)).toHaveLength(2);
     expect(markup).toContain("This Assessment is blocking Session advancement");
-    expect(markup).toContain("View score history (1)");
+    expect(markup).not.toContain("View score history");
+    expect(markup).toContain('class="mt-2 space-y-2"');
+    expect(markup).toContain("12</span>");
+    expect(markup).not.toContain("/ 12");
+    expect(markup).toContain('class="mt-2 grid gap-3"');
     expect(markup).toContain("My default for future Cases");
     expect(markup).toContain("Existing Case schedules stay unchanged.");
     expect(markup).not.toMatch(/response|answer|scoring key/i);
@@ -49,7 +53,7 @@ describe("Counselor Assessment management presentation", () => {
   it("keeps unpublished drafts visible but unavailable for assignment", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [{ ...assessment, publishedVersionId: null, schedule: null, partners: [] }],
-      sessions: [], preferences: {}, canReadResults: true, canManagePreference: true, activeCaseSessionId: null,
+      sessions: [], preferences: {}, canReadResults: true, canManageSchedule: true, canManagePreference: true, activeCaseSessionId: null,
     }));
     expect(markup).toContain("No published version is available yet");
     expect(markup).not.toContain("Assign Assessment");
@@ -58,10 +62,27 @@ describe("Counselor Assessment management presentation", () => {
   it("does not expose participant results to Admin-only viewers", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [assessment], sessions: [], preferences: {},
-      canReadResults: false, canManagePreference: false, activeCaseSessionId: "case-session-1",
+      canReadResults: false, canManageSchedule: false, canManagePreference: false, activeCaseSessionId: "case-session-1",
     }));
-    expect(markup).toContain("Partner completion status and results are available only to the assigned Counselor.");
+    expect(markup).toContain("Partner completion status and results are unavailable in this view.");
     expect(markup).not.toContain("Alex A");
     expect(markup).not.toContain("Words");
+  });
+
+  it("shows authorized staff results without exposing scheduling controls or score history", () => {
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
+      caseId: "case-1", assessments: [assessment], sessions: [], preferences: {},
+      canReadResults: true, canManageSchedule: false, canManagePreference: false, activeCaseSessionId: null,
+    }));
+    expect(markup).toContain("Alex A");
+    expect(markup).toContain("Blake B");
+    expect(markup).toContain("Submitted");
+    expect(markup).toContain("Words");
+    expect(markup).toContain("12</span>");
+    expect(markup).not.toContain("View score history");
+    expect(markup).not.toContain("Assign Assessment");
+    expect(markup).not.toContain("My default for future Cases");
+    expect(markup).not.toContain("/ 12");
+    expect(markup).not.toMatch(/response|answer|scoring key/i);
   });
 });
