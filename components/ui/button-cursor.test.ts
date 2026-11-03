@@ -12,7 +12,7 @@ describe("project button cursor convention", () => {
 
   it("keeps lifecycle button styling and disabled semantics aligned with the cursor convention", () => {
     expect(lifecycleControls).toContain('meeting ? "Schedule Next Session" : "Schedule Initial Meeting"');
-    expect(lifecycleControls).toContain("<button disabled={pending || ((open === \"complete-initial\" || open === \"complete-session\") && !sessionId)");
+    expect(lifecycleControls).toContain("<button disabled={pending || Boolean(scheduleValidation && (scheduleValidation.dateError || scheduleValidation.timeError || !scheduleValidation.time)) || ((open === \"complete-initial\" || open === \"complete-session\") && (!sessionId || selectedMaterialBlockIds.length === 0))");
     const buttonTags = lifecycleControls.match(/<button\b[^>]*>/g) ?? [];
     expect(buttonTags.length).toBeGreaterThan(1);
     expect(lifecycleControls).toContain("cursor-pointer disabled:cursor-not-allowed");
