@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
     { counselor_group: { id: "coach-other", name: "Other Coaches", group_type: "coach_team", active: true, campus: null } },
     { counselor_group: { id: "inactive-counselor", name: "Inactive", group_type: "counselor_team", active: false, campus: null } },
   ],
-  counselorDetail: { id: "counselor-a", name: "John & Stacy Wu", group_type: "counselor_team", active: true, group_members: [{ ended_at: null, profile: { id: "member-a", first_name: "John", last_name: "Wu", email: "private@example.test" } }, { ended_at: null, profile: { id: "member-b", first_name: "Stacy", last_name: "Wu" } }] },
 }));
 
 vi.mock("server-only", () => ({}));
@@ -18,8 +17,7 @@ vi.mock("@/lib/supabase/server", () => ({
     auth: { getClaims: async () => ({ data: { claims: { sub: "coach-member" } }, error: null }) },
     from: (table: string) => {
       const query: Record<string, unknown> = {};
-      let selected = "";
-      query.select = (columns: string) => { selected = columns; mocks.filters.push({ table, method: "select", args: [columns] }); return query; };
+      query.select = (columns: string) => { mocks.filters.push({ table, method: "select", args: [columns] }); return query; };
       for (const method of ["select", "eq", "is", "in"]) {
         if (method === "select") continue;
         query[method] = (...args: unknown[]) => {
@@ -28,7 +26,7 @@ vi.mock("@/lib/supabase/server", () => ({
         };
       }
       const result = () => {
-        if (table === "groups") return selected.startsWith("id,group_members") ? mocks.coachTeams : mocks.counselorDetail;
+        if (table === "groups") return mocks.coachTeams;
         if (table === "supervision_assignments") return mocks.counselorAssignments;
         return [
           { counseling_case_id: "john-stacy", assigned_group_id: "coach-team", assignment_type: "coach", ended_at: null },
@@ -44,7 +42,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { getCurrentCoachCaseScope, getCurrentCoachCounselorDetail, getCurrentCoachCounselors } from "./workspace-queries";
+import { getCurrentCoachCaseScope, getCurrentCoachCounselors } from "./workspace-queries";
 
 describe("current Coach counseling scope query", () => {
   beforeEach(() => {
@@ -82,21 +80,4 @@ describe("current Coach counseling scope query", () => {
     await expect(getCurrentCoachCounselors()).resolves.toEqual([]);
   });
 
-  it("returns only supervised team identity and member names, not Couple records or contact fields", async () => {
-    await expect(getCurrentCoachCounselorDetail("counselor-a")).resolves.toEqual({
-      id: "counselor-a", name: "John & Stacy Wu", campus: "Oakland", members: [
-        { id: "member-a", name: "John Wu" }, { id: "member-b", name: "Stacy Wu" },
-      ],
-    });
-    const detailSelect = mocks.filters.find(({ table, method, args }) => table === "groups" && method === "select" && String(args[0]).includes("group_members(ended_at"));
-    expect(detailSelect?.args[0]).not.toContain("email");
-    expect(detailSelect?.args[0]).not.toContain("counseling_cases");
-    expect(detailSelect?.args[0]).not.toContain("case_assignments");
-  });
-
-  it("does not resolve a Counselor detail outside the signed-in Coach team's active supervision", async () => {
-    mocks.counselorAssignments = [];
-    await expect(getCurrentCoachCounselorDetail("not-supervised")).resolves.toBeNull();
-    expect(mocks.filters.some(({ table, method, args }) => table === "groups" && method === "select" && String(args[0]).includes("group_members(ended_at"))).toBe(false);
-  });
 });

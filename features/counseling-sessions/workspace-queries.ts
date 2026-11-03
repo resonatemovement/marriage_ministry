@@ -8,7 +8,6 @@ const value = (row: Row | null | undefined, key: string) => typeof row?.[key] ==
 
 export type CampusLeadCoach = { id: string; name: string; campus: string | null };
 export type CoachCounselor = { id: string; name: string; campus: string | null };
-export type CoachCounselorDetail = CoachCounselor & { members: { id: string; name: string }[] };
 
 async function getActiveCoachTeamIds(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, profileId: string): Promise<string[]> {
   const teamsResult = await supabase
@@ -70,36 +69,6 @@ export async function getCurrentCoachCounselors(): Promise<CoachCounselor[]> {
       return id && name ? [{ id, name, campus: value(campus, "name") }] : [];
     })
     .sort((left, right) => left.name.localeCompare(right.name));
-}
-
-/** Returns only a supervised Counselor team's identity and member names, never its Couple assignments. */
-export async function getCurrentCoachCounselorDetail(counselorTeamId: string): Promise<CoachCounselorDetail | null> {
-  const counselors = await getCurrentCoachCounselors();
-  const authorizedTeam = counselors.find((team) => team.id === counselorTeamId);
-  if (!authorizedTeam) return null;
-
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("groups")
-    .select("id,name,group_type,active,group_members(ended_at,profile:profiles(id,first_name,last_name))")
-    .eq("id", counselorTeamId)
-    .eq("group_type", "counselor_team" as never)
-    .eq("active", true)
-    .maybeSingle();
-  if (error) throw new Error("Workspace team data is unavailable");
-  if (!data) return null;
-
-  const detail = data as unknown as Row;
-  const members = (Array.isArray(detail.group_members) ? detail.group_members as Row[] : [])
-    .filter((membership) => membership.ended_at === null && membership.profile)
-    .flatMap((membership) => {
-      const profile = membership.profile as Row;
-      const id = value(profile, "id");
-      const name = [value(profile, "first_name"), value(profile, "last_name")].filter(Boolean).join(" ");
-      return id && name ? [{ id, name }] : [];
-    });
-
-  return { ...authorizedTeam, members };
 }
 
 /** Reads only the signed-in Campus Lead's active Coach-team assignments; RLS remains authoritative. */
