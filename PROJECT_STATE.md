@@ -1,13 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: feature/assessment-equal-height-cards
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Love Languages equal-height result cards (November 3, 2026)
 
 - On `feature/assessment-equal-height-cards`, the two partner result cards occupy the same first grid row at the existing desktop breakpoint and stretch to equal height. The signed-in partner's Retake Assessment action is a separate grid item below that row, so it does not affect either card's height. Mobile keeps a single-column DOM order (signed-in result, retake action, partner result) with natural card heights. A single result remains full width.
 - No result content, scoring, sharing, retake behavior, permissions, or database behavior changed.
-- Validation: all Assessment tests passed (59 across 12 files), including card placement, retake separation, partner ordering, single-result layout, and existing result behavior. `npm run typecheck`, `npm run lint`, and `git diff --check` passed. No database-writing or browser/device tests were run. Release is pending; seven existing stashes are preserved.
+- Validation: all Assessment tests passed (59 across 12 files), including card placement, retake separation, partner ordering, single-result layout, and existing result behavior. `npm run typecheck`, `npm run lint`, and `git diff --check` passed. No database-writing or browser/device tests were run.
+- Release: feature commit `48ee063` (`fix: keep assessment result cards equal height`) was fast-forwarded into `main` and pushed to `origin/main`. Vercel project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) remains connected to `resonatemovement/marriage_ministry` on `main` and is the only project under the verified team. Git-triggered deployment `dpl_DRDFKhDbLxiynLTqcBQu3hMSr8dz` reached `READY` at SHA `48ee063599ba9506710a99125980ea62bb762304`. Its `production` target label is scoped to this dedicated DEV project; actual Resonate PROD was not accessed. The merged local feature branch was deleted normally; `main` is clean and synchronized with `origin/main`. All seven stashes are preserved and no database changes were made.
 
 ## Love Languages responsive results layout (November 3, 2026)
 
