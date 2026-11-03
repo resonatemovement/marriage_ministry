@@ -37,16 +37,16 @@ function completionDate(value: string) {
 }
 
 export function AssessmentResults({
-  results, name = "Your", submittedAt, history = [],
-}: { results: CoupleAssessmentResult[]; name?: string; submittedAt?: string; history?: CoupleAssessmentHistoryItem[] }) {
+  results, name = "Your", submittedAt, history = [], className,
+}: { results: CoupleAssessmentResult[]; name?: string; submittedAt?: string; history?: CoupleAssessmentHistoryItem[]; className?: string }) {
   const [selectedAttemptNumber, setSelectedAttemptNumber] = useState<number | null>(null);
   const selectedAttempt = history.find((attempt) => attempt.attemptNumber === selectedAttemptNumber)
     ?? (selectedAttemptNumber === null ? history[0] : undefined);
   const selectedResults = selectedAttempt?.results ?? results;
   const selectedDate = selectedAttempt?.submittedAt ?? submittedAt;
   const ordered = assessmentResultsInDisplayOrder(selectedResults);
-  if (!ordered.length) return <Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">Results unavailable</h2><p className="mt-2 text-sm text-text-muted">Your results could not be loaded. Please try again later.</p></Card>;
-  return <Card className="p-5 sm:p-7"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessment results</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{name} results</h2>{selectedDate ? <p className="mt-1 text-sm text-text-muted">Completed {completionDate(selectedDate)}{selectedAttempt ? ` · Attempt ${selectedAttempt.attemptNumber}` : ""}</p> : null}
+  if (!ordered.length) return <Card className={`p-6 ${className ?? ""}`}><h2 className="font-heading text-xl font-bold text-text-primary">Results unavailable</h2><p className="mt-2 text-sm text-text-muted">Your results could not be loaded. Please try again later.</p></Card>;
+  return <Card className={`p-5 sm:p-7 ${className ?? ""}`}><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessment results</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{name} results</h2>{selectedDate ? <p className="mt-1 text-sm text-text-muted">Completed {completionDate(selectedDate)}{selectedAttempt ? ` · Attempt ${selectedAttempt.attemptNumber}` : ""}</p> : null}
     {history.length > 1 ? <div className="mt-5"><h3 className="text-sm font-semibold text-text-primary">Your completed attempts</h3><div className="mt-2 flex flex-wrap gap-2" aria-label="Assessment history">{history.map((attempt) => <button key={attempt.attemptNumber} type="button" aria-pressed={(selectedAttempt?.attemptNumber ?? history[0]?.attemptNumber) === attempt.attemptNumber} onClick={() => setSelectedAttemptNumber(attempt.attemptNumber)} className="min-h-10 rounded-md border border-border px-3 text-sm text-text-primary hover:bg-surface-muted aria-pressed:bg-surface-muted">Attempt {attempt.attemptNumber} · {completionDate(attempt.submittedAt)}</button>)}</div></div> : null}
     <ol className="mt-5 space-y-3">{ordered.map((result) => <li key={result.label} className={`flex items-center justify-between gap-3 rounded-md p-3 ${result.isPrimary ? "bg-brand-primary/10" : "bg-surface-muted"}`}><span className="font-medium text-text-primary">{result.label}{result.isPrimary ? <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-brand-secondary">Primary</span> : null}</span><span className="tabular-nums text-sm text-text-muted">{result.score} <span className="text-xs">/ 12</span></span></li>)}</ol>
   </Card>;
@@ -136,12 +136,12 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
   if (assessment.status === "unavailable") return <AssessmentPageShell assessment={assessment}><Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">Assessment unavailable</h2><p className="mt-2 text-sm text-text-muted">This Assessment does not have published questions yet. Please contact your Counselor.</p></Card></AssessmentPageShell>;
   if (submitted) return <AssessmentPageShell assessment={assessment} eyebrow="ASSESSMENT">
     <div className={assessment.partnerResults ? "grid gap-5 md:grid-cols-2" : "space-y-5"}>
-      <div className="space-y-5">
-        <AssessmentResults name={assessment.profileName} results={submittedResults ?? assessment.results} history={assessment.history} />
-        <div className="flex flex-wrap gap-3"><button type="button" onClick={() => begin(true)} disabled={starting} className={actionClass(true)}>{starting ? "Starting…" : assessment.activeRetakeId ? "Continue Retake" : "Retake Assessment"}<RotateCcw className="size-4" aria-hidden="true" /></button></div>
+      <AssessmentResults className={assessment.partnerResults ? "h-full md:col-start-1 md:row-start-1" : undefined} name={assessment.profileName} results={submittedResults ?? assessment.results} history={assessment.history} />
+      <div className={`flex flex-wrap gap-3 ${assessment.partnerResults ? "md:col-start-1 md:row-start-2" : ""}`}>
+        <button type="button" onClick={() => begin(true)} disabled={starting} className={actionClass(true)}>{starting ? "Starting…" : assessment.activeRetakeId ? "Continue Retake" : "Retake Assessment"}<RotateCcw className="size-4" aria-hidden="true" /></button>
         {startError ? <p role="alert" className="text-sm text-danger">{startError}</p> : null}
       </div>
-      {assessment.partnerResults ? <AssessmentResults name={assessment.partnerResults.name} results={assessment.partnerResults.results} submittedAt={assessment.partnerResults.submittedAt} /> : <p className="text-sm text-text-muted">Partner results are shared after both partners complete their initial Assessment.</p>}
+      {assessment.partnerResults ? <AssessmentResults className="h-full md:col-start-2 md:row-start-1" name={assessment.partnerResults.name} results={assessment.partnerResults.results} submittedAt={assessment.partnerResults.submittedAt} /> : <p className="text-sm text-text-muted">Partner results are shared after both partners complete their initial Assessment.</p>}
     </div>
   </AssessmentPageShell>;
   if (!attemptId) return <AssessmentPageShell assessment={assessment}><Card className="p-6"><p className="text-sm text-text-muted">Assigned for {assessment.sessionTitle}</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">Ready when you are</h2><p className="mt-2 text-sm text-text-muted">Your progress is saved as you answer, and you can return later.</p><button type="button" onClick={() => begin(false)} disabled={starting} className={`${actionClass(true)} mt-5`}>{starting ? "Starting…" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></button>{startError ? <p role="alert" className="mt-3 text-sm text-danger">{startError}</p> : null}</Card></AssessmentPageShell>;

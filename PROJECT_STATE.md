@@ -1,7 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: main
+Current working branch: feature/assessment-equal-height-cards
 Repository: resonatemovement/marriage_ministry
+
+## Love Languages equal-height result cards (November 3, 2026)
+
+- On `feature/assessment-equal-height-cards`, the two partner result cards occupy the same first grid row at the existing desktop breakpoint and stretch to equal height. The signed-in partner's Retake Assessment action is a separate grid item below that row, so it does not affect either card's height. Mobile keeps a single-column DOM order (signed-in result, retake action, partner result) with natural card heights. A single result remains full width.
+- No result content, scoring, sharing, retake behavior, permissions, or database behavior changed.
+- Validation: all Assessment tests passed (59 across 12 files), including card placement, retake separation, partner ordering, single-result layout, and existing result behavior. `npm run typecheck`, `npm run lint`, and `git diff --check` passed. No database-writing or browser/device tests were run. Release is pending; seven existing stashes are preserved.
 
 ## Love Languages responsive results layout (November 3, 2026)
 

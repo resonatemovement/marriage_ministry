@@ -164,11 +164,15 @@ describe("Couple Assessment presentation", () => {
     } }));
 
     expect(html).toContain('class="grid gap-5 md:grid-cols-2"');
+    expect(html).toContain('p-5 sm:p-7 h-full md:col-start-1 md:row-start-1');
+    expect(html).toContain('p-5 sm:p-7 h-full md:col-start-2 md:row-start-1');
+    expect(html).toContain('class="flex flex-wrap gap-3 md:col-start-1 md:row-start-2"');
     expect(html.indexOf("Alex Example results")).toBeLessThan(html.indexOf("Sam Example results"));
     expect(html).toContain("Completed 2026-10-29");
     expect(html).toContain("Completed 2026-10-30");
     expect(html.match(/Retake Assessment/g)).toHaveLength(1);
     expect(html.indexOf("Retake Assessment")).toBeLessThan(html.indexOf("Sam Example results"));
+    expect(html.indexOf("</section>", html.indexOf("Alex Example results"))).toBeLessThan(html.indexOf("Retake Assessment"));
     expect(html.match(/Primary/g)).toHaveLength(2);
   });
 });
