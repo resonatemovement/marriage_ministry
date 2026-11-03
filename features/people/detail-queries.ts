@@ -98,6 +98,49 @@ export async function getPeopleDetail(recordId: string): Promise<PeopleDetail | 
   } satisfies ProfilePeopleDetail;
 }
 
+/** Loads only a supervised team's identity and active member profiles for read-only workspace detail pages. */
+export async function getSupervisedTeamDetail(recordId: string, expectedType: "coach_team" | "counselor_team"): Promise<GroupPeopleDetail | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("groups")
+    .select("id,name,group_type,updated_at,campus:campuses(id,name),group_members(ended_at,profile:profiles(id,first_name,last_name,gender,email,phone,campus_id,photo_path,status,onboarding_completed_at))")
+    .eq("id", recordId)
+    .eq("group_type", expectedType as never)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) throw new Error("People detail data is unavailable");
+  if (!data) return null;
+
+  const group = data as unknown as Row;
+  const type = groupRecordType(value(group, "group_type"));
+  if (!type || (type !== "coaches" && type !== "counselors")) return null;
+  const members = await Promise.all(rows(group.group_members)
+    .filter((membership) => membership.ended_at === null && membership.profile)
+    .map((membership) => asMember(membership.profile as Row)));
+  const campus = group.campus as Row | null;
+
+  return {
+    kind: "group",
+    id: value(group, "id")!,
+    type,
+    name: value(group, "name")!,
+    campusId: campus ? value(campus, "id") : null,
+    campus: campus ? value(campus, "name") : null,
+    updatedAt: value(group, "updated_at")!,
+    members,
+    counselingStatus: null,
+    activeAssignmentCount: 0,
+    assignmentSummary: "Read-only supervisory view",
+    coachAssignment: null,
+    counselorAssignment: null,
+    campusLeadAssignment: null,
+    supervisionSummary: "Read-only supervisory view",
+    operationalStatuses: [],
+    assignedCouples: [],
+  };
+}
+
 async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, group: Row): Promise<GroupPeopleDetail | null> {
   const type = groupRecordType(value(group, "group_type"));
   if (!type) return null;

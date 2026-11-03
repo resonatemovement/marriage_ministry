@@ -10,7 +10,7 @@ vi.mock("./people-detail-actions", () => ({ PeopleDetailActions: () => null }));
 vi.mock("./resend-invitation-button", () => ({ ResendInvitationButton: () => null }));
 vi.mock("./resend-setup-button", () => ({ ResendSetupButton: () => null }));
 vi.mock("./relationship-card", () => ({ RelationshipCard: ({ title }: { title: string }) => createElement("section", null, createElement("h2", null, title)) }));
-vi.mock("./team-lifecycle", () => ({ TeamLifecycle: () => null }));
+vi.mock("./team-lifecycle", () => ({ TeamLifecycle: ({ isSuperAdmin }: { isSuperAdmin: boolean }) => isSuperAdmin ? createElement("button", null, "Permanently Delete") : null }));
 vi.mock("./person-lifecycle", () => ({ PersonLifecycle: () => null }));
 vi.mock("./unassign-counselor-of-record", () => ({ UnassignCounselorOfRecord: () => null }));
 vi.mock("./unassign-operational-relationship", () => ({ UnassignOperationalRelationship: () => null }));
@@ -83,5 +83,38 @@ describe("Admin Couple detail right rail", () => {
     expect(rail).toContain("counselor.pdf");
     expect(rail).toContain(">Replace<");
     expect(rail).toContain(">Upload<");
+  });
+});
+
+describe("read-only supervisory team detail", () => {
+  it("reuses member cards while omitting administrative and Couple assignment controls", () => {
+    const team: GroupPeopleDetail = {
+      ...detail,
+      id: "counselor-team",
+      type: "counselors",
+      name: "John & Stacy Wu",
+      assignedCouples: [],
+      members: [{
+        id: "john", firstName: "John", lastName: "Wu", name: "John Wu", gender: "male", email: "john@example.test", phone: "5105550101", campusId: "campus-1", photoPath: "john.jpg", roles: ["counselor"], accountStatus: "Active", accountAccessState: "active_account", onboardingStatus: "Onboarding Complete", onboardingComplete: true, photoUrl: "https://photos.example.test/john.jpg",
+      }],
+    };
+    const markup = renderToStaticMarkup(createElement(PeopleDetailPage, {
+      detail: team,
+      context: null,
+      breadcrumbs: [{ label: "Workspace", href: "/workspace" }, { label: "Counselors" }, { label: team.name, current: true }],
+      trail: [],
+      isSuperAdmin: true,
+      readOnlySupervisoryView: true,
+    }));
+
+    expect(markup).toContain("Counselor Members");
+    expect(markup).toContain("John Wu");
+    expect(markup).toContain("john@example.test");
+    expect(markup).toContain("(510) 555-0101");
+    expect(markup).toContain('src="https://photos.example.test/john.jpg"');
+    expect(markup).toContain("Onboarding: Complete");
+    expect(markup).not.toContain("Permanently Delete");
+    expect(markup).not.toContain("Assigned Couples");
+    expect(markup).not.toContain("Assign");
   });
 });

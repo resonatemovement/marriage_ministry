@@ -11,9 +11,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ notFound: vi.fn(() => { throw new Error("not found"); }), redirect: vi.fn((href: string) => { throw new Error(`redirect:${href}`); }) }));
 vi.mock("@/lib/auth/session", () => ({ requireActiveWorkspace: vi.fn(async () => ({ identity: { id: "lead", displayName: "Campus Lead", roles: [mocks.workspace], workspaces: [mocks.workspace] }, workspace: mocks.workspace })) }));
 vi.mock("@/features/counseling-sessions/workspace-queries", () => ({ getCurrentCampusLeadCoaches: vi.fn(async () => mocks.coaches) }));
-vi.mock("@/features/people/detail-queries", () => ({ getPeopleDetail: vi.fn(async () => mocks.detail) }));
+vi.mock("@/features/people/detail-queries", () => ({ getSupervisedTeamDetail: vi.fn(async () => mocks.detail) }));
 vi.mock("@/components/navigation/workspace-shell", () => ({ WorkspaceShell: ({ children }: { children: ReactNode }) => createElement("div", { "data-shell": "workspace" }, children) }));
-vi.mock("@/features/people/people-detail-page", () => ({ PeopleDetailPage: ({ breadcrumbs }: { breadcrumbs: { label: string; href?: string }[] }) => createElement("div", { "data-breadcrumbs": JSON.stringify(breadcrumbs) }, "Coach detail") }));
+vi.mock("@/features/people/people-detail-page", () => ({ PeopleDetailPage: ({ breadcrumbs, readOnlySupervisoryView, context }: { breadcrumbs: { label: string; href?: string }[]; readOnlySupervisoryView: boolean; context: unknown }) => createElement("div", { "data-breadcrumbs": JSON.stringify(breadcrumbs), "data-read-only": String(readOnlySupervisoryView), "data-context": String(context) }, "Coach detail") }));
 
 import CounselingCoachDetailRoute from "./page";
 
@@ -29,6 +29,8 @@ describe("Counseling Coach detail route", () => {
     expect(markup).toContain('&quot;label&quot;:&quot;Fremont Coaches&quot;,&quot;current&quot;:true');
     expect(markup).not.toContain('&quot;label&quot;:&quot;Coaches&quot;,&quot;href&quot;');
     expect(markup).not.toContain("People &amp; Teams");
+    expect(markup).toContain('data-read-only="true"');
+    expect(markup).toContain('data-context="null"');
   });
 
   it("rejects a Coach outside the signed-in Campus Lead's assignments and non-Campus-Lead workspaces", async () => {
