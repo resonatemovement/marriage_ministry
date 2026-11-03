@@ -150,5 +150,25 @@ describe("Couple Assessment presentation", () => {
     expect(html).toContain("Continue Retake");
     expect(html).toContain("Care");
     expect(html).toContain("Partner results are shared after both partners complete their initial Assessment.");
+    expect(html).toContain('class="space-y-5"');
+    expect(html).not.toContain("md:grid-cols-2");
+    expect(html.match(/Continue Retake/g)).toHaveLength(1);
+  });
+
+  it("shows both partners in equal responsive columns, with the signed-in partner first", () => {
+    const html = renderToStaticMarkup(createElement(CoupleAssessmentExperience, { assessment: {
+      ...assessment, profileName: "Alex Example", status: "completed",
+      results: [{ label: "Words", score: 8, rank: 1, isPrimary: true }],
+      history: [{ attemptNumber: 1, submittedAt: "2026-10-29T20:00:00.000Z", results: [{ label: "Words", score: 8, rank: 1, isPrimary: true }] }],
+      partnerResults: { name: "Sam Example", submittedAt: "2026-10-30T20:00:00.000Z", results: [{ label: "Time", score: 7, rank: 1, isPrimary: true }] },
+    } }));
+
+    expect(html).toContain('class="grid gap-5 md:grid-cols-2"');
+    expect(html.indexOf("Alex Example results")).toBeLessThan(html.indexOf("Sam Example results"));
+    expect(html).toContain("Completed 2026-10-29");
+    expect(html).toContain("Completed 2026-10-30");
+    expect(html.match(/Retake Assessment/g)).toHaveLength(1);
+    expect(html.indexOf("Retake Assessment")).toBeLessThan(html.indexOf("Sam Example results"));
+    expect(html.match(/Primary/g)).toHaveLength(2);
   });
 });
