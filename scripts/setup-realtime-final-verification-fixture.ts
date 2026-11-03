@@ -1,16 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "../types/database.generated.ts";
+import { realtimeFixtureGroupName, requiredRealtimeFixtureRunId } from "./realtime-fixture-names.ts";
 
 const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 const CAMPUS_CODE = "DEV_TEST";
-const FIXTURE_NAME = "DEV — C2 Final Realtime Verification";
 const COUNSELOR_TEAM_NAME = "DEV — Realtime Session & Case Counselor Team";
-const PARTNER_A_EMAIL = "phase3d-c2-final-a@mailinator.com";
-const PARTNER_B_EMAIL = "phase3d-c2-final-b@mailinator.com";
 const PRESERVED_CASE_IDS = [
   "356a285c-172c-4bb3-877d-800922906628",
-  "1bc549ee-5c8e-4037-84d6-bdc3c295837b",
 ] as const;
 
 type Client = SupabaseClient<Database>;
@@ -24,6 +21,10 @@ type Partner = {
   passwordEnv: string;
 };
 type Mode = "create" | "resume-case" | "verify";
+
+function fixtureName() {
+  return realtimeFixtureGroupName("DEV — C2 Final Verification Run", requiredRealtimeFixtureRunId());
+}
 
 function required(name: string) {
   const value = process.env[name];
@@ -45,8 +46,10 @@ function configuration() {
     counselorOneEmail: required("PHASE3D_C2_COUNSELOR_1_EMAIL").toLowerCase(),
     counselorOnePassword: required("PHASE3D_C2_COUNSELOR_1_PASSWORD"),
     counselorTwoEmail: required("PHASE3D_C2_COUNSELOR_2_EMAIL").toLowerCase(),
-    partnerAPassword: required("PHASE3D_C2_PROGRESSION_PARTNER_A_PASSWORD"),
-    partnerBPassword: required("PHASE3D_C2_PROGRESSION_PARTNER_B_PASSWORD"),
+    partnerAEmail: required("REALTIME_FINAL_PARTNER_A_EMAIL").toLowerCase(),
+    partnerBEmail: required("REALTIME_FINAL_PARTNER_B_EMAIL").toLowerCase(),
+    partnerAPassword: required("REALTIME_FINAL_PARTNER_A_PASSWORD"),
+    partnerBPassword: required("REALTIME_FINAL_PARTNER_B_PASSWORD"),
   };
 }
 
@@ -97,13 +100,13 @@ async function preservedCaseSnapshot(admin: Client) {
 
 async function preflight(admin: Client, config: ReturnType<typeof configuration>) {
   const authUsers = await listAuthUsers(admin);
-  const targetEmails = [PARTNER_A_EMAIL, PARTNER_B_EMAIL];
+  const targetEmails = [config.partnerAEmail, config.partnerBEmail];
   const partnerAuth = targetEmails.map((email) => authUsers.filter((user) => user.email?.toLowerCase() === email));
   if (partnerAuth.some((matches) => matches.length > 1)) throw new Error("Duplicate final-verification Auth identity detected");
 
   const [campuses, groups, profiles, counselorGroup, sessions] = await Promise.all([
     admin.from("campuses").select("id,name,code,active").eq("code", CAMPUS_CODE),
-    admin.from("groups").select("id,campus_id,active").eq("group_type", "couple").eq("name", FIXTURE_NAME),
+    admin.from("groups").select("id,campus_id,active").eq("group_type", "couple").eq("name", fixtureName()),
     admin.from("profiles").select("id,email").in("email", targetEmails),
     admin.from("groups").select("id,campus_id,active").eq("group_type", "counselor_team").eq("name", COUNSELOR_TEAM_NAME),
     admin.from("sessions").select("id,title,status,is_final,sequence_number").eq("title", "testing"),
@@ -165,8 +168,8 @@ async function preflight(admin: Client, config: ReturnType<typeof configuration>
 
 async function createPartners(admin: Client, config: ReturnType<typeof configuration>, adminId: string) {
   const definitions = {
-    partnerA: { email: PARTNER_A_EMAIL, password: config.partnerAPassword, firstName: "Final Realtime", lastName: "Partner A", passwordEnv: "PHASE3D_C2_PROGRESSION_PARTNER_A_PASSWORD" },
-    partnerB: { email: PARTNER_B_EMAIL, password: config.partnerBPassword, firstName: "Final Realtime", lastName: "Partner B", passwordEnv: "PHASE3D_C2_PROGRESSION_PARTNER_B_PASSWORD" },
+    partnerA: { email: config.partnerAEmail, password: config.partnerAPassword, firstName: "Final Realtime", lastName: "Partner A", passwordEnv: "REALTIME_FINAL_PARTNER_A_PASSWORD" },
+    partnerB: { email: config.partnerBEmail, password: config.partnerBPassword, firstName: "Final Realtime", lastName: "Partner B", passwordEnv: "REALTIME_FINAL_PARTNER_B_PASSWORD" },
   } as const;
   const partners = {} as Record<PartnerKey, Partner>;
   for (const [key, definition] of Object.entries(definitions) as Array<[PartnerKey, typeof definitions[PartnerKey]]>) {
@@ -194,8 +197,8 @@ async function createPartners(admin: Client, config: ReturnType<typeof configura
 
 async function existingPartners(admin: Client, config: ReturnType<typeof configuration>, authUsers: Awaited<ReturnType<typeof listAuthUsers>>) {
   const definitions = {
-    partnerA: { email: PARTNER_A_EMAIL, password: config.partnerAPassword, firstName: "Final Realtime", lastName: "Partner A", passwordEnv: "PHASE3D_C2_PROGRESSION_PARTNER_A_PASSWORD" },
-    partnerB: { email: PARTNER_B_EMAIL, password: config.partnerBPassword, firstName: "Final Realtime", lastName: "Partner B", passwordEnv: "PHASE3D_C2_PROGRESSION_PARTNER_B_PASSWORD" },
+    partnerA: { email: config.partnerAEmail, password: config.partnerAPassword, firstName: "Final Realtime", lastName: "Partner A", passwordEnv: "REALTIME_FINAL_PARTNER_A_PASSWORD" },
+    partnerB: { email: config.partnerBEmail, password: config.partnerBPassword, firstName: "Final Realtime", lastName: "Partner B", passwordEnv: "REALTIME_FINAL_PARTNER_B_PASSWORD" },
   } as const;
   const partners = {} as Record<PartnerKey, Partner>;
   for (const [key, definition] of Object.entries(definitions) as Array<[PartnerKey, typeof definitions[PartnerKey]]>) {
@@ -239,7 +242,7 @@ async function createFixtureRecords(
       throw new Error("Resumable final-verification Couple roles are incomplete or changed");
     }
   } else {
-    const group = await admin.from("groups").insert({ campus_id: campusId, group_type: "couple", name: FIXTURE_NAME }).select("id").single();
+    const group = await admin.from("groups").insert({ campus_id: campusId, group_type: "couple", name: fixtureName() }).select("id").single();
     fail(group.error, "Unable to create final-verification Couple group");
     if (!group.data) throw new Error("Created final-verification Couple group is missing");
     groupId = group.data.id;
@@ -421,7 +424,7 @@ async function run() {
     projectRef: DEV_PROJECT_REF,
     mode: state.mode,
     realtimeDisabledByDevSwitch: process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_DEV_DISABLE_REALTIME_SUBSCRIPTIONS === "true",
-    fixture: { name: FIXTURE_NAME, ...fixture },
+    fixture: { name: fixtureName(), ...fixture },
     counselor: { teamId: state.counselorGroupId, profileId: state.counselorOneId, email: config.counselorOneEmail, emailEnv: "PHASE3D_C2_COUNSELOR_1_EMAIL", passwordEnv: "PHASE3D_C2_COUNSELOR_1_PASSWORD" },
     partners: Object.fromEntries(Object.entries(partners).map(([key, partner]) => [key, { id: partner.id, email: partner.email, passwordEnv: partner.passwordEnv }])),
     firstPublishedSession: { id: state.testing.id, title: state.testing.title, sequenceNumber: state.testing.sequence_number },

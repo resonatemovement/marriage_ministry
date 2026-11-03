@@ -1,15 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "../types/database.generated.ts";
+import { realtimeFixtureGroupName, requiredRealtimeFixtureRunId } from "./realtime-fixture-names.ts";
 
 const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 const CAMPUS_CODE = "DEV_TEST";
 const COUNSELOR_TEAM_NAME = "DEV — Realtime Session & Case Counselor Team";
 const PROGRESSION_COUPLE_NAME = "DEV — Realtime Session Progression Test";
-const CLOSURE_COUPLE_NAME = "DEV — Realtime Case Closure Test";
 const PRESERVED_CASE_IDS = [
   "9e789f4d-8536-4883-97e8-23cadb9f8508",
-  "95eac800-d449-4d06-9555-cf13c7a178c7",
   "3ffef734-b8a6-4417-aca9-bd43041a9d17",
   "754e4d58-a378-4477-ac06-f93e6b878bc0",
 ] as const;
@@ -53,15 +52,15 @@ const fixtureUsers = {
     role: "couple",
   },
   closurePartnerA: {
-    emailEnv: "PHASE3D_C2_CLOSURE_PARTNER_A_EMAIL",
-    passwordEnv: "PHASE3D_C2_CLOSURE_PARTNER_A_PASSWORD",
+    emailEnv: "REALTIME_CLOSURE_PARTNER_A_EMAIL",
+    passwordEnv: "REALTIME_CLOSURE_PARTNER_A_PASSWORD",
     firstName: "Closure",
     lastName: "Partner A",
     role: "couple",
   },
   closurePartnerB: {
-    emailEnv: "PHASE3D_C2_CLOSURE_PARTNER_B_EMAIL",
-    passwordEnv: "PHASE3D_C2_CLOSURE_PARTNER_B_PASSWORD",
+    emailEnv: "REALTIME_CLOSURE_PARTNER_B_EMAIL",
+    passwordEnv: "REALTIME_CLOSURE_PARTNER_B_PASSWORD",
     firstName: "Closure",
     lastName: "Partner B",
     role: "couple",
@@ -91,9 +90,13 @@ function configuration() {
     adminPassword: required("TEST_ADMIN_PASSWORD"),
     unrelatedCounselorEmail: required("TEST_COUNSELOR_EMAIL").toLowerCase(),
     unrelatedCounselorPassword: required("TEST_COUNSELOR_PASSWORD"),
-    unrelatedCoupleEmail: required("PHASE3D_MEETINGS_PARTNER_A_EMAIL").toLowerCase(),
-    unrelatedCouplePassword: required("PHASE3D_REALTIME_PARTNER_A_PASSWORD"),
+    unrelatedCoupleEmail: required("REALTIME_UNRELATED_COUPLE_EMAIL").toLowerCase(),
+    unrelatedCouplePassword: required("REALTIME_UNRELATED_COUPLE_PASSWORD"),
   };
+}
+
+function closureCoupleName() {
+  return realtimeFixtureGroupName("DEV — Realtime Case Closure Run", requiredRealtimeFixtureRunId());
 }
 
 function fail(error: { message: string } | null, action: string) {
@@ -122,11 +125,11 @@ async function resolveMode(admin: Client) {
   if (existingCount !== 0 && existingCount !== matches.length) {
     throw new Error("Incomplete Phase 3D-C2 Auth fixture detected; refusing to repair or overwrite it.");
   }
-  if (existingCount === 0) return { mode: "create" as FixtureMode, authUsers, matches };
+  if (existingCount === 0) return { mode: "create" as FixtureMode, authUsers, matches, closureGroupExists: false };
 
   const ids = matches.map((user) => user!.id);
   const [namedGroups, profiles, roles] = await Promise.all([
-    admin.from("groups").select("id,name").in("name", [COUNSELOR_TEAM_NAME, PROGRESSION_COUPLE_NAME, CLOSURE_COUPLE_NAME]),
+    admin.from("groups").select("id,name").in("name", [COUNSELOR_TEAM_NAME, PROGRESSION_COUPLE_NAME, closureCoupleName()]),
     admin.from("profiles").select("id,email").in("id", ids),
     admin.from("profile_roles").select("profile_id").in("profile_id", ids),
   ]);
@@ -139,11 +142,18 @@ async function resolveMode(admin: Client) {
     roles.data?.length === 0 &&
     profiles.data?.length === ids.length &&
     profiles.data.every((profile) => typeof profile.email === "string" && expectedEmails.has(profile.email.toLowerCase()));
-  if (triggerOnlyState) return { mode: "resume-auth-trigger" as FixtureMode, authUsers, matches };
-  if (namedGroups.data?.length !== 3) {
+  if (triggerOnlyState) return { mode: "resume-auth-trigger" as FixtureMode, authUsers, matches, closureGroupExists: false };
+  const requiredGroups = [COUNSELOR_TEAM_NAME, PROGRESSION_COUPLE_NAME];
+  const hasRequiredGroups = requiredGroups.every((name) => namedGroups.data?.some((group) => group.name === name));
+  if (!hasRequiredGroups || (namedGroups.data?.length ?? 0) < 2 || (namedGroups.data?.length ?? 0) > 3) {
     throw new Error("Incomplete Phase 3D-C2 fixture detected after Auth provisioning; refusing to repair or overwrite it.");
   }
-  return { mode: "verify" as FixtureMode, authUsers, matches };
+  return {
+    mode: "verify" as FixtureMode,
+    authUsers,
+    matches,
+    closureGroupExists: namedGroups.data?.some((group) => group.name === closureCoupleName()) ?? false,
+  };
 }
 
 async function ensureUsers(admin: Client, mode: FixtureMode, existingMatches: Awaited<ReturnType<typeof listAuthUsers>>) {
@@ -513,6 +523,7 @@ async function verifyAccess(
 
 async function run() {
   const config = configuration();
+  const runClosureName = closureCoupleName();
   const admin = createClient<Database>(config.url, config.secretKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const before = await caseSnapshot(admin, PRESERVED_CASE_IDS);
   const resolved = await resolveMode(admin);
@@ -525,18 +536,19 @@ async function run() {
   const campus = campuses.data[0];
   const users = await ensureUsers(admin, resolved.mode, resolved.matches.filter(Boolean) as Awaited<ReturnType<typeof listAuthUsers>>);
   await ensureProfilesAndRoles(admin, users, campus.id, adminIdentity.id, resolved.mode);
+  const closureMode: FixtureMode = resolved.mode === "verify" && !resolved.closureGroupExists ? "create" : resolved.mode;
 
   const counselorGroupId = await ensureGroup(admin, campus.id, "counselor_team", COUNSELOR_TEAM_NAME, resolved.mode);
   const progressionGroupId = await ensureGroup(admin, campus.id, "couple", PROGRESSION_COUPLE_NAME, resolved.mode);
-  const closureGroupId = await ensureGroup(admin, campus.id, "couple", CLOSURE_COUPLE_NAME, resolved.mode);
+  const closureGroupId = await ensureGroup(admin, campus.id, "couple", runClosureName, closureMode);
   await ensureMemberships(admin, counselorGroupId, "counselor_team", [users.counselorOne.id, users.counselorTwo.id], resolved.mode);
   await ensureMemberships(admin, progressionGroupId, "couple", [users.progressionPartnerA.id, users.progressionPartnerB.id], resolved.mode);
-  await ensureMemberships(admin, closureGroupId, "couple", [users.closurePartnerA.id, users.closurePartnerB.id], resolved.mode);
+  await ensureMemberships(admin, closureGroupId, "couple", [users.closurePartnerA.id, users.closurePartnerB.id], closureMode);
 
   const progressionCaseId = await ensureCase(admin, campus.id, progressionGroupId, adminIdentity.id, resolved.mode);
-  const closureCaseId = await ensureCase(admin, campus.id, closureGroupId, adminIdentity.id, resolved.mode);
+  const closureCaseId = await ensureCase(admin, campus.id, closureGroupId, adminIdentity.id, closureMode);
   const progressionAssignmentId = await ensureCounselorAssignment(admin, config, progressionCaseId, counselorGroupId, resolved.mode);
-  const closureAssignmentId = await ensureCounselorAssignment(admin, config, closureCaseId, counselorGroupId, resolved.mode);
+  const closureAssignmentId = await ensureCounselorAssignment(admin, config, closureCaseId, counselorGroupId, closureMode);
 
   await verifyCleanCase(admin, progressionCaseId, progressionGroupId, counselorGroupId, [users.progressionPartnerA.id, users.progressionPartnerB.id]);
   await verifyCleanCase(admin, closureCaseId, closureGroupId, counselorGroupId, [users.closurePartnerA.id, users.closurePartnerB.id]);
@@ -554,7 +566,7 @@ async function run() {
     counselorTeam: { id: counselorGroupId, name: COUNSELOR_TEAM_NAME },
     fixtures: {
       progression: { name: PROGRESSION_COUPLE_NAME, groupId: progressionGroupId, caseId: progressionCaseId, assignmentId: progressionAssignmentId, status: "active", meetings: 0, caseSessions: 0, homeworkAssignments: 0, deliveries: 0 },
-      closure: { name: CLOSURE_COUPLE_NAME, groupId: closureGroupId, caseId: closureCaseId, assignmentId: closureAssignmentId, status: "active", meetings: 0, caseSessions: 0, homeworkAssignments: 0, deliveries: 0 },
+      closure: { name: runClosureName, groupId: closureGroupId, caseId: closureCaseId, assignmentId: closureAssignmentId, status: "active", meetings: 0, caseSessions: 0, homeworkAssignments: 0, deliveries: 0 },
     },
     accounts: Object.fromEntries(Object.entries(users).map(([key, user]) => [key, { id: user.id, email: user.email, emailEnv: user.emailEnv, passwordEnv: user.passwordEnv }])),
     sessionReadiness,
