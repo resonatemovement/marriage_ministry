@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: main
+Current working branch: feature/assessment-answer-tile-ux
 Repository: resonatemovement/marriage_ministry
+
+## Love Languages answer selection UX (November 3, 2026)
+
+- On `feature/assessment-answer-tile-ux`, made each paired-answer tile the full-width Radix radio button itself. The whole tile—including whitespace, the answer text, and option marker—activates the radio without a second click handler or nested label semantics; autosave remains driven by the existing `RadioGroup.Root.onValueChange` path.
+- Added subtle hover background/border feedback, a selected border/background, pointer cursor across the tile, and visible focus treatment when the radio receives keyboard focus. Disabled choices retain not-allowed cursor/opacity styling. No answer content, autosave logic, navigation, scoring, persistence, permissions, or database behavior changed.
+- Validation: focused Couple Assessment presentation tests passed (10); all Assessment tests passed (58 across 12 files); `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Static markup tests verify the full tile is the accessible radio control and contains the choice content, including unselected radio semantics. No database-writing tests or authenticated browser/touch-device interaction were run; those remain manual checks.
+- Release status at implementation: changes not yet committed, merged, pushed, or deployed. Current branch is `feature/assessment-answer-tile-ux`, based on `origin/main` at `96e9b791`; all seven existing stashes are preserved. Next: inspect and commit only the focused component/test changes, merge into `main`, verify the dedicated `marriage-ministry-dev` Vercel project before pushing, confirm its deployment is READY at the pushed SHA, then remove the merged local feature branch and verify clean synchronized `main`.
 
 ## Love Languages Assessment content width (November 3, 2026)
 

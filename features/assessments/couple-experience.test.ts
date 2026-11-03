@@ -67,6 +67,22 @@ describe("Couple Assessment presentation", () => {
     expect(html).not.toContain("Back to Review");
   });
 
+  it("makes each accessible radio itself the full answer tile and highlights the selected tile", () => {
+    const html = renderToStaticMarkup(createElement(CoupleAssessmentExperience, { assessment: {
+      ...assessment, questions: [question, secondQuestion], attemptId: "attempt", status: "in_progress", answers: { q1: "a" },
+    } }));
+
+    expect(html).toContain("Another synthetic question?");
+    expect(html).toMatch(/<button type="button" role="radio"[^>]*aria-checked="false"[^>]*aria-label="Third option"[^>]*class="[^"]*cursor-pointer[^"]*border-border[^"]*"[^>]*><span aria-hidden="true"[^>]*>[\s\S]*?<\/span><span[^>]*>Third option<\/span><span[^>]*>A<\/span><\/button>/);
+    expect(html).toContain("hover:border-brand-primary/50");
+    expect(html).toContain("focus-visible:ring-2");
+    expect(html).toContain("disabled:cursor-not-allowed");
+    const source = readFileSync("features/assessments/couple-experience.tsx", "utf8");
+    expect(source).toContain('selected ? "border-brand-primary bg-brand-primary/5" : "border-border"');
+    expect(source).toContain('onValueChange={(value) => choose(question.id, value)}');
+    expect(source).not.toContain('onClick={() => choose(question.id');
+  });
+
   it("renders all 30 numbered review tiles with accessible answer status and completion checks", () => {
     const questions = Array.from({ length: 30 }, (_, index) => ({
       id: `q${index + 1}`,
