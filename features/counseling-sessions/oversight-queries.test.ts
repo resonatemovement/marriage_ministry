@@ -37,16 +37,44 @@ describe("counseling oversight read contracts", () => {
       { counseling_case_id: "case", couple_group_id: "couple", group_name: "Stale Label", profile_id: "annie", first_name: "Annie", last_name: "Chung", photo_path: "profiles/annie/avatar.avif", gender: "female" },
       { counseling_case_id: "case", couple_group_id: "couple", group_name: "Stale Label", profile_id: "john", first_name: "John", last_name: "Lyra", photo_path: "profiles/john/avatar.avif", gender: "male" },
     ], error: null });
-    await expect(getCounselingOversightIdentity("case")).resolves.toEqual({ coupleName: "John Lyra & Annie Chung", partners: [
+    await expect(getCounselingOversightIdentity("team", "case")).resolves.toEqual({ coupleName: "John Lyra & Annie Chung", partners: [
       { id: "john", name: "John Lyra", gender: "male", photoUrl: "signed:profiles/john/avatar.avif" },
       { id: "annie", name: "Annie Chung", gender: "female", photoUrl: "signed:profiles/annie/avatar.avif" },
     ] });
     expect(state.rpc).toHaveBeenCalledWith("get_counseling_workspace_couple_identity", { target_case_id: "case" });
   });
 
-  it("returns no profile details for supervisory-only cases when the existing Case contract denies access", async () => {
-    state.rpc.mockResolvedValue({ data: [], error: null });
-    await expect(getCounselingOversightIdentity("supervised-case")).resolves.toBeNull();
+  it("uses scoped oversight identity after direct Case identity is denied", async () => {
+    state.rpc
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({ data: [
+        { counseling_case_id: "case", couple_group_id: "couple", group_name: "Couple", profile_id: "partner-a", first_name: "Alex", last_name: "One", photo_path: "profiles/a/avatar.avif", gender: null },
+        { counseling_case_id: "case", couple_group_id: "couple", group_name: "Couple", profile_id: "partner-b", first_name: "Blair", last_name: "Two", photo_path: null, gender: null },
+      ], error: null });
+
+    await expect(getCounselingOversightIdentity("supervised-team", "case")).resolves.toEqual({
+      coupleName: "Alex One & Blair Two",
+      partners: [
+        { id: "partner-a", name: "Alex One", gender: null, photoUrl: "signed:profiles/a/avatar.avif" },
+        { id: "partner-b", name: "Blair Two", gender: null, photoUrl: null },
+      ],
+    });
+    expect(state.rpc).toHaveBeenNthCalledWith(2, "get_counseling_oversight_couple_identity", {
+      target_team_id: "supervised-team",
+      target_case_id: "case",
+    });
+    expect(state.photo).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not sign photos when both direct and oversight identity contracts deny access", async () => {
+    state.rpc
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({ data: [], error: null });
+    await expect(getCounselingOversightIdentity("unrelated-team", "case")).resolves.toBeNull();
+    expect(state.rpc).toHaveBeenNthCalledWith(2, "get_counseling_oversight_couple_identity", {
+      target_team_id: "unrelated-team",
+      target_case_id: "case",
+    });
     expect(state.photo).not.toHaveBeenCalled();
   });
 });

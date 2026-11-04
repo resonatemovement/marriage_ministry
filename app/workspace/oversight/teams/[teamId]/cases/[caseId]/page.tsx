@@ -13,6 +13,6 @@ export default async function CounselingOversightCaseRoute({ params }: { params:
   const cases = await getCounselingOversightProgress(teamId);
   const item = cases.find((progress) => progress.caseId === caseId) ?? null;
   if (!item) notFound();
-  const coupleIdentity = await getCounselingOversightIdentity(caseId);
+  const coupleIdentity = await getCounselingOversightIdentity(teamId, caseId);
   return <WorkspaceShell workspace={workspace} activeHref="/workspace" identity={identity}><OversightCaseDetail item={item} identity={coupleIdentity} /></WorkspaceShell>;
 }

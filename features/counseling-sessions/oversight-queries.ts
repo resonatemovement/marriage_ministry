@@ -35,6 +35,10 @@ type IdentityRpcClient = {
   rpc(name: "get_counseling_workspace_couple_identity", args: { target_case_id: string }): Promise<{ data: CounselingWorkspaceCoupleIdentityRow[] | null; error: { message: string; code?: string } | null }>;
 };
 
+type OversightIdentityRpcClient = {
+  rpc(name: "get_counseling_oversight_couple_identity", args: { target_team_id: string; target_case_id: string }): Promise<{ data: CounselingWorkspaceCoupleIdentityRow[] | null; error: { message: string; code?: string } | null }>;
+};
+
 type CounselorTeamRow = { id: string; name: string; campus_name: string | null };
 
 type OversightRpcClient = {
@@ -69,14 +73,23 @@ export async function getCounselingOversightProgress(teamId: string): Promise<Co
   return (data ?? []).map(present);
 }
 
-/** Uses the existing Case-authorized identity contract; supervisory-only views receive no profile data. */
-export async function getCounselingOversightIdentity(caseId: string): Promise<CounselingOversightIdentity | null> {
+/** Prefers direct Case identity access, then uses the narrowly Case/team-scoped oversight identity contract. */
+export async function getCounselingOversightIdentity(teamId: string, caseId: string): Promise<CounselingOversightIdentity | null> {
   const supabase = await client();
   const identityClient = supabase as unknown as IdentityRpcClient;
-  const { data, error } = await identityClient.rpc("get_counseling_workspace_couple_identity", { target_case_id: caseId });
-  if (error) {
-    console.error("Oversight Couple identity query failed.", { code: error.code });
-    return null;
+  const direct = await identityClient.rpc("get_counseling_workspace_couple_identity", { target_case_id: caseId });
+  let data = direct.data;
+  if (direct.error || !data?.length) {
+    const oversightClient = supabase as unknown as OversightIdentityRpcClient;
+    const oversight = await oversightClient.rpc("get_counseling_oversight_couple_identity", {
+      target_team_id: teamId,
+      target_case_id: caseId,
+    });
+    if (oversight.error) {
+      console.error("Oversight Couple identity query failed.", { code: oversight.error.code });
+      return null;
+    }
+    data = oversight.data;
   }
   if (!data?.length) return null;
   try {
