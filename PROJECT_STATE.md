@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: feature/compact-staff-assessments
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Compact staff Assessments UI (November 3, 2026)
@@ -9,7 +9,8 @@ Repository: resonatemovement/marriage_ministry
 - `View Results` opens a responsive shared Radix dialog with both partners' names/statuses and available numeric score rows, including Primary indicators; incomplete partners show no score yet. The dialog does not expose answer content or history. Existing result-read authorization remains the gate for summary and dialog data.
 - Existing Case Session/default scheduling controls and permissions remain unchanged inside a `Scheduling Settings` disclosure on each card. No database, RLS, scoring, or submission behavior changed.
 - Validation passed: focused Counseling Case/Assessment tests (28 tests across 2 files), full Assessment suite (64 tests across 13 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. No database-writing tests or authenticated browser/device interaction were run; actual dialog interaction and responsive appearance still need browser verification.
-- Release status: implementation is not yet committed; merge/push/deployment have not occurred. Next: finish validation and commit on the feature branch, fast-forward merge to main, push only after target confirmation, verify the resulting deployment reaches READY at the pushed SHA, then delete the merged feature branch and confirm clean synchronized main with all seven stashes preserved. Actual Resonate PROD must remain untouched.
+- Release: feature commit `2e7c568` (`feat: compact staff assessment management`) was fast-forwarded into `main` and pushed to `origin/main`. The Vercel project was independently confirmed as `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry` with deployment branch `main`. Deployment `dpl_C5KcNjbjRHPZJFFjV19LBEaSJGSJ` reached `READY` at SHA `2e7c56813ce645d94a4b18ce0f5ffa1b7c7b67b2`. Its target label is `production` inside this dedicated DEV project; actual Resonate PROD was not accessed. No database changes were made. The feature branch is retained temporarily until documentation closeout; after that push/deployment verification, delete it normally and confirm clean synchronized `main` with all seven stashes preserved.
+- Authenticated browser verification of modal open/close, visual breakpoints, and staff case data remains outstanding; the rendering and data-visibility gates were validated through source tests only. Do not claim browser verification complete. Actual Resonate PROD remains untouched.
 
 ## Staff Love Languages assessment results (November 3, 2026)
 
