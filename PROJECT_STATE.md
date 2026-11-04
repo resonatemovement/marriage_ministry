@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: main
+Current working branch: feature/counseling-progress-ui
 Repository: resonatemovement/marriage_ministry
+
+## Counseling Progress page layout (November 4, 2026)
+
+- Work is in progress on `feature/counseling-progress-ui`, based on current `main` (`61c081e`). The read-only oversight Case page now follows the standard Case content width (`max-w-[1100px]`) and responsive horizontal padding, uses Resonate breadcrumbs, and presents Session progress with the shared progress-percent helper plus separate summary cards for next meeting, Homework completion, and Counselor-of-record. No Case data, permissions, RLS, or migrations were changed.
+- Profile names/photos are requested only through the existing `get_counseling_workspace_couple_identity` RPC, which checks existing full Case authorization; authoritative gender ordering and display-name resolution reuse `counselingWorkspaceCoupleIdentity` / `orderCouplePartners`, and photo URLs reuse `getProfilePhotoUrl`. The existing grouped-avatar component is used only with actual photo URLs, so no placeholder photo is shown. The limited oversight RPC continues to provide only its approved summary for supervisory-only Cases.
+- **Release blocker:** the existing identity RPC intentionally returns no partner profile/photo data to supervisory-only Coach/Campus Lead access when the Case is not directly authorized by the current full-Case policy. Consequently the updated page can show profile photos and individual partner names only when that existing RPC authorizes them; otherwise it safely shows the authorized Couple label from the oversight summary and omits photos. No permission expansion was attempted. Product/security approval for a narrowly scoped photo-identity contract is required to satisfy profile photo display for supervisory-only Cases.
+- Validation: 12 focused oversight route/query/migration tests passed; `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Browser/responsive manual verification has not been run. Actual authenticated DEV photo visibility was not tested. No database operations, migrations, merge, push, or deployment occurred. Seven existing stashes remain preserved.
+- Next step: obtain a decision on whether supervisory-only staff may receive the minimum Couple identity/photo fields through an appropriately scoped authorized contract. Until then, keep this branch unmerged and do not release as fully meeting the photo requirement; if no permission change is approved, explicitly accept that photos remain absent in supervisory-only progress views.
 
 ## Hierarchical Team Oversight (November 4, 2026)
 

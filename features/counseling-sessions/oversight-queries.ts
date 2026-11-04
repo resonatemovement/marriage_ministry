@@ -1,6 +1,8 @@
 import "server-only";
 
+import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { counselingWorkspaceCoupleIdentity, type CounselingWorkspaceCoupleIdentityRow } from "./workspace-identity";
 
 export type CounselingOversightProgress = {
   teamId: string;
@@ -14,6 +16,9 @@ export type CounselingOversightProgress = {
   homeworkStatus: string;
 };
 
+export type CounselingOversightPartner = { id: string; name: string; photoUrl: string | null; gender: "male" | "female" | null };
+export type CounselingOversightIdentity = { coupleName: string; partners: CounselingOversightPartner[] };
+
 type OversightRow = {
   team_id: string;
   team_name: string;
@@ -24,6 +29,10 @@ type OversightRow = {
   session_progress: string;
   next_meeting_at: string | null;
   homework_status: string;
+};
+
+type IdentityRpcClient = {
+  rpc(name: "get_counseling_workspace_couple_identity", args: { target_case_id: string }): Promise<{ data: CounselingWorkspaceCoupleIdentityRow[] | null; error: { message: string; code?: string } | null }>;
 };
 
 type CounselorTeamRow = { id: string; name: string; campus_name: string | null };
@@ -58,6 +67,31 @@ export async function getCounselingOversightProgress(teamId: string): Promise<Co
   const { data, error } = await supabase.rpc("get_counseling_oversight_progress", { target_team_id: teamId });
   if (error) throw new Error("Counseling progress is unavailable");
   return (data ?? []).map(present);
+}
+
+/** Uses the existing Case-authorized identity contract; supervisory-only views receive no profile data. */
+export async function getCounselingOversightIdentity(caseId: string): Promise<CounselingOversightIdentity | null> {
+  const supabase = await client();
+  const identityClient = supabase as unknown as IdentityRpcClient;
+  const { data, error } = await identityClient.rpc("get_counseling_workspace_couple_identity", { target_case_id: caseId });
+  if (error) {
+    console.error("Oversight Couple identity query failed.", { code: error.code });
+    return null;
+  }
+  if (!data?.length) return null;
+  try {
+    const identity = counselingWorkspaceCoupleIdentity(data);
+    const partners = await Promise.all(identity.partners.map(async (partner) => ({
+      id: partner.id,
+      name: partner.name,
+      gender: partner.gender ?? null,
+      photoUrl: await getProfilePhotoUrl(partner.photoPath),
+    })));
+    return { coupleName: identity.coupleName, partners };
+  } catch {
+    console.error("Oversight Couple identity projection is incomplete.", { caseId });
+    return null;
+  }
 }
 
 /** Returns subordinate team identities only when the caller may oversee the Coach team. */
