@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: feature/separate-assessment-scheduling
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Separate staff Assessment scheduling settings (November 4, 2026)
@@ -9,7 +9,7 @@ Repository: resonatemovement/marriage_ministry
 - Assessment cards retain title, scheduled Session, Required/Optional/Available state, completion count and progression warning when authorized, primary categories, and `View Results`. The responsive results dialog is unchanged. Assessment cards contain no scheduling form or disclosure, and multiple assessments keep their own control IDs and save targets.
 - No scheduling logic, permissions, assessment/result behavior, database schema, RLS, or Couple-facing UI changed.
 - Validation passed: focused Case/Assessment presentation tests (29 across 2 files), Assessment suite (65 across 13 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. Browser interaction was not run.
-- Release: feature commit and DEV deployment verification are pending. Next: commit focused implementation and documentation, verify the dedicated DEV Vercel project/repository/`main` mapping, fast-forward merge to `main`, push only after target confirmation, verify READY at the pushed SHA, delete the merged feature branch, and confirm clean `main` plus all seven stashes preserved. Actual Resonate PROD must remain untouched.
+- Release: feature commit `2af1110` (`fix: separate assessment scheduling settings`) was fast-forwarded into `main` and pushed to `origin/main`. Vercel project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) was confirmed connected to `resonatemovement/marriage_ministry` with deployment branch `main`. Deployment `dpl_9fKD8pMXQqPTvWFTT4vijGJiheXh` reached `READY` at SHA `2af11100aa91393befc134d3abeb46212de8b18e`. Its target label is `production` within this dedicated DEV project; actual Resonate PROD was not accessed. The merged local feature branch was deleted normally; after feature release verification, `main` matched `origin/main`, with all seven stashes preserved. No database changes were made.
 
 ## Compact staff Assessments UI (November 3, 2026)
 
