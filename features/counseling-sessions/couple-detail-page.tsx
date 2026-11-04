@@ -112,8 +112,6 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
             <ol className="mt-2 space-y-2">{card.state.pastMeetings.map((meeting, index) => <li key={meeting.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm"><span className="font-medium text-text-primary">Meeting {index + 1} · {meeting.completedAt ? "Completed" : "Scheduled"}</span><span className="text-text-muted">{formatCounselingMeetingDateTime(meeting.startsAt)}</span></li>)}</ol>
           </div> : null}
 
-          {assessmentManagement ? <CounselorAssessmentManagement caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManageSchedule={canManageAssessmentSchedule} canManagePreference={canManageAssessmentPreference} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} /> : null}
-
           <section aria-label="Homework" className="mt-4 border-t border-border pt-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Homework</p>
             {card.homework ? <>
@@ -136,6 +134,8 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
             <MeetingNotificationRealtime meetingId={card.state.meeting.id} />
             <MeetingNotificationStatus partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
           </> : null}
+
+          {assessmentManagement ? <CounselorAssessmentManagement caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManageSchedule={canManageAssessmentSchedule} canManagePreference={canManageAssessmentPreference} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} /> : null}
         </Card>
       </div>
 

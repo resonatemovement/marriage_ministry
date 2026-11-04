@@ -12,9 +12,16 @@ vi.mock("@/components/ui/select", () => ({
   SelectContent: ({ children }: { children: ReactNode }) => createElement("div", null, children),
   SelectItem: ({ children }: { children: ReactNode }) => createElement("div", null, children),
 }));
+vi.mock("radix-ui", () => {
+  const Wrapper = ({ children }: { children: ReactNode }) => createElement("div", null, children);
+  const Trigger = ({ children }: { children: ReactNode }) => createElement("div", null, children);
+  const Content = ({ children }: { children: ReactNode }) => createElement("div", { role: "dialog" }, children);
+  const Close = ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => createElement("button", props, children);
+  return { Dialog: { Root: Wrapper, Trigger, Portal: Wrapper, Overlay: () => null, Content, Title: Wrapper, Description: Wrapper, Close } };
+});
 vi.mock("./counselor-management-actions", () => ({ saveCaseAssessmentSchedule: vi.fn(), saveCounselorAssessmentPreference: vi.fn() }));
 
-import { CounselorAssessmentManagement } from "./counselor-assessment-management";
+import { AssessmentResultsContent, CounselorAssessmentManagement } from "./counselor-assessment-management";
 import type { CounselorAssessment } from "./counselor-management-model";
 
 const assessment: CounselorAssessment = {
@@ -28,25 +35,37 @@ const assessment: CounselorAssessment = {
 };
 
 describe("Counselor Assessment management presentation", () => {
-  it("shows independent partner status, latest tied-primary scores, and the progression gate without answer content", () => {
+  it("shows a compact summary and keeps scheduling in its expandable settings", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [assessment], sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }],
       preferences: {}, canReadResults: true, canManageSchedule: true, canManagePreference: true, activeCaseSessionId: "case-session-1",
     }));
     expect(markup).toContain("Assessments");
+    expect(markup).toContain("Session 1: Foundations");
+    expect(markup).toContain("1 of 2 submitted");
+    expect(markup).toContain("Blocking Session advancement");
+    expect(markup).toContain("Alex A:");
+    expect(markup).toContain("> Words, Time</li>");
+    expect(markup).toContain("View Results");
+    expect(markup).toContain("Scheduling Settings");
+    expect(markup).not.toContain("View score history");
+    expect(markup).toContain("My default for future Cases");
+    expect(markup).toContain("Existing Case schedules stay unchanged.");
+    expect(markup).not.toMatch(/response|answer|scoring key/i);
+  });
+
+  it("renders partner status and full-width numeric score rows in responsive results content", () => {
+    const markup = renderToStaticMarkup(createElement(AssessmentResultsContent, { assessment }));
     expect(markup).toContain("Alex A");
     expect(markup).toContain("Blake B");
     expect(markup).toContain("Submitted");
     expect(markup).toContain("In Progress");
-    expect(markup.match(/Primary/g)).toHaveLength(2);
-    expect(markup).toContain("This Assessment is blocking Session advancement");
-    expect(markup).not.toContain("View score history");
+    expect(markup).toContain("md:grid-cols-2");
     expect(markup).toContain('class="mt-2 space-y-2"');
     expect(markup).toContain("12</span>");
-    expect(markup).not.toContain("/ 12");
-    expect(markup).toContain('class="mt-2 grid gap-3"');
-    expect(markup).toContain("My default for future Cases");
-    expect(markup).toContain("Existing Case schedules stay unchanged.");
+    expect(markup).not.toContain("/12");
+    expect(markup).toContain("No completed results yet.");
+    expect(markup).not.toContain("View score history");
     expect(markup).not.toMatch(/response|answer|scoring key/i);
   });
 
@@ -59,17 +78,37 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).not.toContain("Assign Assessment");
   });
 
+  it("supports multiple assessments and optional scheduling without Love Languages-specific UI assumptions", () => {
+    const second: CounselorAssessment = {
+      ...assessment,
+      id: "assessment-2",
+      title: "Communication Styles",
+      schedule: { ...assessment.schedule!, id: "schedule-2", requiredForProgression: false, source: "case_override" },
+    };
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
+      caseId: "case-1", assessments: [assessment, second], sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }],
+      preferences: {}, canReadResults: true, canManageSchedule: false, canManagePreference: false, activeCaseSessionId: null,
+    }));
+    expect(markup).toContain("Love Languages");
+    expect(markup).toContain("Communication Styles");
+    expect(markup).toContain("Required");
+    expect(markup).toContain("Optional");
+    expect(markup.match(/View Results/g)).toHaveLength(2);
+  });
+
   it("does not expose participant results to Admin-only viewers", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [assessment], sessions: [], preferences: {},
       canReadResults: false, canManageSchedule: false, canManagePreference: false, activeCaseSessionId: "case-session-1",
     }));
     expect(markup).toContain("Partner completion status and results are unavailable in this view.");
+    expect(markup).not.toContain("submitted</span>");
+    expect(markup).not.toContain("View Results");
     expect(markup).not.toContain("Alex A");
     expect(markup).not.toContain("Words");
   });
 
-  it("shows authorized staff results without exposing scheduling controls or score history", () => {
+  it("shows authorized staff a results dialog without exposing scheduling controls or score history", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [assessment], sessions: [], preferences: {},
       canReadResults: true, canManageSchedule: false, canManagePreference: false, activeCaseSessionId: null,
@@ -79,6 +118,8 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).toContain("Submitted");
     expect(markup).toContain("Words");
     expect(markup).toContain("12</span>");
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain("Partner submission status and available scores.");
     expect(markup).not.toContain("View score history");
     expect(markup).not.toContain("Assign Assessment");
     expect(markup).not.toContain("My default for future Cases");

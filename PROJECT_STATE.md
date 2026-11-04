@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 3, 2026
-Current working branch: main
+Current working branch: feature/compact-staff-assessments
 Repository: resonatemovement/marriage_ministry
+
+## Compact staff Assessments UI (November 3, 2026)
+
+- On `feature/compact-staff-assessments`, moved the Case Assessments section below Meeting Invites and replaced expanded inline results with compact per-assessment summary cards. Cards show title, availability/required status, scheduled Session, authorized completion count and blocking status, primary categories when available, and a `View Results` action.
+- `View Results` opens a responsive shared Radix dialog with both partners' names/statuses and available numeric score rows, including Primary indicators; incomplete partners show no score yet. The dialog does not expose answer content or history. Existing result-read authorization remains the gate for summary and dialog data.
+- Existing Case Session/default scheduling controls and permissions remain unchanged inside a `Scheduling Settings` disclosure on each card. No database, RLS, scoring, or submission behavior changed.
+- Validation passed: focused Counseling Case/Assessment tests (28 tests across 2 files), full Assessment suite (64 tests across 13 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. No database-writing tests or authenticated browser/device interaction were run; actual dialog interaction and responsive appearance still need browser verification.
+- Release status: implementation is not yet committed; merge/push/deployment have not occurred. Next: finish validation and commit on the feature branch, fast-forward merge to main, push only after target confirmation, verify the resulting deployment reaches READY at the pushed SHA, then delete the merged feature branch and confirm clean synchronized main with all seven stashes preserved. Actual Resonate PROD must remain untouched.
 
 ## Staff Love Languages assessment results (November 3, 2026)
 

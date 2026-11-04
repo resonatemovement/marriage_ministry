@@ -78,10 +78,11 @@ describe("Counseling couple detail foundation", () => {
     expect(visibleMarkup).not.toContain("Active");
   });
 
-  it("keeps Assessment management in a dedicated section separate from Homework and Session Materials", () => {
+  it("places Assessment management after Meeting Invites, separate from Homework and Session Materials", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, assessmentManagement: { assessments: [], sessions: [], preferences: {} } }));
-    expect(markup.indexOf('aria-label="Assessments"')).toBeLessThan(markup.indexOf('aria-label="Homework"'));
     expect(markup.indexOf('aria-label="Homework"')).toBeLessThan(markup.indexOf('aria-label="Session Materials"'));
+    expect(markup.indexOf('aria-label="Session Materials"')).toBeLessThan(markup.indexOf("Meeting invites"));
+    expect(markup.indexOf("Meeting invites")).toBeLessThan(markup.indexOf('aria-label="Assessments"'));
     expect(markup).toContain("Assessment management");
   });
 
