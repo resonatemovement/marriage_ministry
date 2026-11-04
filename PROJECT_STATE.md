@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: feature/dynamic-counseling-grid
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Dynamic Coach and Campus Lead Counseling grid (November 4, 2026)
@@ -8,8 +8,9 @@ Repository: resonatemovement/marriage_ministry
 - On `feature/dynamic-counseling-grid`, Coach and Campus Lead Sessions now place Couple cards and the existing hierarchy card in one responsive equal-column grid. With zero or one Couple, the wide layout uses two columns; with two or more, it uses three. At medium widths it reduces to two columns, and mobile stacks everything in one column. For two or more Couples, the hierarchy stays in the first available row while extra Couple cards wrap below.
 - The grid uses start alignment and natural-height Couple cards, so expanding hierarchy content does not stretch neighboring cards. The fixed-width right rail was removed; children use available grid width and `min-w-0`. Counselor-only Sessions and all card styling, photos, hierarchy behavior, permissions, navigation, and data logic are unchanged.
 - Focused tests cover 0, 1, 2, and 3+ Couple layouts, natural-height/start-aligned behavior, hierarchy placement, and the unchanged Counselor grid. Validation passed: 18 tests across 4 files, `npm run typecheck`, `npm run lint`, and `git diff --check`. No browser visual verification has been performed.
-- The separate `feature/counseling-progress-ui` branch remains untouched at `c23410b`; all seven stashes remain preserved. No database changes or migrations were made. Release is pending review/commit, fast-forward merge, verification of the dedicated DEV Vercel target, and deployment confirmation. Actual Resonate PROD has not been accessed.
-- Next: commit the focused UI/tests/documentation changes on this branch, fast-forward into `main`, verify the Git-triggered deployment is READY at the merged SHA in the dedicated `marriage-ministry-dev` project, and confirm a clean `main` synchronized with `origin/main`.
+- Feature commit `4fe6166` (`feat: make counseling workspace grid dynamic`) was fast-forward merged into `main` and pushed to `origin/main` at SHA `4fe61668497a6c767a61ee24e3a33b1edbe2d896`. Vercel deployment `dpl_BY3VeeBCD4TVxptPRYeyNBKwXxY1` reached `READY` at that exact SHA in the dedicated `resonate-movement/marriage-ministry-dev` project (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry` on `main`. Vercel's `production` target label is scoped to this dedicated DEV project, not actual Resonate PROD.
+- The separate `feature/counseling-progress-ui` branch remains untouched and unmerged at `c23410b`; all seven stashes remain preserved. No database changes or migrations were made. Actual Resonate PROD has not been accessed.
+- Next: verify `main` is synchronized with `origin/main`, the merged task branch is removed, and all seven stashes plus the separate Counseling Progress branch remain intact. Browser visual verification remains optional and outstanding.
 
 ## Coach and Campus Lead Workspace layout (November 4, 2026)
 
