@@ -11,6 +11,14 @@ Repository: resonatemovement/marriage_ministry
 - Release documentation is recorded on `main`. The merged local feature branch is removed normally; `main` is synchronized with `origin/main`, and all seven existing stashes remain untouched. No database changes or migrations were made.
 - Next: none for this change; optionally review the labels in the DEV Coach, Campus Lead, and Admin/Super Admin hierarchy views.
 
+## Separate counseling progress and supervised team cards (November 4, 2026)
+
+- On `feature/separate-supervision-cards`, the shared team-detail presentation now renders Counseling Progress and Supervised Counselor Teams as independent sibling cards with their own borders, backgrounds, padding, and natural heights. This applies to relevant Coach, Campus Lead, and Admin/Super Admin shared team-detail views; Counselor team details continue to omit the supervised-team card when there are no child teams.
+- Supervised-team rows use a compact stacked layout on narrow screens, including team name, role/campus, and Couple count; at the existing `sm` breakpoint the row returns to its desktop presentation. Team expand/collapse, team links, progress data, permissions, and navigation remain unchanged.
+- Focused oversight progress, workspace rail, and People detail tests passed (9 tests across 3 files); `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Responsive classes and markup were tested server-side; interactive browser visual verification was not available/performed.
+- Release status: implementation and source validation are complete; commit, merge, and dedicated DEV deployment are pending. All seven stashes remain untouched. Actual Resonate PROD has not been accessed.
+- Next: commit the focused implementation, merge into `main`, verify the dedicated `marriage-ministry-dev` Vercel project before pushing, confirm the deployment is READY at the pushed SHA, then remove the merged feature branch and verify clean synchronized `main`.
+
 ## Counseling Progress supervisor identity and photos (November 4, 2026)
 
 - The existing Counseling Progress branch began at `c23410b` and was safely updated with latest `main` (`31ce0a8`) in merge commit `6ecd7c1`; the original feature commit remains an ancestor. Main's dynamic Counseling Workspace grid and release documentation were preserved. Seven stashes remain untouched.
