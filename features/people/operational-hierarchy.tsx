@@ -2,17 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Network, UserRound, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Network, UserRound, X } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useState } from "react";
 
 import type { OperationalHierarchy, OperationalHierarchyTeam } from "./operational-hierarchy-model";
+import { CaseProgressRow } from "@/features/counseling-sessions/oversight-progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const labels = { campus_lead: "Campus Lead", coach: "Coach", counselor: "Counselor" };
 
 function TeamCard({ team, currentId, compact = false }: { team: OperationalHierarchyTeam; currentId: string; compact?: boolean }) {
   const current = team.id === currentId;
-  return <Link href={`/people/${team.id}`} aria-label={`View ${labels[team.role]} ${team.name}`} className={`flex min-w-0 items-center gap-3 rounded-lg border bg-white p-3 text-left shadow-sm transition hover:bg-surface-muted ${current ? "border-brand-primary bg-sidebar-accent" : "border-border"} ${compact ? "" : "w-full sm:max-w-md"}`}><span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-surface-muted text-text-muted">{team.photoUrl ? <Image src={team.photoUrl} alt="" width={40} height={40} unoptimized className="size-full object-cover" /> : <UserRound className="size-5" aria-hidden="true" />}</span><span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">{labels[team.role]}</span><span className="block truncate font-heading text-sm font-bold text-text-primary">{team.name}</span><span className="block truncate text-xs text-text-muted">{team.campus ?? "Campus not assigned"}</span>{current ? <span className="sr-only">Current team</span> : null}</span></Link>;
+  return <Collapsible className={`rounded-lg border bg-white shadow-sm ${current ? "border-brand-primary bg-sidebar-accent" : "border-border"} ${compact ? "" : "w-full sm:max-w-md"}`}><div className="flex min-w-0 items-center gap-3 p-3"><Link href={`/people/${team.id}`} aria-label={`View ${labels[team.role]} ${team.name}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none"><span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-surface-muted text-text-muted">{team.photoUrl ? <Image src={team.photoUrl} alt="" width={40} height={40} unoptimized className="size-full object-cover" /> : <UserRound className="size-5" aria-hidden="true" />}</span><span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">{labels[team.role]}</span><span className="block truncate font-heading text-sm font-bold text-text-primary">{team.name}</span><span className="block truncate text-xs text-text-muted">{team.campus ?? "Campus not assigned"}</span>{current ? <span className="sr-only">Current team</span> : null}</span></Link><CollapsibleTrigger className="group grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none" aria-label={`Expand counseling progress for ${team.name}`}><ChevronRight className="size-4 group-data-[state=open]:hidden" aria-hidden="true" /><ChevronDown className="hidden size-4 group-data-[state=open]:block" aria-hidden="true" /></CollapsibleTrigger></div><CollapsibleContent className="space-y-2 border-t border-border p-3">{team.progress?.length ? team.progress.map((item) => <CaseProgressRow key={item.caseId} item={item} href={`/workspace/oversight/teams/${team.id}/cases/${item.caseId}`} />) : <p className="text-xs text-text-muted">No active Couples assigned.</p>}</CollapsibleContent></Collapsible>;
 }
 
 export function OperationalHierarchyDialog({ hierarchy, currentId }: { hierarchy: OperationalHierarchy; currentId: string }) {

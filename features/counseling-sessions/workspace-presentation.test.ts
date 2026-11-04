@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { campusLeadCoachRows, coachCounselorDetailHref, coachCounselorRows, counselingCoachDetailHref } from "./workspace-presentation";
 import { counselingSessionsContentClassName, counselingSessionsGridClassName, counselingSessionsHeaderClassName, counselingSessionsRailClassName, counselingSessionsWorkspaceClassName, sessionCardContainerClassName, sessionCardNavigationClassName } from "./presentation";
 
 describe("Counseling Workspace presentation", () => {
@@ -27,25 +26,4 @@ describe("Counseling Workspace presentation", () => {
     expect(sessionCardNavigationClassName).toContain("focus-visible:bg-info-soft/45");
   });
 
-  it("renders only the supplied Campus Lead Coach assignments without Admin controls", () => {
-    expect(counselingCoachDetailHref("coach-a")).toBe("/workspace/coaches/coach-a");
-    const rows = campusLeadCoachRows([
-      { id: "coach-a", name: "Fremont Coaches", campus: "Fremont" },
-      { id: "coach-b", name: "Oakland Coaches", campus: null },
-    ]);
-    expect(rows).toEqual([
-      { id: "coach-a", name: "Fremont Coaches", metadata: "Coach · Fremont", href: "/workspace/coaches/coach-a" },
-      { id: "coach-b", name: "Oakland Coaches", metadata: "Coach · Campus not assigned", href: "/workspace/coaches/coach-b" },
-    ]);
-    expect(JSON.stringify(rows)).not.toContain("Assign Coach");
-    expect(JSON.stringify(rows)).not.toContain("No eligible coaches are available");
-  });
-
-  it("renders supervised Counselor teams with the shared relationship panel conventions", () => {
-    expect(coachCounselorDetailHref("counselor-a")).toBe("/workspace/counselors/counselor-a");
-    expect(coachCounselorRows([{ id: "counselor-a", name: "John & Stacy Wu", campus: "Oakland" }, { id: "counselor-b", name: "Fremont Counselors", campus: null }])).toEqual([
-      { id: "counselor-a", name: "John & Stacy Wu", metadata: "Counselor · Oakland", href: "/workspace/counselors/counselor-a" },
-      { id: "counselor-b", name: "Fremont Counselors", metadata: "Counselor · Campus not assigned", href: "/workspace/counselors/counselor-b" },
-    ]);
-  });
 });

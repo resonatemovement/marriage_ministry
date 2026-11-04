@@ -1,3 +1,5 @@
+import type { CounselingOversightProgress } from "@/features/counseling-sessions/oversight-queries";
+
 export type OperationalTeamRole = "campus_lead" | "coach" | "counselor";
 
 export type OperationalHierarchyTeam = {
@@ -6,6 +8,7 @@ export type OperationalHierarchyTeam = {
   campus: string | null;
   role: OperationalTeamRole;
   photoUrl: string | null;
+  progress?: CounselingOversightProgress[];
 };
 
 export type OperationalHierarchy = { campusLeads: Array<OperationalHierarchyTeam & { coaches: Array<OperationalHierarchyTeam & { counselors: OperationalHierarchyTeam[] }> }> };

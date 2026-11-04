@@ -2,6 +2,7 @@ import "server-only";
 
 import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCounselingOversightProgress } from "@/features/counseling-sessions/oversight-queries";
 
 import { buildOperationalHierarchy, type OperationalHierarchy, type OperationalHierarchyTeam } from "./operational-hierarchy-model";
 
@@ -24,5 +25,6 @@ export async function getOperationalHierarchy(): Promise<OperationalHierarchy> {
     const role = row.group_type === "campus_lead_team" ? "campus_lead" : row.group_type === "coach_team" ? "coach" : "counselor";
     return { id: value(row, "id")!, name: value(row, "name")!, campus: value(campus, "name"), role, photoUrl: await getProfilePhotoUrl(value(profile, "photo_path")) };
   }));
-  return buildOperationalHierarchy(teams, ((leadCoachResult.data ?? []) as Row[]).map((row) => ({ campusLeadId: value(row, "campus_lead_group_id")!, coachId: value(row, "coach_group_id")! })), ((coachCounselorResult.data ?? []) as Row[]).map((row) => ({ coachId: value(row, "coach_group_id")!, counselorId: value(row, "counselor_group_id")! })));
+  const teamsWithProgress = await Promise.all(teams.map(async (team) => ({ ...team, progress: await getCounselingOversightProgress(team.id) })));
+  return buildOperationalHierarchy(teamsWithProgress, ((leadCoachResult.data ?? []) as Row[]).map((row) => ({ campusLeadId: value(row, "campus_lead_group_id")!, coachId: value(row, "coach_group_id")! })), ((coachCounselorResult.data ?? []) as Row[]).map((row) => ({ coachId: value(row, "coach_group_id")!, counselorId: value(row, "counselor_group_id")! })));
 }

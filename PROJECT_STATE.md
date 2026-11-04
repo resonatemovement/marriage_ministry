@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: feature/assessment-tile-cleanup
+Current working branch: feature/team-oversight-hierarchy
 Repository: resonatemovement/marriage_ministry
+
+## Hierarchical Team Oversight (November 4, 2026)
+
+- On `feature/team-oversight-hierarchy`, expanded the existing Coach Counselors and Campus Lead Coaches right-rail cards with accessible collapsible team rows. Coach views retain their existing direct Counselor-of-record Sessions list; Campus Lead views retain their direct Sessions behavior. Active Coach/Campus Lead hierarchy rows show only active Counselor-of-record Case summaries for the team, with team-detail and read-only Couple-progress links. Existing Coach/Counselor and Campus Lead/Coach relationships remain the source of hierarchy; no assignment behavior changed.
+- Added compact read-only progress sections to authorized team detail pages and the existing Admin/Super Admin hierarchy dialog. The Couple progress view is limited to Couple names, responsible Counselor-of-record team, Case status, Session progress, next meeting, and Homework completion. No notes, Homework answers, assessment answers, Case assignments, or RLS policies were exposed or changed.
+- Added forward migration `20261104100000_counseling_oversight_progress.sql` with two authenticated-only SECURITY DEFINER read contracts: one validates the caller's active role/team and active supervision chain before returning Case progress; the other returns subordinate Counselor team identities only to authorized Coaches, Campus Leads, Admins, and Super Admins. Direct Case access policies remain unchanged. Generated Supabase types were not hand-edited; the RPC boundary is narrowly typed locally.
+- Source validation passed: 36 focused tests across 12 files, `npm run typecheck`, `npm run lint`, and `git diff --check`. Browser verification was not run. DEV runtime authorization checks and database lint were not completed: the configured DEV URL host matches `lctkqjjkhpyootwvttvj.supabase.co`, but remote PostgreSQL connection was refused by the network restriction; local database lint was unavailable because no local database was running. Therefore migration history, SQL application, authenticated Coach/Campus Lead/Admin/Super Admin matrix, and direct-URL runtime denial remain unverified. No DEV database changes were made.
+- Release is BLOCKED pending database connectivity and verification. Do not merge or push this commit until the migration is preflighted against DEV, applied only after confirming migration history, and authenticated role/privacy checks pass. Then rerun source checks, verify the dedicated DEV Vercel target, merge without squashing, push, confirm the Git-triggered deployment reaches READY at `origin/main` SHA, and delete the feature branch normally. Seven existing stashes remain preserved; actual Resonate PROD was not accessed.
 
 ## Simplify the staff Assessments right-rail card (November 4, 2026)
 

@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ notFound: vi.fn(() => { throw new Error("not found"); }), redirect: vi.fn((href: string) => { throw new Error(`redirect:${href}`); }) }));
 vi.mock("@/lib/auth/session", () => ({ requireActiveWorkspace: vi.fn(async () => ({ identity: { id: "lead", displayName: "Campus Lead", roles: [mocks.workspace], workspaces: [mocks.workspace] }, workspace: mocks.workspace })) }));
 vi.mock("@/features/counseling-sessions/workspace-queries", () => ({ getCurrentCampusLeadCoaches: vi.fn(async () => mocks.coaches) }));
+vi.mock("@/features/counseling-sessions/oversight-queries", () => ({ getCounselingOversightProgress: vi.fn(async () => []) }));
+vi.mock("@/features/counseling-sessions/oversight-rail-queries", () => ({ getOversightCounselorNodes: vi.fn(async () => []) }));
 vi.mock("@/features/people/detail-queries", () => ({ getSupervisedTeamDetail: vi.fn(async () => mocks.detail) }));
 vi.mock("@/components/navigation/workspace-shell", () => ({ WorkspaceShell: ({ children }: { children: ReactNode }) => createElement("div", { "data-shell": "workspace" }, children) }));
 vi.mock("@/features/people/people-detail-page", () => ({ PeopleDetailPage: ({ breadcrumbs, readOnlySupervisoryView, context }: { breadcrumbs: { label: string; href?: string }[]; readOnlySupervisoryView: boolean; context: unknown }) => createElement("div", { "data-breadcrumbs": JSON.stringify(breadcrumbs), "data-read-only": String(readOnlySupervisoryView), "data-context": String(context) }, "Coach detail") }));

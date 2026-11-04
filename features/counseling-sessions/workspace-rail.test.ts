@@ -6,7 +6,7 @@ import { CoachCounselorsRail } from "./workspace-rail";
 
 describe("Coach Counselors rail", () => {
   it("shows the supervised team count, campus, and detail navigation", () => {
-    const markup = renderToStaticMarkup(createElement(CoachCounselorsRail, { counselors: [{ id: "team-1", name: "John & Stacy Wu", campus: "Oakland" }] }));
+    const markup = renderToStaticMarkup(createElement(CoachCounselorsRail, { counselors: [{ id: "team-1", name: "John & Stacy Wu", campus: "Oakland", href: "/workspace/counselors/team-1", role: "Counselor", cases: [], children: [] }] }));
     expect(markup).toContain("Counselors");
     expect(markup).toContain(">1</span>");
     expect(markup).toContain("John &amp; Stacy Wu");
