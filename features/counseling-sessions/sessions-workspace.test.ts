@@ -46,6 +46,39 @@ describe("SessionsWorkspace", () => {
     expect(markup).not.toContain("Initial Meeting");
   });
 
+  it("keeps Coach/Campus Lead Couple cards at natural height alongside the hierarchy rail", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card], workspaceRail: createElement("aside", null, "Hierarchy") }));
+    expect(markup).toContain("h-auto");
+    expect(markup).toContain("self-start");
+    expect(markup).toContain("xl:grid-cols-2");
+    expect(markup).toContain('aria-label="Counseling workspace"');
+    expect(markup).toContain("Hierarchy");
+  });
+
+  it("keeps the empty state and hierarchy in the same two-column oversight grid", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [], workspaceRail: createElement("aside", null, "Hierarchy"), isCoachWorkspace: true }));
+    expect(markup).toContain("Pending couple assignment");
+    expect(markup).toContain("xl:grid-cols-2");
+    expect(markup).toContain("Hierarchy");
+    expect(markup).not.toContain("sm:col-span-2");
+  });
+
+  it("uses three equal wide-desktop columns for two Couples and the hierarchy", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card, { ...card, caseId: "case-2", coupleName: "Alex & Jordan" }], workspaceRail: createElement("aside", null, "Hierarchy") }));
+    expect(markup).toContain("xl:grid-cols-3");
+    expect(markup).toContain("John Smith &amp; Stacy Miller");
+    expect(markup).toContain("Alex &amp; Jordan");
+    expect(markup).toContain("xl:col-start-3 xl:row-start-1");
+  });
+
+  it("pins the hierarchy in the first wide-desktop row when more than two Couples wrap", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card, { ...card, caseId: "case-2" }, { ...card, caseId: "case-3" }], workspaceRail: createElement("aside", null, "Hierarchy") }));
+    expect(markup).toContain("xl:grid-cols-3");
+    expect(markup).toContain("md:col-start-2 md:row-start-1 xl:col-start-3 xl:row-start-1");
+    expect((markup.match(/aria-label="Open counseling case for/g) ?? [])).toHaveLength(3);
+    expect(markup).toContain("h-auto");
+  });
+
   it("retains the existing non-Coach empty state", () => {
     const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [] }));
     expect(markup).toContain("No assigned counseling cases.");
