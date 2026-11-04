@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: feature/assessments-right-rail
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Move staff Assessments into the Counseling Case right rail (November 4, 2026)
@@ -9,7 +9,7 @@ Repository: resonatemovement/marriage_ministry
 - The existing responsive results dialog and result privacy gates are reused unchanged. Multiple assessments remain rendered from the query result without Love Languages-specific layout assumptions. No duplicate Assessment section remains in the main column. Empty Assessment configuration retains a right-rail empty state.
 - No assessment scoring, submission, scheduling logic, authorization, Couple UI, database schema, RLS, or stored data changed.
 - Validation passed: focused Assessment and Counseling Case detail tests (88 tests across 14 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. Authenticated browser/responsive visual verification has not yet been run.
-- Git/release status at implementation: feature branch created from clean `main` at `c9b9573`; seven existing stashes preserved. Implementation and this documentation update are not yet committed or merged. Exact next step: commit the focused UI/tests/docs change, then verify the dedicated `marriage-ministry-dev` Vercel target before merging/pushing and confirm its deployment is READY. Actual Resonate PROD was not accessed.
+- Git/release status: feature commit `d9e35f0` (`feat: move assessments to case right rail`) was fast-forwarded into local `main`; no unrelated files were included. The dedicated Vercel project was verified as `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to GitHub `resonatemovement/marriage_ministry` with deployment branch `main`; push/deployment verification is pending. Seven existing stashes are preserved. Actual Resonate PROD was not accessed.
 
 ## Separate staff Assessment scheduling settings (November 4, 2026)
 
