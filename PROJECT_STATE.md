@@ -24,8 +24,9 @@ Repository: resonatemovement/marriage_ministry
 
 - On `feature/supervised-team-row-layout`, the shared supervised-team hierarchy row keeps the team name on the first line and combines role, campus, and correctly pluralized Couple count on the second line (for example, `Counselor · Fremont · 1 Couple`). The separate right-aligned count was removed. Metadata wraps naturally; chevron alignment, team navigation, and expand/collapse behavior remain unchanged across Coach, Campus Lead, and shared team-detail hierarchy views.
 - Tests cover 0, 1, and 2 Couples, combined metadata and ordering, wrapping markup, and hierarchy navigation/expansion controls. Focused tests passed (9 tests across 3 files); `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Browser visual checks were unavailable/not performed; responsive classes and rendered markup were tested.
-- Release status: implementation and source validation are complete; commit, merge, and dedicated DEV deployment are pending. All seven stashes remain untouched. Actual Resonate PROD has not been accessed.
-- Next: commit the focused change, merge to `main`, verify the dedicated `marriage-ministry-dev` Vercel target before pushing, confirm deployment READY at the pushed SHA, then delete the merged feature branch and verify clean synchronized `main`.
+- Feature commit `3b0e22a` (`ui: combine supervised team metadata`) was fast-forward merged into `main` and pushed to `origin/main`. The verified Vercel project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is linked to `resonatemovement/marriage_ministry` on `main`. Deployment `dpl_DvyjS2Sqeixv3c3spUFcvayhYJt3` reached `READY` at SHA `3b0e22af06bb6d6ced241b7550e6c3163a448020`. Its `production` label is scoped to the dedicated DEV project; actual Resonate PROD was not accessed.
+- The merged feature branch was removed normally. `main` is synchronized with `origin/main`; all seven stashes remain untouched. No database changes or migrations were made.
+- Browser visual verification was unavailable/not performed; responsive markup and wrapping behavior were verified by source-level tests. Next optional step: visually inspect the metadata at narrow and desktop widths in DEV.
 
 ## Counseling Progress supervisor identity and photos (November 4, 2026)
 
