@@ -16,7 +16,10 @@ import { CounselingCoupleDetailPage } from "./couple-detail-page";
 vi.mock("./homework-reopen-actions", () => ({ reopenParticipantHomework: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName }: { partnerName: string }) => createElement("button", null, `Reopen Homework for ${partnerName}`) }));
-vi.mock("@/features/assessments/counselor-assessment-management", () => ({ CounselorAssessmentManagement: () => createElement("section", { "aria-label": "Assessments" }, "Assessment management") }));
+vi.mock("@/features/assessments/counselor-assessment-management", () => ({ CounselorAssessmentManagement: () => createElement("div", null,
+  createElement("section", { "aria-label": "Scheduling Settings" }, "Scheduling settings"),
+  createElement("section", { "aria-label": "Assessments" }, "Assessment management"),
+) }));
 import type { CounselingSessionCard } from "./queries";
 
 const card: CounselingSessionCard = {
@@ -78,11 +81,12 @@ describe("Counseling couple detail foundation", () => {
     expect(visibleMarkup).not.toContain("Active");
   });
 
-  it("places Assessment management after Meeting Invites, separate from Homework and Session Materials", () => {
+  it("places Scheduling Settings and Assessments after Meeting Invites, separate from Homework and Session Materials", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, assessmentManagement: { assessments: [], sessions: [], preferences: {} } }));
     expect(markup.indexOf('aria-label="Homework"')).toBeLessThan(markup.indexOf('aria-label="Session Materials"'));
     expect(markup.indexOf('aria-label="Session Materials"')).toBeLessThan(markup.indexOf("Meeting invites"));
-    expect(markup.indexOf("Meeting invites")).toBeLessThan(markup.indexOf('aria-label="Assessments"'));
+    expect(markup.indexOf("Meeting invites")).toBeLessThan(markup.indexOf('aria-label="Scheduling Settings"'));
+    expect(markup.indexOf('aria-label="Scheduling Settings"')).toBeLessThan(markup.indexOf('aria-label="Assessments"'));
     expect(markup).toContain("Assessment management");
   });
 

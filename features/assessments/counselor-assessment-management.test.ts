@@ -35,7 +35,7 @@ const assessment: CounselorAssessment = {
 };
 
 describe("Counselor Assessment management presentation", () => {
-  it("shows a compact summary and keeps scheduling in its expandable settings", () => {
+  it("shows compact summaries and a separate, always-visible scheduling section", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
       caseId: "case-1", assessments: [assessment], sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }],
       preferences: {}, canReadResults: true, canManageSchedule: true, canManagePreference: true, activeCaseSessionId: "case-session-1",
@@ -48,9 +48,18 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).toContain("> Words, Time</li>");
     expect(markup).toContain("View Results");
     expect(markup).toContain("Scheduling Settings");
+    expect(markup).not.toContain("<details");
     expect(markup).not.toContain("View score history");
     expect(markup).toContain("My default for future Cases");
     expect(markup).toContain("Existing Case schedules stay unchanged.");
+    const schedulingIndex = markup.indexOf('aria-label="Scheduling Settings"');
+    const assessmentsIndex = markup.indexOf('aria-label="Assessments"');
+    const assessmentsSection = markup.slice(assessmentsIndex);
+    expect(schedulingIndex).toBeGreaterThan(-1);
+    expect(schedulingIndex).toBeLessThan(assessmentsIndex);
+    expect(assessmentsSection).not.toContain("Case Session");
+    expect(assessmentsSection).not.toContain("My default for future Cases");
+    expect(assessmentsSection).not.toContain("Save Session");
     expect(markup).not.toMatch(/response|answer|scoring key/i);
   });
 
@@ -94,6 +103,18 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).toContain("Required");
     expect(markup).toContain("Optional");
     expect(markup.match(/View Results/g)).toHaveLength(2);
+  });
+
+  it("keeps each visible scheduling form associated with its assessment", () => {
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentManagement, {
+      caseId: "case-1", assessments: [assessment, { ...assessment, id: "assessment-2", title: "Communication Styles" }],
+      sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }], preferences: {},
+      canReadResults: false, canManageSchedule: true, canManagePreference: true, activeCaseSessionId: null,
+    }));
+    expect(markup).toContain('id="assessment-session-assessment-1"');
+    expect(markup).toContain('id="assessment-default-assessment-1"');
+    expect(markup).toContain('id="assessment-session-assessment-2"');
+    expect(markup).toContain('id="assessment-default-assessment-2"');
   });
 
   it("does not expose participant results to Admin-only viewers", () => {
