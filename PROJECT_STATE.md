@@ -20,6 +20,13 @@ Repository: resonatemovement/marriage_ministry
 - The merged local feature branch was deleted normally after deployment verification. `main` is synchronized with `origin/main`; all seven stashes remain untouched. No database changes or migrations were made.
 - Browser/device visual verification was not available/performed; source-level responsive markup tests passed. Next optional step: visually inspect the team detail pages at mobile and desktop widths in DEV.
 
+## Supervised team row metadata layout (November 4, 2026)
+
+- On `feature/supervised-team-row-layout`, the shared supervised-team hierarchy row keeps the team name on the first line and combines role, campus, and correctly pluralized Couple count on the second line (for example, `Counselor · Fremont · 1 Couple`). The separate right-aligned count was removed. Metadata wraps naturally; chevron alignment, team navigation, and expand/collapse behavior remain unchanged across Coach, Campus Lead, and shared team-detail hierarchy views.
+- Tests cover 0, 1, and 2 Couples, combined metadata and ordering, wrapping markup, and hierarchy navigation/expansion controls. Focused tests passed (9 tests across 3 files); `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Browser visual checks were unavailable/not performed; responsive classes and rendered markup were tested.
+- Release status: implementation and source validation are complete; commit, merge, and dedicated DEV deployment are pending. All seven stashes remain untouched. Actual Resonate PROD has not been accessed.
+- Next: commit the focused change, merge to `main`, verify the dedicated `marriage-ministry-dev` Vercel target before pushing, confirm deployment READY at the pushed SHA, then delete the merged feature branch and verify clean synchronized `main`.
+
 ## Counseling Progress supervisor identity and photos (November 4, 2026)
 
 - The existing Counseling Progress branch began at `c23410b` and was safely updated with latest `main` (`31ce0a8`) in merge commit `6ecd7c1`; the original feature commit remains an ancestor. Main's dynamic Counseling Workspace grid and release documentation were preserved. Seven stashes remain untouched.

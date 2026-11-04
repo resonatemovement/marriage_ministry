@@ -10,7 +10,7 @@ describe("Coach Counselors rail", () => {
     expect(markup).toContain("Counselors");
     expect(markup).toContain(">1</span>");
     expect(markup).toContain("John &amp; Stacy Wu");
-    expect(markup).toContain("Counselor · Oakland");
+    expect(markup).toContain("Counselor · Oakland · 0 Couples");
     expect(markup).toContain('href="/workspace/counselors/team-1"');
     expect(markup).not.toContain("Assign");
     expect(markup).not.toContain("Remove");
@@ -40,9 +40,12 @@ describe("Coach Counselors rail", () => {
       homeworkStatus: "Complete",
     }));
     const markup = renderToStaticMarkup(createElement(CoachCounselorsRail, {
-      counselors: [{ id: "team-1", name: "John & Stacy Wu", campus: null, href: "/workspace/counselors/team-1", role: "Counselor", cases, children: [] }],
+      counselors: [{ id: "team-1", name: "John & Stacy Wu", campus: "Fremont", href: "/workspace/counselors/team-1", role: "Counselor", cases, children: [] }],
     }));
 
     expect(markup).toContain(expectedLabel);
+    expect(markup).toContain(`Counselor · Fremont · ${expectedLabel}`);
+    expect(markup.indexOf("John &amp; Stacy Wu")).toBeLessThan(markup.indexOf(`Counselor · Fremont · ${expectedLabel}`));
+    expect(markup).not.toContain("sm:ml-auto");
   });
 });

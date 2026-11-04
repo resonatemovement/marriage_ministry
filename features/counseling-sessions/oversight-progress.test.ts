@@ -21,7 +21,7 @@ const progress: CounselingOversightProgress[] = [{
 const childTeam: OversightTeamNode = {
   id: "counselor-team",
   name: "Counselor Team Name",
-  campus: "Oakland",
+  campus: "Fremont",
   href: "/people/counselor-team",
   role: "Counselor",
   cases: [],
@@ -40,18 +40,19 @@ describe("team counseling progress cards", () => {
     expect(markup.indexOf("Counseling Progress")).toBeLessThan(markup.indexOf("Supervised Counselor Teams"));
     expect(markup).toContain("Alex &amp; Blair");
     expect(markup).toContain("Counselor Team Name");
-    expect(markup).toContain("Oakland");
+    expect(markup).toContain("Fremont");
   });
 
-  it("keeps the supervised team row stacked on narrow screens and interactive", () => {
+  it("keeps the team name above wrapping metadata and preserves row interactions", () => {
     const markup = renderToStaticMarkup(createElement(TeamCounselingProgress, {
       teamId: "coach-team",
       progress: [],
       childTeams: [childTeam],
     }));
 
-    expect(markup).toContain("flex min-w-0 flex-col gap-1 px-2 py-2 sm:flex-row");
-    expect(markup).toContain("pl-11 text-xs text-text-muted sm:ml-auto");
+    expect(markup).toContain("flex min-w-0 items-center gap-2 px-2 py-2 sm:px-3");
+    expect(markup).toContain("Counselor · Fremont · 0 Couples");
+    expect(markup).toContain("break-words text-xs text-text-muted");
     expect(markup).toContain('aria-label="Expand Counselor team Counselor Team Name"');
     expect(markup).toContain('href="/people/counselor-team"');
     expect(markup).toContain("No active Couples assigned to this team.");

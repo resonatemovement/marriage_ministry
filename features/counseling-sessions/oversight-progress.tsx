@@ -13,18 +13,15 @@ function coupleCountLabel(count: number) {
 
 function TeamNode({ team }: { team: OversightTeamNode }) {
   return <Collapsible className="min-w-0 rounded-md border border-border bg-white">
-    <div className="flex min-w-0 flex-col gap-1 px-2 py-2 sm:flex-row sm:items-center sm:gap-2 sm:px-3">
-      <div className="flex min-w-0 items-center gap-2">
-        <CollapsibleTrigger className="group grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none" aria-label={`Expand ${team.role} team ${team.name}`}>
-          <ChevronRight className="size-4 group-data-[state=open]:hidden" aria-hidden="true" />
-          <ChevronDown className="hidden size-4 group-data-[state=open]:block" aria-hidden="true" />
-        </CollapsibleTrigger>
-        <div className="min-w-0 flex-1">
-          <Link href={team.href} className="block break-words text-sm font-semibold text-brand-primary hover:underline focus-visible:bg-sidebar-accent">{team.name}</Link>
-          <p className="break-words text-xs text-text-muted">{team.role}{team.campus ? ` · ${team.campus}` : ""}</p>
-        </div>
+    <div className="flex min-w-0 items-center gap-2 px-2 py-2 sm:px-3">
+      <CollapsibleTrigger className="group grid size-9 shrink-0 place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none" aria-label={`Expand ${team.role} team ${team.name}`}>
+        <ChevronRight className="size-4 group-data-[state=open]:hidden" aria-hidden="true" />
+        <ChevronDown className="hidden size-4 group-data-[state=open]:block" aria-hidden="true" />
+      </CollapsibleTrigger>
+      <div className="min-w-0 flex-1">
+        <Link href={team.href} className="block break-words text-sm font-semibold text-brand-primary hover:underline focus-visible:bg-sidebar-accent">{team.name}</Link>
+        <p className="break-words text-xs text-text-muted">{team.role}{team.campus ? ` · ${team.campus}` : ""} · {coupleCountLabel(team.cases.length)}</p>
       </div>
-      <span className="pl-11 text-xs text-text-muted sm:ml-auto sm:shrink-0 sm:pl-0">{coupleCountLabel(team.cases.length)}</span>
     </div>
     <CollapsibleContent className="border-t border-border px-3 py-2">
       {team.cases.length ? <div className="space-y-2">{team.cases.map((item) => <CaseProgressRow key={item.caseId} item={item} href={`/workspace/oversight/teams/${team.id}/cases/${item.caseId}`} />)}</div> : <p className="py-1 text-xs text-text-muted">No active Couples assigned.</p>}
