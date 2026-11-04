@@ -15,8 +15,8 @@ function TeamNode({ team }: { team: OversightTeamNode }) {
         <ChevronDown className="hidden size-4 group-data-[state=open]:block" aria-hidden="true" />
       </CollapsibleTrigger>
       <div className="min-w-0 flex-1">
-        <Link href={team.href} className="block truncate text-sm font-semibold text-brand-primary hover:underline focus-visible:bg-sidebar-accent">{team.name}</Link>
-        <p className="truncate text-xs text-text-muted">{team.role}{team.campus ? ` · ${team.campus}` : ""}</p>
+        <Link href={team.href} className="block break-words text-sm font-semibold text-brand-primary hover:underline focus-visible:bg-sidebar-accent">{team.name}</Link>
+        <p className="break-words text-xs text-text-muted">{team.role}{team.campus ? ` · ${team.campus}` : ""}</p>
       </div>
       <span className="shrink-0 text-xs text-text-muted">{team.cases.length} Couples</span>
     </div>
@@ -29,9 +29,9 @@ function TeamNode({ team }: { team: OversightTeamNode }) {
 
 export function CaseProgressRow({ item, href }: { item: CounselingOversightProgress; href: string }) {
   return <Link href={href} className="block rounded-md bg-surface-muted/60 px-3 py-2 hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none">
-    <span className="block truncate text-sm font-medium text-text-primary">{item.coupleName}</span>
-    <span className="mt-0.5 block text-xs text-text-muted">{item.caseStatus} · {item.sessionProgress}</span>
-    <span className="block text-xs text-text-muted">Next meeting: {item.nextMeetingAt ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Los_Angeles" }).format(new Date(item.nextMeetingAt)) : "Not scheduled"}</span>
+    <span className="block break-words text-sm font-medium text-text-primary">{item.coupleName}</span>
+    <span className="mt-0.5 block break-words text-xs text-text-muted">{item.caseStatus} · {item.sessionProgress}</span>
+    <span className="block break-words text-xs text-text-muted">Next meeting: {item.nextMeetingAt ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Los_Angeles" }).format(new Date(item.nextMeetingAt)) : "Not scheduled"}</span>
     <span className="block text-xs text-text-muted">Homework: {item.homeworkStatus}</span>
   </Link>;
 }

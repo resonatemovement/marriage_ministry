@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { counselingSessionsContentClassName, counselingSessionsGridClassName, counselingSessionsHeaderClassName, counselingSessionsRailClassName, counselingSessionsWorkspaceClassName, sessionCardContainerClassName, sessionCardNavigationClassName } from "./presentation";
+import { counselingSessionsContentClassName, counselingSessionsGridClassName, counselingSessionsHeaderClassName, counselingSessionsRailClassName, counselingSessionsRailGridClassName, counselingSessionsWorkspaceClassName, sessionCardContainerClassName, sessionCardNavigationClassName } from "./presentation";
 
 describe("Counseling Workspace presentation", () => {
   it("aligns the Coaches rail with the Session cards on desktop and stacks it after content on smaller screens", () => {
-    expect(counselingSessionsWorkspaceClassName).toContain("xl:grid-cols-[minmax(0,1fr)_280px]");
+    expect(counselingSessionsWorkspaceClassName).toContain("items-start");
+    expect(counselingSessionsWorkspaceClassName).toContain("minmax(440px,480px)");
     expect(counselingSessionsWorkspaceClassName).toContain("gap-y-4");
     expect(counselingSessionsHeaderClassName).toContain("xl:row-start-1");
     expect(counselingSessionsRailClassName).toContain("xl:row-start-2");
     expect(counselingSessionsRailClassName).toContain("order-3");
     expect(counselingSessionsContentClassName).toContain("xl:row-start-2");
     expect(counselingSessionsGridClassName).toContain("mt-4");
+    expect(counselingSessionsRailGridClassName).toContain("items-start");
   });
 
   it("allows at most two spacious Session cards in the main column", () => {

@@ -40,7 +40,7 @@ describe("Counseling Workspace route", () => {
     expect(counselingSessionsGridClassName).toContain("grid-cols-1");
     expect(counselingSessionsGridClassName).toContain("sm:grid-cols-2");
     expect(counselingSessionsGridClassName).not.toContain("grid-cols-3");
-    expect(counselingSessionsWorkspaceClassName).toContain("xl:grid-cols-[minmax(0,1fr)_280px]");
+    expect(counselingSessionsWorkspaceClassName).toContain("xl:grid-cols-[minmax(0,1fr)_minmax(440px,480px)]");
   });
 
   it("keeps Sessions primary and adds only the supervised Counselor rail in Coach Workspace", async () => {

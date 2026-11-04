@@ -2,7 +2,8 @@ import type { SessionCardState } from "./model";
 import type { CounselingSessionPartner } from "./queries";
 
 export const counselingSessionsGridClassName = "mt-4 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2";
-export const counselingSessionsWorkspaceClassName = "grid gap-x-6 gap-y-4 xl:grid-cols-[minmax(0,1fr)_280px]";
+export const counselingSessionsRailGridClassName = "mt-4 grid grid-cols-1 items-start gap-4 sm:grid-cols-2";
+export const counselingSessionsWorkspaceClassName = "grid items-start gap-x-6 gap-y-4 xl:grid-cols-[minmax(0,1fr)_minmax(440px,480px)]";
 export const counselingSessionsHeaderClassName = "xl:col-start-1 xl:row-start-1";
 export const counselingSessionsContentClassName = "xl:col-start-1 xl:row-start-2";
 export const counselingSessionsRailClassName = "order-3 min-w-0 xl:order-none xl:col-start-2 xl:row-start-2";

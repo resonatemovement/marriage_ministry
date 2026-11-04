@@ -46,6 +46,13 @@ describe("SessionsWorkspace", () => {
     expect(markup).not.toContain("Initial Meeting");
   });
 
+  it("keeps Coach/Campus Lead Couple cards at natural height alongside the hierarchy rail", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card], workspaceRail: createElement("aside", null, "Hierarchy") }));
+    expect(markup).toContain("h-auto");
+    expect(markup).toContain("self-start");
+    expect(markup).toContain("minmax(440px,480px)");
+  });
+
   it("retains the existing non-Coach empty state", () => {
     const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [] }));
     expect(markup).toContain("No assigned counseling cases.");

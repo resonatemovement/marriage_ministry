@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: main
+Current working branch: feature/oversight-workspace-layout
 Repository: resonatemovement/marriage_ministry
+
+## Coach and Campus Lead Workspace layout (November 4, 2026)
+
+- On `feature/oversight-workspace-layout`, based on `main` at `61c081e`, the Coach and Campus Lead Sessions workspace now uses a 440–480px right rail at the existing `xl` desktop breakpoint. The grid aligns its children to the start, and the Sessions rail layout uses natural-height Couple cards so expanding the hierarchy does not stretch the cards vertically. Counselor-only Sessions keep their existing card sizing.
+- Hierarchy team, campus, Couple, and progress labels wrap instead of being truncated. The right rail remains below the Sessions content at mobile/tablet widths; no fixed heights, hierarchy/navigation changes, data, authorization, Admin/Super Admin behavior, or database changes were introduced.
+- Validation passed: focused workspace/rail/route tests (15 tests across 4 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. Browser visual verification has not been run.
+- `feature/counseling-progress-ui` remains separate and unmerged at commit `c23410b`; it was not changed or incorporated into this branch. Seven stashes remain preserved. No merge, push, or deployment has occurred for this layout task yet.
+- Next: review the committed feature, merge only this branch after validation, verify that the push targets the dedicated `resonate-movement/marriage-ministry-dev` Vercel project, then verify READY at the pushed SHA. Keep the counseling-progress branch separate pending its documented photo-authorization decision.
 
 ## Hierarchical Team Oversight (November 4, 2026)
 
