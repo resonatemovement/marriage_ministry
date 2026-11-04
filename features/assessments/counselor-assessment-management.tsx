@@ -37,8 +37,8 @@ function primaryResults(assessment: CounselorAssessment) {
 
 function AssessmentPrimarySummary({ assessment }: { assessment: CounselorAssessment }) {
   const results = primaryResults(assessment);
-  return results.length ? <ul className="mt-2 grid gap-1 text-sm text-text-secondary sm:grid-cols-2 sm:gap-3" aria-label="Primary results">
-    {results.map(({ name, labels }) => <li key={name}><span className="font-semibold text-text-primary">{name}:</span> {labels.join(", ")}</li>)}
+  return results.length ? <ul className="mt-2 grid gap-1.5 text-sm text-text-secondary" aria-label="Primary results">
+    {results.map(({ name, labels }) => <li key={name} className="rounded-md bg-surface-muted px-2 py-1.5"><span className="block font-semibold text-text-primary">{name}</span><span className="block break-words">{labels.join(", ")}</span></li>)}
   </ul> : null;
 }
 
@@ -156,16 +156,15 @@ export function CounselorAssessmentSchedulingSettings({ caseId, assessments, ses
     </section>;
 }
 
-export function CounselorAssessmentCards({ assessments, sessions, canReadResults, activeCaseSessionId }: Pick<CounselorAssessmentManagementProps, "assessments" | "sessions" | "canReadResults" | "activeCaseSessionId">) {
+export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId">) {
   if (!assessments.length) return <Card className="p-5"><section aria-label="Assessments"><h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3><p className="mt-2 text-sm text-text-muted">No Assessments are configured.</p></section></Card>;
   return <Card className="p-5"><section aria-label="Assessments">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3>
       <div className="mt-3 divide-y divide-border">{assessments.map((assessment) => {
         const blocking = canReadResults && assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId);
-        const scheduledSession = assessment.schedule ? sessions.find(({ id }) => id === assessment.schedule?.sessionId) : null;
         const completion = assessment.partners.filter((partner) => partner.status === "completed").length;
         return <div key={assessment.id} className="py-3 first:pt-0 last:pb-0">
-          <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h4 className="font-heading text-base font-bold text-text-primary">{assessment.title}</h4><p className="mt-1 text-sm text-text-muted">{assessment.schedule ? `Session ${scheduledSession?.sequenceNumber ?? ""}${scheduledSession ? `: ${scheduledSession.title}` : ""}` : "Not scheduled"}</p></div><Badge className={assessment.schedule?.requiredForProgression ? "bg-info-soft text-info-strong" : "bg-surface-muted text-text-muted"}>{assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}</Badge></div>
+          <div className="flex flex-wrap items-start justify-between gap-2"><h4 className="font-heading min-w-0 text-base font-bold text-text-primary">{assessment.title}</h4><Badge className={assessment.schedule?.requiredForProgression ? "bg-info-soft text-info-strong" : "bg-surface-muted text-text-muted"}>{assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}</Badge></div>
           {assessment.schedule && canReadResults ? <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><span className="text-text-secondary">{completion} of {assessment.partners.length} submitted</span>{blocking ? <Badge className="bg-amber-50 text-amber-900">Blocking Session advancement</Badge> : null}</div> : null}
           {canReadResults && assessment.schedule ? <AssessmentPrimarySummary assessment={assessment} /> : null}
           {canReadResults && assessment.schedule ? <AssessmentResultsDialog assessment={assessment} /> : null}

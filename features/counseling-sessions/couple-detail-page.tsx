@@ -144,7 +144,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
         <PrepareEnrichCard caseId={card.caseId} document={prepareEnrich} />
         <SessionLifecycleControls card={{ caseId: card.caseId, coupleName: card.coupleName, state: card.state, publishedSessions: card.publishedSessions, homework: card.homework, isAdmin }} partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
         <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Progress</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{presentation.progress}</p>{progressPercent !== null ? <div role="progressbar" aria-label="Counseling program progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)} className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary" style={{ width: `${progressPercent}%` }} /></div> : null}</Card>
-        {assessmentManagement ? <CounselorAssessmentCards assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} /> : null}
+        {assessmentManagement ? <CounselorAssessmentCards assessments={assessmentManagement.assessments} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} /> : null}
       </aside>
     </section>
     {canResetCounselingJourney ? <DevResetControl caseId={card.caseId} /> : null}

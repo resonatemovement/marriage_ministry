@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: main
+Current working branch: feature/assessment-tile-cleanup
 Repository: resonatemovement/marriage_ministry
+
+## Simplify the staff Assessments right-rail card (November 4, 2026)
+
+- On `feature/assessment-tile-cleanup`, removed the scheduled Session number/title and the unscheduled description from the right-rail Assessment summary. Assessment title, Required/Optional/Available badge, authorized completion count, authorized primary results, and `View Results` remain. Primary results now use compact vertically stacked partner rows rather than cramped two-column layout.
+- The existing results dialog, scheduling settings in the main column, data/permission gates, and support for multiple assessments are unchanged. No assessment logic, database, or unrelated UI changed.
+- Validation passed: focused Assessment and Case-detail tests (31 across 2 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. Browser/responsive visual verification has not been run.
+- Release status: implementation and this documentation update are on the focused feature branch; commit and DEV deployment are pending. Seven existing stashes are preserved. Exact next step: commit the focused change, fast-forward into `main`, verify the dedicated `marriage-ministry-dev` Vercel deployment reaches READY at the pushed SHA, then remove the merged branch. Actual Resonate PROD was not accessed.
 
 ## Move staff Assessments into the Counseling Case right rail (November 4, 2026)
 

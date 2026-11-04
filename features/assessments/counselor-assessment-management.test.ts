@@ -41,7 +41,7 @@ describe("Counselor Assessment management presentation", () => {
       preferences: {}, canManageSchedule: true, canManagePreference: true,
     }));
     const cards = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
-      assessments: [assessment], sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }],
+      assessments: [assessment],
       canReadResults: true, activeCaseSessionId: "case-session-1",
     }));
     expect(scheduling).toContain("Scheduling Settings");
@@ -49,12 +49,16 @@ describe("Counselor Assessment management presentation", () => {
     expect(scheduling).toContain("My default for future Cases");
     expect(scheduling).toContain("Existing Case schedules stay unchanged.");
     expect(cards).toContain('aria-label="Assessments"');
-    expect(cards).toContain("Session 1: Foundations");
+    expect(cards).not.toContain("Session 1: Foundations");
+    expect(cards).not.toContain("Not scheduled");
     expect(cards).toContain("1 of 2 submitted");
     expect(cards).toContain("Blocking Session advancement");
-    expect(cards).toContain("Alex A:");
-    expect(cards).toContain("> Words, Time</li>");
+    expect(cards).toContain(">Alex A</span>");
+    expect(cards).toContain(">Words, Time</span>");
     expect(cards).toContain("View Results");
+    expect(cards).toContain('aria-label="Primary results"');
+    expect(cards).toContain('class="mt-2 grid gap-1.5 text-sm text-text-secondary"');
+    expect(cards).not.toContain("sm:grid-cols-2");
     expect(cards).not.toContain("Scheduling Settings");
     expect(cards).not.toContain("Case Session");
     expect(cards).not.toContain("My default for future Cases");
@@ -95,7 +99,7 @@ describe("Counselor Assessment management presentation", () => {
       schedule: { ...assessment.schedule!, id: "schedule-2", requiredForProgression: false, source: "case_override" },
     };
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
-      assessments: [assessment, second], sessions: [{ id: "session-1", title: "Foundations", sequenceNumber: 1 }],
+      assessments: [assessment, second],
       canReadResults: true, activeCaseSessionId: null,
     }));
     expect(markup).toContain("Love Languages");
@@ -103,6 +107,27 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).toContain("Required");
     expect(markup).toContain("Optional");
     expect(markup.match(/View Results/g)).toHaveLength(2);
+    expect(markup).not.toContain("Session 1: Foundations");
+  });
+
+  it("shows each partner's primary result in vertically stacked compact rows", () => {
+    const bothSubmitted: CounselorAssessment = {
+      ...assessment,
+      partners: [assessment.partners[0], {
+        ...assessment.partners[1],
+        status: "completed",
+        latestScores: [{ label: "Touch", score: 9, rank: 1, isPrimary: true }],
+      }],
+    };
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
+      assessments: [bothSubmitted], canReadResults: true, activeCaseSessionId: null,
+    }));
+    const summary = markup.slice(markup.indexOf('aria-label="Primary results"'), markup.indexOf("</ul>", markup.indexOf('aria-label="Primary results"')));
+    expect(summary.indexOf("Alex A")).toBeLessThan(summary.indexOf("Blake B"));
+    expect(summary).toContain("Words, Time");
+    expect(summary).toContain("Touch");
+    expect(summary.match(/rounded-md bg-surface-muted px-2 py-1\.5/g)).toHaveLength(2);
+    expect(summary).not.toContain("sm:grid-cols-2");
   });
 
   it("keeps each visible scheduling form associated with its assessment", () => {
@@ -119,7 +144,7 @@ describe("Counselor Assessment management presentation", () => {
 
   it("does not expose participant results to Admin-only viewers", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
-      assessments: [assessment], sessions: [],
+      assessments: [assessment],
       canReadResults: false, activeCaseSessionId: "case-session-1",
     }));
     expect(markup).toContain("Partner completion status and results are unavailable in this view.");
@@ -131,7 +156,7 @@ describe("Counselor Assessment management presentation", () => {
 
   it("shows authorized staff a results dialog without exposing scheduling controls or score history", () => {
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
-      assessments: [assessment], sessions: [],
+      assessments: [assessment],
       canReadResults: true, activeCaseSessionId: null,
     }));
     expect(markup).toContain("Alex A");
