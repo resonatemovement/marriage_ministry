@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: feature/oversight-workspace-layout
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Coach and Campus Lead Workspace layout (November 4, 2026)
@@ -9,7 +9,9 @@ Repository: resonatemovement/marriage_ministry
 - Hierarchy team, campus, Couple, and progress labels wrap instead of being truncated. The right rail remains below the Sessions content at mobile/tablet widths; no fixed heights, hierarchy/navigation changes, data, authorization, Admin/Super Admin behavior, or database changes were introduced.
 - Validation passed: focused workspace/rail/route tests (15 tests across 4 files), `npm run typecheck`, `npm run lint`, and `git diff --check`. Browser visual verification has not been run.
 - `feature/counseling-progress-ui` remains separate and unmerged at commit `c23410b`; it was not changed or incorporated into this branch. Seven stashes remain preserved. No merge, push, or deployment has occurred for this layout task yet.
-- Next: review the committed feature, merge only this branch after validation, verify that the push targets the dedicated `resonate-movement/marriage-ministry-dev` Vercel project, then verify READY at the pushed SHA. Keep the counseling-progress branch separate pending its documented photo-authorization decision.
+- Feature commit `7327060` (`fix: improve oversight workspace layout`) was fast-forwarded into `main` and pushed to `origin/main` at `73270605ee06fbcefa0ade990ae935a1133506df`. Vercel confirmed the push targets only the dedicated DEV project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), linked to `resonatemovement/marriage_ministry` on `main`. Deployment `dpl_B2a3kcj7gWhFhzAAs3fLgSSD1RG4` reached `READY` at the same SHA; its `production` target is scoped to the dedicated DEV project, not actual Resonate PROD.
+- The merged local `feature/oversight-workspace-layout` branch was deleted normally after deployment verification. The separate `feature/counseling-progress-ui` branch remains untouched and unmerged at `c23410b` pending the documented photo-authorization decision. Seven stashes remain preserved. Actual Resonate PROD was not accessed.
+- Next: optionally perform browser verification on the dedicated DEV app. Keep the counseling-progress branch separate until its photo-authorization decision is resolved.
 
 ## Hierarchical Team Oversight (November 4, 2026)
 
