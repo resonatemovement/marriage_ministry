@@ -26,7 +26,7 @@ vi.mock("@/components/dashboard/workflow-panel", () => ({ WorkflowPanel: () => n
 vi.mock("@/features/dashboard/data", () => ({ dashboardMetrics: [] }));
 
 import WorkspaceRoute from "./page";
-import { counselingSessionsGridClassName, counselingSessionsWorkspaceClassName } from "@/features/counseling-sessions/presentation";
+import { counselingSessionsGridClassName, counselingSessionsOversightGridClassName } from "@/features/counseling-sessions/presentation";
 
 describe("Counseling Workspace route", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -40,7 +40,7 @@ describe("Counseling Workspace route", () => {
     expect(counselingSessionsGridClassName).toContain("grid-cols-1");
     expect(counselingSessionsGridClassName).toContain("sm:grid-cols-2");
     expect(counselingSessionsGridClassName).not.toContain("grid-cols-3");
-    expect(counselingSessionsWorkspaceClassName).toContain("xl:grid-cols-[minmax(0,1fr)_minmax(440px,480px)]");
+    expect(counselingSessionsOversightGridClassName(1)).toContain("xl:grid-cols-2");
   });
 
   it("keeps Sessions primary and adds only the supervised Counselor rail in Coach Workspace", async () => {
