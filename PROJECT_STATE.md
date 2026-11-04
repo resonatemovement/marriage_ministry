@@ -7,8 +7,9 @@ Repository: resonatemovement/marriage_ministry
 
 - On `feature/couple-count-pluralization`, the shared oversight hierarchy renderer now labels counts with simple singular/plural grammar: `0 Couples`, `1 Couple`, and `2+ Couples`. This shared renderer covers Coach and Campus Lead hierarchy rails and team-detail hierarchies used in Admin/Super Admin views; no layout, permission, navigation, or data behavior changed.
 - Focused rendering tests cover 0, 1, and 2 assigned Cases. The focused test passed (5 tests); `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Browser testing was not needed for this text-only rendering change.
-- Release status: implementation and validation are complete; commit, merge, and dedicated DEV deployment are pending. Seven existing stashes remain untouched. Actual Resonate PROD has not been accessed.
-- Next: commit the focused change, fast-forward merge into `main`, verify the linked dedicated `marriage-ministry-dev` Vercel project before pushing, confirm its deployment reaches READY at the pushed SHA, then remove the merged local feature branch and verify clean synchronized `main`.
+- Feature commit `c5b43f3` (`fix: pluralize hierarchy couple counts`) was fast-forward merged to `main` and pushed to `origin/main`. The verified dedicated DEV Vercel project is `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), linked to `resonatemovement/marriage_ministry` on `main`. Deployment `dpl_7obGfCsDbzopQAFG5GLA1o9ByiP2` reached `READY` at SHA `c5b43f33ea3728aca2896f130ddc79a472a48c0d`. Vercel's `production` label is scoped to this dedicated DEV project; actual Resonate PROD was not accessed.
+- Release documentation is recorded on `main`. The merged local feature branch is removed normally; `main` is synchronized with `origin/main`, and all seven existing stashes remain untouched. No database changes or migrations were made.
+- Next: none for this change; optionally review the labels in the DEV Coach, Campus Lead, and Admin/Super Admin hierarchy views.
 
 ## Counseling Progress supervisor identity and photos (November 4, 2026)
 
