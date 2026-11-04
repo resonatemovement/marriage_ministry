@@ -21,7 +21,7 @@ import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 import { MeetingRealtime } from "./meeting-realtime";
 import { CaseLifecycleRealtime } from "./case-lifecycle-realtime";
 import { ReopenHomeworkButton } from "./homework-reopen-button";
-import { CounselorAssessmentManagement } from "@/features/assessments/counselor-assessment-management";
+import { CounselorAssessmentCards, CounselorAssessmentSchedulingSettings } from "@/features/assessments/counselor-assessment-management";
 import type { CounselorAssessment, CounselorAssessmentSession } from "@/features/assessments/counselor-management-model";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
@@ -135,7 +135,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
             <MeetingNotificationStatus partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
           </> : null}
 
-          {assessmentManagement ? <CounselorAssessmentManagement caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManageSchedule={canManageAssessmentSchedule} canManagePreference={canManageAssessmentPreference} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} /> : null}
+          {assessmentManagement ? <CounselorAssessmentSchedulingSettings caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManageSchedule={canManageAssessmentSchedule} canManagePreference={canManageAssessmentPreference} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} /> : null}
         </Card>
       </div>
 
@@ -144,6 +144,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
         <PrepareEnrichCard caseId={card.caseId} document={prepareEnrich} />
         <SessionLifecycleControls card={{ caseId: card.caseId, coupleName: card.coupleName, state: card.state, publishedSessions: card.publishedSessions, homework: card.homework, isAdmin }} partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
         <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Progress</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{presentation.progress}</p>{progressPercent !== null ? <div role="progressbar" aria-label="Counseling program progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)} className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary" style={{ width: `${progressPercent}%` }} /></div> : null}</Card>
+        {assessmentManagement ? <CounselorAssessmentCards assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} /> : null}
       </aside>
     </section>
     {canResetCounselingJourney ? <DevResetControl caseId={card.caseId} /> : null}

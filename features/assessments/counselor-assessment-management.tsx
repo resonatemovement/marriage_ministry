@@ -133,7 +133,7 @@ function CaseSchedule({ caseId, assessment, sessions, completedSessionIds, prefe
   </div>;
 }
 
-export function CounselorAssessmentManagement({ caseId, assessments, sessions, preferences, canReadResults, canManageSchedule, canManagePreference, activeCaseSessionId, completedSessionIds = [] }: {
+type CounselorAssessmentManagementProps = {
   caseId: string;
   assessments: CounselorAssessment[];
   sessions: CounselorAssessmentSession[];
@@ -143,30 +143,34 @@ export function CounselorAssessmentManagement({ caseId, assessments, sessions, p
   canManagePreference: boolean;
   activeCaseSessionId: string | null;
   completedSessionIds?: string[];
-}) {
-  if (!assessments.length) return <section aria-label="Assessments" className="mt-4 border-t border-border pt-3"><h3 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Assessments</h3><p className="mt-1 text-sm text-text-muted">No Assessments are configured.</p></section>;
-  return <>
-    {canManageSchedule ? <section aria-label="Scheduling Settings" className="mt-4 border-t border-border pt-3">
+};
+
+export function CounselorAssessmentSchedulingSettings({ caseId, assessments, sessions, preferences, canManageSchedule, canManagePreference, completedSessionIds = [] }: Pick<CounselorAssessmentManagementProps, "caseId" | "assessments" | "sessions" | "preferences" | "canManageSchedule" | "canManagePreference" | "completedSessionIds">) {
+  if (!canManageSchedule || !assessments.length) return null;
+  return <section aria-label="Scheduling Settings" className="mt-4 border-t border-border pt-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Scheduling Settings</h3>
       <div className="mt-2 grid gap-2">{assessments.map((assessment) => <Card key={assessment.id} className="p-3 sm:p-4">
         <h4 className="font-heading text-base font-bold text-text-primary">{assessment.title}</h4>
         {!assessment.publishedVersionId && !assessment.schedule ? <p role="status" className="mt-2 rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted">No published version is available yet. This Assessment cannot be assigned until a usable version is published.</p> : <><CaseSchedule caseId={caseId} assessment={assessment} sessions={sessions} completedSessionIds={completedSessionIds} preferenceSessionId={preferences[assessment.id] ?? null} canManagePreference={canManagePreference} />{assessment.schedule && !assessment.publishedVersionId ? <p role="status" className="mt-2 text-xs text-text-muted">The existing pinned version remains available to participants; no new version is published for new assignments.</p> : null}</>}
       </Card>)}</div>
-    </section> : null}
-    <section aria-label="Assessments" className="mt-4 border-t border-border pt-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Assessments</h3>
-      <div className="mt-2 grid gap-2">{assessments.map((assessment) => {
+    </section>;
+}
+
+export function CounselorAssessmentCards({ assessments, sessions, canReadResults, activeCaseSessionId }: Pick<CounselorAssessmentManagementProps, "assessments" | "sessions" | "canReadResults" | "activeCaseSessionId">) {
+  if (!assessments.length) return <Card className="p-5"><section aria-label="Assessments"><h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3><p className="mt-2 text-sm text-text-muted">No Assessments are configured.</p></section></Card>;
+  return <Card className="p-5"><section aria-label="Assessments">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3>
+      <div className="mt-3 divide-y divide-border">{assessments.map((assessment) => {
         const blocking = canReadResults && assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId);
         const scheduledSession = assessment.schedule ? sessions.find(({ id }) => id === assessment.schedule?.sessionId) : null;
         const completion = assessment.partners.filter((partner) => partner.status === "completed").length;
-        return <Card key={assessment.id} className="p-3 sm:p-4">
+        return <div key={assessment.id} className="py-3 first:pt-0 last:pb-0">
           <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h4 className="font-heading text-base font-bold text-text-primary">{assessment.title}</h4><p className="mt-1 text-sm text-text-muted">{assessment.schedule ? `Session ${scheduledSession?.sequenceNumber ?? ""}${scheduledSession ? `: ${scheduledSession.title}` : ""}` : "Not scheduled"}</p></div><Badge className={assessment.schedule?.requiredForProgression ? "bg-info-soft text-info-strong" : "bg-surface-muted text-text-muted"}>{assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}</Badge></div>
           {assessment.schedule && canReadResults ? <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><span className="text-text-secondary">{completion} of {assessment.partners.length} submitted</span>{blocking ? <Badge className="bg-amber-50 text-amber-900">Blocking Session advancement</Badge> : null}</div> : null}
           {canReadResults && assessment.schedule ? <AssessmentPrimarySummary assessment={assessment} /> : null}
           {canReadResults && assessment.schedule ? <AssessmentResultsDialog assessment={assessment} /> : null}
           {assessment.schedule && !canReadResults ? <p className="mt-2 text-sm text-text-muted">Partner completion status and results are unavailable in this view.</p> : null}
-        </Card>;
+        </div>;
       })}</div>
-    </section>
-  </>;
+    </section></Card>;
 }

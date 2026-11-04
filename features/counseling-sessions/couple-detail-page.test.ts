@@ -12,14 +12,15 @@ vi.mock("./meeting-notification-realtime", () => ({ MeetingNotificationRealtime:
 vi.mock("@/features/session-materials-export/export-session-materials-button", () => ({ ExportSessionMaterialsButton: ({ caseSessionId, sessionLabel }: { caseSessionId: string; sessionLabel?: string }) => createElement("div", { "data-export-session": caseSessionId }, createElement("button", { "aria-label": sessionLabel ? `Preview PDF for ${sessionLabel}` : undefined }, "Preview PDF"), createElement("button", { "aria-label": sessionLabel ? `Download PDF for ${sessionLabel}` : undefined }, "Download PDF")) }));
 
 import { CounselingCoupleDetailPage } from "./couple-detail-page";
+import type { CounselorAssessment } from "@/features/assessments/counselor-management-model";
 
 vi.mock("./homework-reopen-actions", () => ({ reopenParticipantHomework: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName }: { partnerName: string }) => createElement("button", null, `Reopen Homework for ${partnerName}`) }));
-vi.mock("@/features/assessments/counselor-assessment-management", () => ({ CounselorAssessmentManagement: () => createElement("div", null,
-  createElement("section", { "aria-label": "Scheduling Settings" }, "Scheduling settings"),
-  createElement("section", { "aria-label": "Assessments" }, "Assessment management"),
-) }));
+vi.mock("@/features/assessments/counselor-assessment-management", () => ({
+  CounselorAssessmentSchedulingSettings: () => createElement("section", { "aria-label": "Scheduling Settings" }, "Scheduling settings"),
+  CounselorAssessmentCards: () => createElement("section", { "aria-label": "Assessments" }, "Assessment management"),
+}));
 import type { CounselingSessionCard } from "./queries";
 
 const card: CounselingSessionCard = {
@@ -289,6 +290,20 @@ describe("Counseling couple detail foundation", () => {
     expect(rightRail.indexOf("Prepare &amp; Enrich")).toBeLessThan(rightRail.indexOf("Next Step"));
     expect(rightRail.indexOf("Next Step")).toBeLessThan(rightRail.indexOf(">Progress</p>"));
     expect(markup).toContain("Oct 12, 2026, 12:00 PM · Church");
+  });
+
+  it("keeps scheduling in the main column and places Assessments after Progress in the right rail", () => {
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, {
+      card,
+      assessmentManagement: { assessments: [{} as CounselorAssessment], sessions: [], preferences: {} },
+    }));
+    const mainColumn = markup.slice(markup.indexOf('class="space-y-6"'), markup.indexOf("<aside"));
+    const rightRail = markup.slice(markup.indexOf("<aside"), markup.indexOf("</aside>"));
+    expect(mainColumn).toContain('aria-label="Scheduling Settings"');
+    expect(mainColumn).not.toContain('aria-label="Assessments"');
+    expect(rightRail).toContain('aria-label="Assessments"');
+    expect(rightRail.indexOf("Next Step")).toBeLessThan(rightRail.indexOf(">Progress</p>"));
+    expect(rightRail.indexOf(">Progress</p>")).toBeLessThan(rightRail.indexOf('aria-label="Assessments"'));
   });
 
   it("keeps Prepare & Enrich directly after Counseling Status when no Counselor Copy is uploaded", () => {
