@@ -3,6 +3,13 @@ Last updated: November 4, 2026
 Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
+## Hierarchy Couple count pluralization (November 4, 2026)
+
+- On `feature/couple-count-pluralization`, the shared oversight hierarchy renderer now labels counts with simple singular/plural grammar: `0 Couples`, `1 Couple`, and `2+ Couples`. This shared renderer covers Coach and Campus Lead hierarchy rails and team-detail hierarchies used in Admin/Super Admin views; no layout, permission, navigation, or data behavior changed.
+- Focused rendering tests cover 0, 1, and 2 assigned Cases. The focused test passed (5 tests); `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Browser testing was not needed for this text-only rendering change.
+- Release status: implementation and validation are complete; commit, merge, and dedicated DEV deployment are pending. Seven existing stashes remain untouched. Actual Resonate PROD has not been accessed.
+- Next: commit the focused change, fast-forward merge into `main`, verify the linked dedicated `marriage-ministry-dev` Vercel project before pushing, confirm its deployment reaches READY at the pushed SHA, then remove the merged local feature branch and verify clean synchronized `main`.
+
 ## Counseling Progress supervisor identity and photos (November 4, 2026)
 
 - The existing Counseling Progress branch began at `c23410b` and was safely updated with latest `main` (`31ce0a8`) in merge commit `6ecd7c1`; the original feature commit remains an ancestor. Main's dynamic Counseling Workspace grid and release documentation were preserved. Seven stashes remain untouched.

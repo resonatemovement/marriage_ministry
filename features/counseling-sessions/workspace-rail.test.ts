@@ -22,4 +22,27 @@ describe("Coach Counselors rail", () => {
     expect(markup).toContain(">0</span>");
     expect(markup).toContain("No counselors assigned.");
   });
+
+  it.each([
+    [0, "0 Couples"],
+    [1, "1 Couple"],
+    [2, "2 Couples"],
+  ])("pluralizes the hierarchy Couple count for %i assigned Cases", (count, expectedLabel) => {
+    const cases = Array.from({ length: count }, (_, index) => ({
+      teamId: "team-1",
+      teamName: "John & Stacy Wu",
+      caseId: `case-${index + 1}`,
+      coupleId: `couple-${index + 1}`,
+      coupleName: `Couple ${index + 1}`,
+      caseStatus: "Active",
+      sessionProgress: "1 of 12 Sessions",
+      nextMeetingAt: null,
+      homeworkStatus: "Complete",
+    }));
+    const markup = renderToStaticMarkup(createElement(CoachCounselorsRail, {
+      counselors: [{ id: "team-1", name: "John & Stacy Wu", campus: null, href: "/workspace/counselors/team-1", role: "Counselor", cases, children: [] }],
+    }));
+
+    expect(markup).toContain(expectedLabel);
+  });
 });

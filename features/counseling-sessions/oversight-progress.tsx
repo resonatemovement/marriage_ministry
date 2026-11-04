@@ -7,6 +7,10 @@ import { Card } from "@/components/ui/card";
 import type { CounselingOversightProgress } from "./oversight-queries";
 import type { OversightTeamNode } from "./oversight-rail-queries";
 
+function coupleCountLabel(count: number) {
+  return `${count} ${count === 1 ? "Couple" : "Couples"}`;
+}
+
 function TeamNode({ team }: { team: OversightTeamNode }) {
   return <Collapsible className="min-w-0 rounded-md border border-border bg-white">
     <div className="flex min-w-0 items-center gap-2 px-3 py-2">
@@ -18,7 +22,7 @@ function TeamNode({ team }: { team: OversightTeamNode }) {
         <Link href={team.href} className="block break-words text-sm font-semibold text-brand-primary hover:underline focus-visible:bg-sidebar-accent">{team.name}</Link>
         <p className="break-words text-xs text-text-muted">{team.role}{team.campus ? ` · ${team.campus}` : ""}</p>
       </div>
-      <span className="shrink-0 text-xs text-text-muted">{team.cases.length} Couples</span>
+      <span className="shrink-0 text-xs text-text-muted">{coupleCountLabel(team.cases.length)}</span>
     </div>
     <CollapsibleContent className="border-t border-border px-3 py-2">
       {team.cases.length ? <div className="space-y-2">{team.cases.map((item) => <CaseProgressRow key={item.caseId} item={item} href={`/workspace/oversight/teams/${team.id}/cases/${item.caseId}`} />)}</div> : <p className="py-1 text-xs text-text-muted">No active Couples assigned.</p>}
