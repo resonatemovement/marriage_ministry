@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 5, 2026
-Current working branch: main (release follow-up in progress on feature/onboarding-reminder-emails)
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Onboarding Reminder Delivery — Implemented and DEV-Verified (November 5, 2026)
@@ -12,7 +12,7 @@ Repository: resonatemovement/marriage_ministry
 - Controlled live DEV verification ran against the deployed code at `e048836dab61c8877ff30b238896dfa2fa502899` (deployment `dpl_FHtrS6M9HXnWAqga5i6EB6jpj8Mn`, READY). Two concurrent protected requests produced exactly two provider-accepted synthetic Mailinator reminders; a repeat run produced zero sends. The audit rows had provider IDs and sent timestamps before cleanup. An invalid bearer request to the deployed endpoint returned HTTP 401. No real ministry recipient was eligible or contacted.
 - The verifier removed its temporary Intake Request, Couple group link/group, status history, invitations, and delivery rows. A separate read-only post-check against DEV confirmed zero matching temporary groups, Intake Requests, invitations, or delivery records. No Auth users were created and no existing participant data was changed. Mailbox receipt itself was not independently inspected; verification confirms provider acceptance and persisted send audit before the synthetic audit rows were cleaned up.
 - Validation passed: full suite (219 files / 1,241 tests), `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, `npm run verify:supabase`, and linked `npx supabase db lint`. DB lint reports only pre-existing warnings in unrelated legacy functions; neither reminder migration has a lint issue. Both migrations are applied to DEV and linked history is aligned.
-- Code commit `e048836` was fast-forward merged and pushed to `main`; the dedicated DEV deployment above reached READY at the matching SHA. The feature branch is retained. All seven stashes remain preserved. A documentation-only release follow-up is being merged; automatic reminder scheduling remains disabled and requires separate approval after any operational rollout decision.
+- Code commit `e048836` was fast-forward merged and pushed to `main`; the dedicated DEV deployment above reached READY at the matching SHA. Documentation records the follow-up verification, the feature branch is retained, and all seven stashes remain preserved. Automatic reminder scheduling remains disabled and requires separate approval after any operational rollout decision.
 
 ## Onboarding Reminder DEV Email Safety Guard — Phase 3A, Task 3 (Verified and Cleanly Deployed, November 5, 2026)
 
