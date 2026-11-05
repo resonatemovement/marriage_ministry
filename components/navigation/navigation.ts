@@ -20,7 +20,7 @@ export interface NavigationItem {
 
 export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly NavigationItem[]>> = {
   admin: [
-    { label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "People & Teams", href: "/people", icon: Users },
     { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },
     { label: "Session Builder", href: "/session-builder", icon: BookOpenText },
@@ -29,6 +29,7 @@ export const workspaceNavigation: Readonly<Record<WorkspaceId, readonly Navigati
     { label: "My Profile", href: "/profile", icon: UserRound },
   ],
   campus_lead: [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Workspace", href: WORKSPACE_HREF, icon: LayoutDashboard },
     { label: "People & Teams", href: "/people", icon: Users },
     { label: "Intake Requests", href: "/intake-requests", icon: ClipboardList },

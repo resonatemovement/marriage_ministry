@@ -1,4 +1,4 @@
-import type { WorkspaceId } from "../workspaces";
+import { getWorkspaceDefinition, type WorkspaceId } from "../workspaces";
 import { WORKSPACE_HREF } from "../workspaces";
 
 const workspaceByPath: Readonly<Record<string, WorkspaceId>> = {
@@ -14,10 +14,12 @@ export function workspaceForPath(path: string | undefined) {
 }
 
 export function defaultWorkspaceDestination(workspaces: readonly WorkspaceId[]) {
-  return workspaces[0] ? WORKSPACE_HREF : undefined;
+  return workspaces[0] ? getWorkspaceDefinition(workspaces[0]).href : undefined;
 }
 
 export function postLoginDestination(workspaces: readonly WorkspaceId[], next: string | undefined) {
+  const pathname = next?.startsWith("/") ? new URL(next, "https://resonate.local").pathname : undefined;
+  if (pathname === "/dashboard" && (workspaces.includes("admin") || workspaces.includes("campus_lead"))) return next!;
   const requestedWorkspace = workspaceForPath(next);
   if (requestedWorkspace && workspaces.includes(requestedWorkspace)) return next!;
 

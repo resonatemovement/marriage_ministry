@@ -21,7 +21,7 @@ interface WorkspaceDefinition {
 }
 
 const workspaceDefinitions: Readonly<Record<WorkspaceId, WorkspaceDefinition>> = {
-  admin: { id: "admin", label: "Admin Workspace", href: WORKSPACE_HREF },
+  admin: { id: "admin", label: "Admin Dashboard", href: "/dashboard" },
   campus_lead: { id: "campus_lead", label: "Campus Lead Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your campus overview will appear here." },
   coach: { id: "coach", label: "Coach Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling dashboard will appear here." },
   counselor: { id: "counselor", label: "Counselor Workspace", href: WORKSPACE_HREF, placeholderMessage: "Your counseling dashboard will appear here." },

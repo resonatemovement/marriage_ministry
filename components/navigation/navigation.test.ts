@@ -32,8 +32,10 @@ describe("Resource Library navigation access", () => {
 });
 
 describe("Counseling Workspace navigation", () => {
-  it("identifies Workspace, rather than Sessions, as the main counseling-team destination", () => {
-    for (const workspace of ["campus_lead", "coach", "counselor"] as const) {
+  it("preserves the Campus Lead Workspace beside Dashboard and keeps Coach/Counselor Workspace destinations", () => {
+    expect(workspaceNavigation.campus_lead[0]).toMatchObject({ label: "Dashboard", href: "/dashboard" });
+    expect(workspaceNavigation.campus_lead.some((item) => item.label === "Workspace" && item.href === "/workspace")).toBe(true);
+    for (const workspace of ["coach", "counselor"] as const) {
       expect(workspaceNavigation[workspace][0]).toMatchObject({ label: "Workspace", href: "/workspace" });
       expect(workspaceNavigation[workspace].some((item) => item.label === "Sessions")).toBe(false);
     }

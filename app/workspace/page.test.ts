@@ -80,24 +80,18 @@ describe("Counseling Workspace route", () => {
     expect(getCoupleWorkspaceData).not.toHaveBeenCalled();
   });
 
-  it("keeps the Admin overview route separate from Coach and Campus Lead rails", async () => {
+  it("redirects the Admin Workspace entry to the shared Dashboard", async () => {
     state.workspace = "admin";
     state.roles = ["admin"];
-    const markup = renderToStaticMarkup(await WorkspaceRoute());
-    expect(markup).toContain('id="overview"');
-    expect(markup).toContain('aria-label="Case summary" class="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4"');
-    expect(markup.match(/data-metric=/g)).toHaveLength(4);
-    expect(markup).not.toContain('data-sessions="primary"');
-    expect(markup).not.toContain("Counselors");
-    expect(markup).not.toContain("Coaches");
-    expect(getAdminDashboardCounts).toHaveBeenCalledOnce();
+    await expect(WorkspaceRoute()).rejects.toMatchObject({ digest: expect.stringContaining("/dashboard") });
+    expect(getAdminDashboardCounts).not.toHaveBeenCalled();
   });
 
-  it("loads the same live dashboard data for an Admin-workspace Super Admin", async () => {
+  it("redirects the Super Admin Workspace entry to the shared Dashboard", async () => {
     state.workspace = "admin";
     state.roles = ["super_admin"];
-    await WorkspaceRoute();
-    expect(getAdminDashboardCounts).toHaveBeenCalledOnce();
+    await expect(WorkspaceRoute()).rejects.toMatchObject({ digest: expect.stringContaining("/dashboard") });
+    expect(getAdminDashboardCounts).not.toHaveBeenCalled();
   });
 
   it("does not request Admin dashboard data for non-Admin workspaces", async () => {

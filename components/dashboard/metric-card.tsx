@@ -22,29 +22,27 @@ export function MetricCard({ metric }: { metric: DashboardMetric }) {
   const tone = toneStyles[metric.tone];
   const Icon = tone.icon;
 
-  return (
-    <Link href={metric.href} aria-label={`View ${metric.label}`} className="group flex h-full flex-col rounded-lg focus-visible:bg-sidebar-accent focus-visible:outline-none">
-      <Card className="h-full flex-1 p-5 transition-shadow group-hover:shadow-[0_2px_4px_rgba(43,45,42,0.05),0_12px_30px_rgba(43,45,42,0.06)] sm:p-6">
+  const content = <Card className={cn("h-full flex-1 p-5 sm:p-6", metric.href && "transition-shadow group-hover:shadow-[0_2px_4px_rgba(43,45,42,0.05),0_12px_30px_rgba(43,45,42,0.06)]")}>
         <div className="flex h-full flex-col justify-between gap-6">
           <div className="flex items-start justify-between gap-3">
             <div className={cn("grid size-9 place-items-center rounded-lg", tone.surface)}>
               <Icon className="size-4" aria-hidden="true" />
             </div>
-            <span className="grid size-8 shrink-0 place-items-center rounded-md text-text-muted transition group-hover:bg-surface-muted group-hover:text-brand-primary">
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </span>
+            {metric.href ? <span className="grid size-8 shrink-0 place-items-center rounded-md text-text-muted transition group-hover:bg-surface-muted group-hover:text-brand-primary"><ArrowUpRight className="size-4" aria-hidden="true" /></span> : null}
           </div>
           <div>
             <div className="flex items-end justify-between gap-3">
               <p className="font-heading text-sm font-medium text-text-muted">{metric.label}</p>
-              <p className="font-heading text-3xl font-extrabold text-text-primary" aria-label={metric.value === null ? "Live data unavailable" : `${metric.value} couples`}>
+              <p className="font-heading text-3xl font-extrabold text-text-primary" aria-label={metric.value === null ? "Live data unavailable" : `${metric.value} ${metric.valueLabel}`}>
                 {metric.value ?? "—"}
               </p>
             </div>
             <p className="mt-2 text-xs text-text-muted">{metric.value === null ? "Live data unavailable" : metric.detail}</p>
           </div>
         </div>
-      </Card>
-    </Link>
-  );
+      </Card>;
+
+  return metric.href
+    ? <Link href={metric.href} aria-label={`View ${metric.label}`} className="group flex h-full flex-col rounded-lg focus-visible:bg-sidebar-accent focus-visible:outline-none">{content}</Link>
+    : <div className="flex h-full flex-col">{content}</div>;
 }

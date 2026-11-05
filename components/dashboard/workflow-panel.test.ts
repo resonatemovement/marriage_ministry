@@ -6,11 +6,12 @@ import { calculateDashboardCounts, dashboardWorkflow } from "@/features/dashboar
 import { WorkflowPanel } from "./workflow-panel";
 
 describe("Admin dashboard workflow navigation", () => {
-  it("links all nine stages to their actual status-filtered Couple list", () => {
+  it("links all eight visible stages to their actual status-filtered Couple list", () => {
     const stages = dashboardWorkflow(calculateDashboardCounts([], []));
     const markup = renderToStaticMarkup(createElement(WorkflowPanel, { stages, total: 0 }));
 
-    expect((markup.match(/href="\/people\?filter=couples&amp;caseStatus=/g) ?? [])).toHaveLength(9);
+    expect((markup.match(/href="\/people\?filter=couples&amp;caseStatus=/g) ?? [])).toHaveLength(8);
+    expect(markup).not.toContain("Pending final");
     for (const stage of stages) {
       expect(markup).toContain(`caseStatus=${stage.status}`);
       expect(markup).toContain(`View Couples in ${stage.label} status`);

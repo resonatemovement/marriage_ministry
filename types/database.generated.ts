@@ -3184,6 +3184,7 @@ export type Database = {
           partners: Json
         }[]
       }
+      get_campus_lead_dashboard_metrics: { Args: never; Returns: Json }
       get_case_assessment_catalog: {
         Args: { target_case_id: string }
         Returns: {

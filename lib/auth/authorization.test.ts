@@ -14,13 +14,13 @@ describe("workspace authorization routing", () => {
     expect(workspaceForPath("https://example.com")).toBeUndefined();
   });
 
-  it("sends every permitted role to the shared workspace route", () => {
-    expect(defaultWorkspaceDestination(["admin"])).toBe("/workspace");
+  it("sends each role to its authorized Dashboard or Workspace entry", () => {
+    expect(defaultWorkspaceDestination(["admin"])).toBe("/dashboard");
     expect(defaultWorkspaceDestination(["coach"])).toBe("/workspace");
     expect(defaultWorkspaceDestination(["counselor"])).toBe("/workspace");
     expect(defaultWorkspaceDestination(["author"])).toBe("/workspace");
     expect(defaultWorkspaceDestination(["couple"])).toBe("/workspace");
-    expect(defaultWorkspaceDestination(["admin", "coach"])).toBe("/workspace");
+    expect(defaultWorkspaceDestination(["admin", "coach"])).toBe("/dashboard");
   });
 
   it("falls back to the shared workspace when a feature route is not permitted", () => {
@@ -29,6 +29,9 @@ describe("workspace authorization routing", () => {
 
   it("preserves a permitted protected destination after sign-in", () => {
     expect(postLoginDestination(["admin"], "/people")).toBe("/people");
+    expect(postLoginDestination(["admin"], "/dashboard")).toBe("/dashboard");
+    expect(postLoginDestination(["campus_lead"], "/dashboard")).toBe("/dashboard");
+    expect(postLoginDestination(["coach"], "/dashboard")).toBe("/workspace");
   });
 
   it("does not preserve the shared workspace as a login return path", () => {

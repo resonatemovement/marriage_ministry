@@ -13,13 +13,14 @@ import { dashboardMetrics, dashboardWorkflow } from "@/features/dashboard/data";
 describe("Admin dashboard live-data presentation", () => {
   it("shows explicit unavailable states instead of fictional queue, capacity, or activity data", () => {
     const markup = renderToStaticMarkup(createElement("div", null,
-      createElement(AttentionPanel), createElement(CapacityPanel), createElement(AssignmentQueuePanel), createElement(UpcomingPanel),
+      createElement(AttentionPanel, { items: [] }), createElement(CapacityPanel), createElement(AssignmentQueuePanel), createElement(UpcomingPanel),
     ));
-    expect(markup.match(/Not yet available\./g)).toHaveLength(3);
+    expect(markup.match(/Not yet available\./g)).toHaveLength(2);
     expect(markup).toContain("Assignment queue details are not yet available.");
     expect(markup).not.toContain("Maya &amp; Jordan");
     expect(markup).not.toContain("AUG 19");
     expect(markup).not.toContain("63%");
+    expect(markup).toContain("Nothing needs attention right now.");
   });
 
   it("renders unavailable metrics as unavailable rather than zero", () => {
@@ -33,10 +34,11 @@ describe("Admin dashboard live-data presentation", () => {
   it("renders live workflow statuses without hardcoded values and includes every current Case status", () => {
     const stages = dashboardWorkflow(null);
     const markup = renderToStaticMarkup(createElement(WorkflowPanel, { stages, total: null }));
-    expect(stages).toHaveLength(9);
+    expect(stages).toHaveLength(8);
     expect(stages.every(({ count }) => count === null)).toBe(true);
     expect(markup).toContain("Requested");
     expect(markup).toContain("Closed — Incomplete");
+    expect(markup).not.toContain("Pending final");
     expect(markup).not.toContain("82 total cases");
     expect(markup).toContain("Live data unavailable");
   });

@@ -1,7 +1,18 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 5, 2026
-Current working branch: main
+Current working branch: feature/shared-dashboard-attention
 Repository: resonatemovement/marriage_ministry
+
+## Shared Dashboard & Needs Attention — Phase 3A, Task 2 (November 5, 2026)
+
+- Added a shared `/dashboard` for Admin/Super Admin (ministry-wide) and Campus Leads (their active assigned campuses only), while retaining the existing Campus Lead `/workspace`. Admin `/workspace` now routes to Dashboard; role defaults and requested return destinations follow the Dashboard/Workspace split.
+- Replaced dashboard operational figures with live data. The four summary cards are Unassigned Couples, Active Couples, Under Review Intakes, and Completed Couples. Couple metrics count distinct current Couples rather than historical Cases. Admin links reuse the existing filtered Couple list; Campus Leads do not receive links to Admin-only identity destinations. Under Review links to the existing authorized Intake list. The visible workflow omits Pending Final without changing Case lifecycle states and avoids misleading totals.
+- Added a manually navigated Needs Attention carousel and reusable `/dashboard/attention` queue. It composes the existing configured Task 1 alert detector with authorized unassigned-Couple sources, deduplicates by current action, supports swipe/position controls, and recomputes on each request so resolved items disappear. Campus Lead unassigned items route only to the existing authorized campus assignment view; no broader Couple identity access was added.
+- Added migration `20261105110000_campus_lead_dashboard_aggregates.sql`, applied only to verified Supabase DEV `lctkqjjkhpyootwvttvj`. The read-only SECURITY DEFINER RPC requires an authenticated Campus Lead with active assigned campus scope and returns only aggregate counts. It is not executable by Admin/Super Admin or non-Campus-Lead roles; existing Admin queries and RLS remain unchanged. Generated database types were regenerated.
+- Authenticated DEV verification passed for Admin, Super Admin, two Campus Leads, and denied Couple/Coach/Counselor/anonymous callers. Admin counts matched authorized query sources; each Campus Lead aggregate matched an independent campus-scoped count; out-of-scope Couple and alert access was denied. Verified DEV aggregates: 2 unassigned, 5 active, 0 under-review intakes, 1 completed, 9 current Cases. Workflow: requested 0, assessment 0, interviewed 1, matched 2, active 5, finished 1, referred 0, inactive 0. No DEV participant records were changed by this task.
+- Validation passed: focused dashboard tests (32), full suite (214 files / 1,193 tests), `npm run typecheck`, `npm run lint`, `npm run build`, `npx supabase db lint --linked --level error`, `npm run verify:shared-dashboard`, and `git diff --check`. Local Docker was unavailable, so local-container DB lint was not run. No authenticated browser/manual responsive check was performed.
+- Release preflight verified Vercel team `resonatemovement`, dedicated project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), and latest deployment metadata for GitHub repository `resonatemovement/marriage_ministry` on `main`. This project is the dedicated DEV target; actual Resonate PROD was not accessed. Feature commit/merge/push and deployment verification are pending at this documentation point.
+- Next: commit this validated feature, fast-forward merge to `main`, push only after rechecking the dedicated DEV target, verify the Git-triggered deployment is READY at the pushed SHA, update this release record, and remove the merged feature branch normally. Preserve all seven existing stashes.
 
 ## Intake Alert Settings & Detection — Phase 3A, Task 1 (November 5, 2026)
 

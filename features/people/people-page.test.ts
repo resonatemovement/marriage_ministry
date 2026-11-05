@@ -28,7 +28,8 @@ describe("Admin filtered Couple list", () => {
       returnTo: "/people?filter=couples&q=Jordan&caseStatus=unassigned",
     }));
 
-    expect(markup).toContain("Back to Admin Workspace");
+    expect(markup).toContain("Back to Dashboard");
+    expect(markup).toContain('href="/dashboard"');
     expect(markup).toContain('name="caseStatus" value="unassigned"');
     expect(markup).toContain('href="/people?filter=couples&amp;q=Jordan&amp;caseStatus=interviewed"');
     expect(markup).toContain('href="/people/couple-id?returnTo=');
