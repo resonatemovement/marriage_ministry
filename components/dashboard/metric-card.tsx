@@ -23,8 +23,8 @@ export function MetricCard({ metric }: { metric: DashboardMetric }) {
   const Icon = tone.icon;
 
   return (
-    <Link href={metric.href} aria-label={`View ${metric.label}`} className="group block rounded-lg focus-visible:bg-sidebar-accent focus-visible:outline-none">
-      <Card className="min-h-38 p-5 transition-shadow group-hover:shadow-[0_2px_4px_rgba(43,45,42,0.05),0_12px_30px_rgba(43,45,42,0.06)] sm:p-6">
+    <Link href={metric.href} aria-label={`View ${metric.label}`} className="group flex h-full flex-col rounded-lg focus-visible:bg-sidebar-accent focus-visible:outline-none">
+      <Card className="h-full flex-1 p-5 transition-shadow group-hover:shadow-[0_2px_4px_rgba(43,45,42,0.05),0_12px_30px_rgba(43,45,42,0.06)] sm:p-6">
         <div className="flex h-full flex-col justify-between gap-6">
           <div className="flex items-start justify-between gap-3">
             <div className={cn("grid size-9 place-items-center rounded-lg", tone.surface)}>

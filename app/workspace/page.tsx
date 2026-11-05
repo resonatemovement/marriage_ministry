@@ -52,7 +52,7 @@ export default async function WorkspaceRoute() {
       <div id="overview">
         <DashboardHeader />
         <main className="mx-auto max-w-[1500px] p-5 sm:p-8 lg:p-10">
-          <section aria-label="Case summary" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label="Case summary" className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {dashboardMetrics(dashboardCounts).map((metric) => <MetricCard key={metric.label} metric={metric} />)}
           </section>
 

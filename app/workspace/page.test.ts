@@ -22,10 +22,15 @@ vi.mock("@/components/dashboard/dashboard-header", () => ({ DashboardHeader: () 
 vi.mock("@/components/dashboard/attention-panel", () => ({ AttentionPanel: () => null }));
 vi.mock("@/components/dashboard/assignment-queue-panel", () => ({ AssignmentQueuePanel: () => null }));
 vi.mock("@/components/dashboard/capacity-panel", () => ({ CapacityPanel: () => null }));
-vi.mock("@/components/dashboard/metric-card", () => ({ MetricCard: () => null }));
+vi.mock("@/components/dashboard/metric-card", () => ({ MetricCard: ({ metric }: { metric: { label: string } }) => createElement("div", { "data-metric": metric.label }) }));
 vi.mock("@/components/dashboard/upcoming-panel", () => ({ UpcomingPanel: () => null }));
 vi.mock("@/components/dashboard/workflow-panel", () => ({ WorkflowPanel: () => null }));
-vi.mock("@/features/dashboard/data", () => ({ dashboardMetrics: () => [], dashboardWorkflow: () => [] }));
+vi.mock("@/features/dashboard/data", () => ({ dashboardMetrics: () => [
+  { label: "Unassigned couples", value: 2, detail: "Unassigned", href: "/people?caseStatus=unassigned", tone: "amber" },
+  { label: "Active couples", value: 5, detail: "Active", href: "/people?caseStatus=active", tone: "blue" },
+  { label: "Pending final", value: 0, detail: "Pending final", href: "/people?caseStatus=pending_final", tone: "coral" },
+  { label: "Completed couples", value: 1, detail: "Finished", href: "/people?caseStatus=finished", tone: "green" },
+], dashboardWorkflow: () => [] }));
 
 import WorkspaceRoute from "./page";
 import { counselingSessionsGridClassName, counselingSessionsOversightGridClassName } from "@/features/counseling-sessions/presentation";
@@ -80,6 +85,8 @@ describe("Counseling Workspace route", () => {
     state.roles = ["admin"];
     const markup = renderToStaticMarkup(await WorkspaceRoute());
     expect(markup).toContain('id="overview"');
+    expect(markup).toContain('aria-label="Case summary" class="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4"');
+    expect(markup.match(/data-metric=/g)).toHaveLength(4);
     expect(markup).not.toContain('data-sessions="primary"');
     expect(markup).not.toContain("Counselors");
     expect(markup).not.toContain("Coaches");

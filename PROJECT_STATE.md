@@ -1,7 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 5, 2026
-Current working branch: main
+Current working branch: feature/consistent-card-heights
 Repository: resonatemovement/marriage_ministry
+
+## Consistent Admin summary card heights (November 5, 2026)
+
+- On `feature/consistent-card-heights`, the four Admin summary cards use an explicitly stretch-aligned CSS Grid row. Each linked card fills its grid item, so cards in the same row match the tallest card naturally without fixed heights. Existing card content, styling, navigation, `sm` two-column layout, and `xl` four-column layout are preserved.
+- Focused tests cover the four-card dashboard row and the link/card stretch classes. Validation passed 12 focused tests across the workspace route, metric-card, and dashboard data-panel tests; `npm run typecheck`, `npm run lint`, and `git diff --check` passed. Browser automation is unavailable in this environment, so desktop/mobile visual checks were limited to verifying the responsive Grid breakpoint classes in rendered markup.
+- No data, database, permission, or hierarchy behavior changed. Release is pending: this branch must be committed, merged into `main`, pushed only after re-verifying the dedicated DEV Vercel target, and the Git-triggered deployment must reach `READY`. All seven existing stashes are preserved; actual Resonate PROD has not been accessed.
 
 ## Admin dashboard navigation — Phase 2 (November 5, 2026)
 
