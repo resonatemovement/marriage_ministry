@@ -2445,6 +2445,95 @@ export type Database = {
           },
         ]
       }
+      onboarding_reminder_deliveries: {
+        Row: {
+          attempt_count: number
+          claim_token: string
+          claimed_at: string
+          created_at: string
+          error_category: string | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          intake_request_id: string
+          invitation_id: string
+          invited_status_history_id: number
+          provider_message_id: string | null
+          recipient_email: string
+          recipient_profile_id: string | null
+          sent_at: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          claim_token?: string
+          claimed_at?: string
+          created_at?: string
+          error_category?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          intake_request_id: string
+          invitation_id: string
+          invited_status_history_id: number
+          provider_message_id?: string | null
+          recipient_email: string
+          recipient_profile_id?: string | null
+          sent_at?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          claim_token?: string
+          claimed_at?: string
+          created_at?: string
+          error_category?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          intake_request_id?: string
+          invitation_id?: string
+          invited_status_history_id?: number
+          provider_message_id?: string | null
+          recipient_email?: string
+          recipient_profile_id?: string | null
+          sent_at?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_reminder_deliveries_intake_request_id_fkey"
+            columns: ["intake_request_id"]
+            isOneToOne: false
+            referencedRelation: "intake_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_reminder_deliveries_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_reminder_deliveries_invited_status_history_id_fkey"
+            columns: ["invited_status_history_id"]
+            isOneToOne: false
+            referencedRelation: "intake_request_status_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_reminder_deliveries_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_photo_handoffs: {
         Row: {
           completed_at: string | null
@@ -3043,9 +3132,28 @@ export type Database = {
         }
         Returns: string
       }
+      authorize_onboarding_reminder_delivery: {
+        Args: {
+          allowed_recipients: string[]
+          target_claim_token: string
+          target_delivery_id: string
+        }
+        Returns: boolean
+      }
       cancel_resource_upload: {
         Args: { target_upload_id: string }
         Returns: undefined
+      }
+      claim_due_onboarding_reminder_deliveries: {
+        Args: { allowed_recipients: string[]; claim_limit?: number }
+        Returns: {
+          claim_token: string
+          delivery_id: string
+          intake_request_id: string
+          invitation_id: string
+          invited_status_history_id: number
+          recipient_email: string
+        }[]
       }
       cleanup_intake_permanent_delete_verifier_artifacts: {
         Args: { target_group_ids: string[] }
@@ -3163,6 +3271,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      finish_onboarding_reminder_delivery: {
+        Args: {
+          next_error_category?: string
+          next_error_message?: string
+          next_provider_message_id?: string
+          next_state: string
+          target_claim_token: string
+          target_delivery_id: string
+        }
+        Returns: boolean
       }
       force_update_homework_assignment: {
         Args: {

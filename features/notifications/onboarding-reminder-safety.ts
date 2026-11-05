@@ -12,11 +12,12 @@ export type OnboardingReminderSafetyEnvironment = {
   vercelProjectId: string | undefined;
   vercelGitCommitRef: string | undefined;
   supabaseUrl: string | undefined;
+  allowedRecipients: string | undefined;
 };
 
 export type OnboardingReminderRecipientDecision =
   | { allowed: true }
-  | { allowed: false; reason: "safety_disabled" | "environment_unverified" | "recipient_not_allowed" };
+  | { allowed: false; reason: "safety_disabled" | "environment_unverified" | "recipients_unconfigured" | "recipient_not_allowed" };
 
 function isVerifiedDevRuntime(environment: OnboardingReminderSafetyEnvironment) {
   if (environment.safetyMode !== "true"
@@ -50,13 +51,22 @@ function isMailinatorAddress(email: string) {
     && domain.toLowerCase() === "mailinator.com";
 }
 
+export function parseOnboardingReminderAllowedRecipients(value: string | undefined) {
+  if (!value || value.length > 2048) return [];
+  const recipients = value.split(",").map((email) => email.trim().toLowerCase());
+  if (recipients.length === 0 || recipients.length > 10 || recipients.some((email) => !isMailinatorAddress(email))) return [];
+  return [...new Set(recipients)];
+}
+
 export function validateOnboardingReminderRecipient(
   recipientEmail: string,
   environment: OnboardingReminderSafetyEnvironment = onboardingReminderSafetyEnvironment(),
 ): OnboardingReminderRecipientDecision {
   if (environment.safetyMode !== "true") return { allowed: false, reason: "safety_disabled" };
   if (!isVerifiedDevRuntime(environment)) return { allowed: false, reason: "environment_unverified" };
-  if (!isMailinatorAddress(recipientEmail)) return { allowed: false, reason: "recipient_not_allowed" };
+  const allowlist = parseOnboardingReminderAllowedRecipients(environment.allowedRecipients);
+  if (!allowlist.length) return { allowed: false, reason: "recipients_unconfigured" };
+  if (!isMailinatorAddress(recipientEmail) || !allowlist.includes(recipientEmail.toLowerCase())) return { allowed: false, reason: "recipient_not_allowed" };
   return { allowed: true };
 }
 
@@ -68,7 +78,16 @@ function onboardingReminderSafetyEnvironment(): OnboardingReminderSafetyEnvironm
     vercelProjectId: process.env.VERCEL_PROJECT_ID,
     vercelGitCommitRef: process.env.VERCEL_GIT_COMMIT_REF,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    allowedRecipients: process.env.ONBOARDING_REMINDER_DEV_ALLOWED_RECIPIENTS,
   };
+}
+
+export function getConfiguredOnboardingReminderRecipients(
+  environment: OnboardingReminderSafetyEnvironment = onboardingReminderSafetyEnvironment(),
+) {
+  if (!isVerifiedDevRuntime(environment) || environment.safetyMode !== "true") return null;
+  const recipients = parseOnboardingReminderAllowedRecipients(environment.allowedRecipients);
+  return recipients.length ? recipients : null;
 }
 
 export function createOnboardingReminderEmailProvider(

@@ -3,6 +3,15 @@ Last updated: November 5, 2026
 Current working branch: feature/onboarding-reminder-emails
 Repository: resonatemovement/marriage_ministry
 
+## Onboarding Reminder Delivery — Implementation in Progress (November 5, 2026)
+
+- Continuing on `feature/onboarding-reminder-emails`, based on current `origin/main` at `d09bde3`; all seven existing stashes remain preserved. No unrelated worktree changes were present at task start.
+- Added a server-only, POST-only `/api/cron/onboarding-reminders` processor guarded by the existing `CRON_SECRET`. No Vercel Cron schedule was added; automatic reminder execution remains disabled.
+- Added service-role-only delivery tracking and RPCs in migrations `20261105120000_onboarding_reminder_delivery.sql` and forward correction `20261105130000_fix_onboarding_reminder_claim_ambiguity.sql`. Both were preflighted and applied only to verified Supabase DEV `lctkqjjkhpyootwvttvj`; linked migration history is aligned. Delivery uniqueness is per Intake Request, invitation, and Invited-status history cycle. Explicit provider rejection may be retried; uncertain provider outcomes and expired processing claims are held for manual review, not resent automatically. Eligibility and the configured threshold are rechecked immediately before sending.
+- The sender always passes through the verified DEV environment and exact Mailinator allowlist safety wrapper. Its email is generic, links only to the DEV sign-in page, and contains no invitation token, password, or Couple/private progress details. The allowlist in the dedicated DEV Vercel project's Production target is limited to the two fixed synthetic Mailinator test inboxes. No email has yet been sent by this task.
+- Validation completed so far: all 219 test files / 1,241 tests passed; typecheck and lint passed; production build passed and includes the new endpoint; `git diff --check` passed. Linked DB lint found no issues in the new reminder functions; it reports existing warnings in unrelated legacy functions (recorded in the handoff). A controlled deployed-DEV provider test and post-test fixture cleanup are still pending.
+- Current state: changes are uncommitted on the feature branch; no push or deployment for this task yet. Next: run the fixed-recipient synthetic DEV integration check after the validated code is deployed on `main`, verify exactly two provider-accepted messages and idempotent repeat behavior, confirm fixture cleanup, then complete the release and document actual results. Do not enable scheduled execution without separate approval.
+
 ## Onboarding Reminder DEV Email Safety Guard — Phase 3A, Task 3 (Verified and Cleanly Deployed, November 5, 2026)
 
 - Created `feature/onboarding-reminder-emails` from clean `main` at `3039fff`; all seven existing stashes remain preserved.

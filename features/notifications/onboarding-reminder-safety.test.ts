@@ -11,12 +11,14 @@ const verifiedDev = {
   vercelProjectId: "prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt",
   vercelGitCommitRef: "main",
   supabaseUrl: "https://lctkqjjkhpyootwvttvj.supabase.co",
+  allowedRecipients: "synthetic.partner@mailinator.com,synthetic.partner.two@mailinator.com",
 };
 
 describe("onboarding reminder DEV email safety", () => {
   it("allows an original Mailinator recipient only in the verified dedicated DEV production runtime", () => {
     expect(validateOnboardingReminderRecipient("synthetic.partner@mailinator.com", verifiedDev)).toEqual({ allowed: true });
     expect(validateOnboardingReminderRecipient("SYNTHETIC.PARTNER@MAILINATOR.COM", verifiedDev)).toEqual({ allowed: true });
+    expect(validateOnboardingReminderRecipient("unlisted@mailinator.com", verifiedDev)).toEqual({ allowed: false, reason: "recipient_not_allowed" });
   });
 
   it.each([
@@ -78,5 +80,14 @@ describe("onboarding reminder DEV email safety", () => {
     await expect(provider.send({ to: "synthetic.partner@mailinator.com", subject: "Reminder", text: "Setup", html: "<p>Setup</p>" }))
       .resolves.toMatchObject({ success: false, errorCategory: "configuration" });
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the exact DEV recipient allowlist is missing or invalid", async () => {
+    expect(validateOnboardingReminderRecipient("synthetic.partner@mailinator.com", { ...verifiedDev, allowedRecipients: undefined }))
+      .toEqual({ allowed: false, reason: "recipients_unconfigured" });
+    expect(validateOnboardingReminderRecipient("synthetic.partner@mailinator.com", { ...verifiedDev, allowedRecipients: "partner@example.org" }))
+      .toEqual({ allowed: false, reason: "recipients_unconfigured" });
+    expect(validateOnboardingReminderRecipient("synthetic.partner@mailinator.com", { ...verifiedDev, allowedRecipients: "one@mailinator.com,two@mailinator.com,three@mailinator.com,four@mailinator.com,five@mailinator.com,six@mailinator.com,seven@mailinator.com,eight@mailinator.com,nine@mailinator.com,ten@mailinator.com,eleven@mailinator.com" }))
+      .toEqual({ allowed: false, reason: "recipients_unconfigured" });
   });
 });

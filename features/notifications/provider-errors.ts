@@ -10,7 +10,7 @@ const safeProviderMessage = (value: unknown) => providerMessage(value)
   .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted]")
   .slice(0, 500);
 
-export function mapResendFailure(error: unknown): Extract<ProviderSendResult, { success: false }> {
+export function mapResendFailure(error: unknown, deliveryCertainty: "rejected" | "unknown" = "unknown"): Extract<ProviderSendResult, { success: false }> {
   const message = safeProviderMessage(error);
   const normalized = message.toLowerCase();
   return {
@@ -21,5 +21,6 @@ export function mapResendFailure(error: unknown): Extract<ProviderSendResult, { 
         ? "configuration"
         : "provider_unavailable",
     errorMessage: message,
+    deliveryCertainty,
   };
 }

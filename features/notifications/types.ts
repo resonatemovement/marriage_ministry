@@ -17,7 +17,7 @@ export type EmailMessage = {
 
 export type ProviderSendResult =
   | { success: true; providerMessageId: string | null }
-  | { success: false; errorCategory: "configuration" | "invalid_recipient" | "provider_unavailable"; errorMessage: string };
+  | { success: false; errorCategory: "configuration" | "invalid_recipient" | "provider_unavailable"; errorMessage: string; deliveryCertainty?: "rejected" | "unknown" };
 
 export type DeliveryInput = {
   eventType: NotificationEvent;
