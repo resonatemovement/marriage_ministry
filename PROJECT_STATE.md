@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: feature/admin-dashboard-live-metrics
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Admin dashboard live metrics — Phase 1 (November 4, 2026)
@@ -9,8 +9,8 @@ Repository: resonatemovement/marriage_ministry
 - Read-only authenticated DEV verification confirmed project `lctkqjjkhpyootwvttvj`. Admin and Super Admin reads returned the same scope: 10 active Couple groups, 9 Cases, 2 unassigned Couples (one interviewed Case without an active Counselor-of-record and one Couple without a Case), 5 active, 0 pending final, and 1 finished. The nine workflow status counts sum to 9; `referred` and `inactive` are included and currently zero. A Couple identity returned only its own Couple/Case through RLS, not global dashboard rows. No DEV data was modified.
 - Needs Attention, Assignment Queue details, Team Capacity, and Upcoming Activity now show neutral unavailable placeholders instead of fictional names, percentages, dates, and urgency. No capacity/availability limit exists in the current data model. Metric/query failures render unavailable rather than zero. Existing dashboard cards and layout are retained; status card anchors point to the corresponding workflow stage.
 - Focused tests pass: 18 tests across 3 files, covering zero/one/multiple Couples, current assignment status (including historical and Coach-only assignments), current Case status changes, the one-Case-per-Couple schema invariant, Admin/Super Admin role gating, unavailable states, and non-Admin route exclusion. `npm run typecheck`, `npm run lint`, `git diff --check`, and `npm run build` pass. `npm run knip` reports existing repository-wide findings (4 unused files, one unlisted dependency, 19 unused exports, 32 unused exported types); no dashboard-specific unused export remains. Browser verification was not performed.
-- No migration, schema, permission, or data changes were made. Vercel CLI read-only inspection verified project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is linked to `resonatemovement/marriage_ministry`, deployment branch `main`. Feature commit, merge, push, and deployment verification are pending. All seven existing stashes are preserved; actual Resonate PROD was not accessed.
-- Next: commit the focused change, fast-forward merge to `main`, push only after rechecking the dedicated DEV target, verify the Git-triggered deployment is `READY` at the pushed SHA, then remove the feature branch and finish on synchronized `main`.
+- No migration, schema, permission, or data changes were made. Vercel CLI/API read-only verification confirmed the dedicated project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is the sole project in the Resonate team linked to `resonatemovement/marriage_ministry`, with deployment branch `main`. Feature commit `cb6be37` (`feat: use live data for admin dashboard metrics`) was fast-forwarded to `main` and pushed to `origin/main`. Git-triggered deployment `dpl_8DYdrmciUKbMVfHgJ1SoRitZ8uRD` reached `READY` at SHA `cb6be37bf358c1db96374fa1d665feb02508f6cf`; Vercel's `production` target label applies to this dedicated DEV project. The feature branch is merged; all seven existing stashes are preserved. Actual Resonate PROD was not accessed.
+- Next: Phase 2 can add useful filtered navigation/views by reusing People & Teams and Case details. Phase 3 Needs Attention requires approved actionable conditions; Team Capacity requires defined availability/capacity data. No further work is required for this Phase 1 release.
 
 ## Hierarchy Couple count pluralization (November 4, 2026)
 
