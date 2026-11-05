@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
-import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesPeopleFilter, normalizePeopleFilter, type PeopleRecord } from "./types";
+import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesCoupleListStatus, matchesPeopleFilter, normalizeCoupleListStatus, normalizePeopleFilter, type PeopleRecord } from "./types";
 
 describe("People query selections", () => {
   it("uses the profile-role foreign key rather than an ambiguous embedded relationship", () => {
@@ -37,6 +37,22 @@ describe("People filters", () => {
   it("normalizes unsupported filter values to All", () => {
     expect(normalizePeopleFilter("teams")).toBe("all");
     expect(normalizePeopleFilter(undefined)).toBe("all");
+  });
+
+  it("normalizes only supported Couple status filters", () => {
+    expect(normalizeCoupleListStatus("active")).toBe("active");
+    expect(normalizeCoupleListStatus("unassigned")).toBe("unassigned");
+    expect(normalizeCoupleListStatus("all")).toBeNull();
+  });
+
+  it("uses current Case status and active Counselor-of-record state for filtered Couples", () => {
+    const couple = { type: "couples" as const, active: true, caseStatus: "interviewed" as const, unassigned: true };
+    expect(matchesCoupleListStatus(couple, "unassigned")).toBe(true);
+    expect(matchesCoupleListStatus(couple, "interviewed")).toBe(true);
+    expect(matchesCoupleListStatus(couple, "active")).toBe(false);
+    expect(matchesCoupleListStatus({ ...couple, active: false }, "interviewed")).toBe(false);
+    expect(matchesCoupleListStatus({ ...couple, type: "coaches" }, "unassigned")).toBe(false);
+    expect(matchesCoupleListStatus({ ...couple, caseStatus: null }, "unassigned")).toBe(true);
   });
 });
 

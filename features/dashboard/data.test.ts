@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { calculateDashboardCounts, canReadAdminDashboard, dashboardMetrics, dashboardWorkflow, type DashboardCase } from "./data";
+import { calculateDashboardCounts, canReadAdminDashboard, dashboardCoupleListHref, dashboardMetrics, dashboardWorkflow, type DashboardCase } from "./data";
 
 const activeAssignment = { assignment_type: "counselor", ended_at: null };
 
@@ -59,5 +59,21 @@ describe("Admin dashboard metrics", () => {
   it("does not supply fabricated metric or workflow values when live data is unavailable", () => {
     expect(dashboardMetrics(null).every(({ value }) => value === null)).toBe(true);
     expect(dashboardWorkflow(null).every(({ count }) => count === null)).toBe(true);
+  });
+
+  it("routes the four metric cards to the matching Couple filters", () => {
+    const counts = calculateDashboardCounts([], []);
+    expect(dashboardMetrics(counts).map(({ href }) => href)).toEqual([
+      "/people?filter=couples&caseStatus=unassigned",
+      "/people?filter=couples&caseStatus=active",
+      "/people?filter=couples&caseStatus=pending_final",
+      "/people?filter=couples&caseStatus=finished",
+    ]);
+  });
+
+  it("builds a shared filter destination for every current Case status", () => {
+    expect(dashboardWorkflow(calculateDashboardCounts([], [])).map(({ status }) => dashboardCoupleListHref(status))).toEqual([
+      "requested", "assessment", "interviewed", "matched", "active", "pending_final", "finished", "referred", "inactive",
+    ].map((status) => `/people?filter=couples&caseStatus=${status}`));
   });
 });

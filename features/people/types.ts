@@ -1,9 +1,11 @@
 import type { CaseStatus } from "@/lib/counseling/domain";
+import { CASE_STATUSES } from "@/lib/counseling/domain";
 import { orderCouplePartners, type PartnerGender } from "./partner-order";
 
 export const peopleFilters = ["all", "inactive", "couples", "coaches", "counselors", "admins", "campus_leads", "authors"] as const;
 export type PeopleFilter = (typeof peopleFilters)[number];
 export type PeopleRecordType = Exclude<PeopleFilter, "all" | "inactive">;
+export type CoupleListStatus = CaseStatus | "unassigned";
 
 const peopleFilterRecordType = {
   couples: "couples",
@@ -16,6 +18,16 @@ const peopleFilterRecordType = {
 
 export function normalizePeopleFilter(value: string | undefined): PeopleFilter {
   return peopleFilters.includes(value as PeopleFilter) ? value as PeopleFilter : "all";
+}
+
+export function normalizeCoupleListStatus(value: string | undefined): CoupleListStatus | null {
+  if (value === "unassigned" || CASE_STATUSES.includes(value as CaseStatus)) return value as CoupleListStatus;
+  return null;
+}
+
+export function matchesCoupleListStatus(record: Pick<PeopleRecord, "type" | "active" | "caseStatus" | "unassigned">, status: CoupleListStatus) {
+  if (record.type !== "couples" || record.active !== true) return false;
+  return status === "unassigned" ? record.unassigned === true : record.caseStatus === status;
 }
 
 export function matchesPeopleFilter(record: Pick<PeopleRecord, "type" | "inactive">, filter: PeopleFilter) {
@@ -72,4 +84,8 @@ export interface PeopleRecord {
   updatedAt: string;
   searchText: string;
   inactive?: boolean;
+  caseStatus?: CaseStatus | null;
+  unassigned?: boolean;
+  active?: boolean;
+  couplePartners?: { id: string; name: string; photoUrl: string | null }[];
 }

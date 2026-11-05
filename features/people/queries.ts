@@ -1,16 +1,25 @@
 import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
+import { canReadAdminDashboard } from "@/features/dashboard/data";
+import { orderCouplePartners } from "./partner-order";
 
-import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesPeopleFilter, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
+import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesCoupleListStatus, matchesPeopleFilter, type CoupleListStatus, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
 import { groupOperationalStatuses, operationalStatusLabel } from "./detail-model";
-import { counselingStatusLabel } from "@/lib/counseling/domain";
+import { counselingStatusLabel, type CaseStatus } from "@/lib/counseling/domain";
 import { activeTeamAssignmentCounts, assignedCoupleAssignmentType } from "./team-assignment";
 
 type QueryResult = { records: PeopleRecord[]; error?: "unauthorized" | "unavailable" };
 type GroupRow = Record<string, unknown>;
 type ProfileRow = Record<string, unknown>;
+type GroupPeopleRecord = PeopleRecord & {
+  active: boolean;
+  unassigned: boolean;
+  caseStatus: CaseStatus | null;
+  orderedPartnerProfiles: { id: string; firstName: string | null; lastName: string | null; gender: "male" | "female" | null; photoPath: string | null }[];
+};
 
 function value(row: Record<string, unknown>, key: string) {
   return typeof row[key] === "string" ? row[key] : null;
@@ -20,10 +29,39 @@ function rows(value: unknown) {
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 }
 
-export async function getPeopleRecords(filter: PeopleFilter, search: string): Promise<QueryResult> {
+const caseStatusLabels: Record<string, string> = {
+  requested: "Requested", assessment: "Assessment", interviewed: "Interviewed", matched: "Matched",
+  active: "In Progress", pending_final: "Final Review", finished: "Completed", referred: "Referred", inactive: "Closed — Incomplete",
+};
+
+function publicPeopleGroup(record: GroupPeopleRecord): PeopleRecord {
+  return {
+    id: record.id,
+    name: record.name,
+    type: record.type,
+    roles: record.roles,
+    campus: record.campus,
+    status: record.status,
+    assignedTo: record.assignedTo,
+    updatedAt: record.updatedAt,
+    searchText: record.searchText,
+  };
+}
+
+export async function getPeopleRecords(filter: PeopleFilter, search: string, coupleListStatus?: CoupleListStatus | null): Promise<QueryResult> {
   const supabase = await createServerSupabaseClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) return { records: [], error: "unauthorized" };
+  const profileId = claims.claims.sub;
+  if (coupleListStatus) {
+    if (typeof profileId !== "string") return { records: [], error: "unauthorized" };
+    const [{ data: roleRows, error: roleError }, { data: profile, error: profileError }] = await Promise.all([
+      supabase.from("profile_roles").select("role").eq("profile_id", profileId),
+      supabase.from("profiles").select("status").eq("id", profileId).maybeSingle(),
+    ]);
+    if (roleError || profileError) return { records: [], error: "unavailable" };
+    if (profile?.status !== "active" || !canReadAdminDashboard(roleRows?.map(({ role }) => role) ?? [])) return { records: [], error: "unauthorized" };
+  }
 
   const [groupsResult, profilesResult, teamAssignmentsResult, supervisionResult, campusLeadAssignmentsResult, counselingCasesResult] = await Promise.all([
     supabase.from("groups").select(peopleGroupSelection).in("group_type", ["couple", "coach_team", "counselor_team", "campus_lead_team" as "couple"]),
@@ -44,7 +82,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
   const casesByCouple = new Map((counselingCasesResult.data ?? []).map((counselingCase) => [counselingCase.couple_group_id, counselingCase as unknown as GroupRow]));
 
   const groupedMemberIds = new Set<string>();
-  const groups = (groupsResult.data as unknown as GroupRow[]).map((group) => {
+  const groups: GroupPeopleRecord[] = (groupsResult.data as unknown as GroupRow[]).map((group) => {
     const members = rows(group.group_members).filter((member) => member.ended_at === null).map((member) => member.profile as Record<string, unknown>).filter(Boolean);
     const invitations = rows(group.invitations).filter((invitation) => invitation.status === "pending");
     members.forEach((member) => { const id = value(member, "id"); if (id) groupedMemberIds.add(id); });
@@ -59,6 +97,13 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
     const intakePeople = rows(intake?.intake_request_people);
     const intakeGenderByEmail = new Map(intakePeople.map((person) => [value(person, "email")?.toLowerCase(), value(person, "gender")]));
     const intakeName = intakeCoupleDisplayName(intakePeople.map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position"), gender: value(person, "gender") as "male" | "female" | null })));
+    const orderedPartnerProfiles = orderCouplePartners(members.map((member) => ({
+      id: value(member, "id")!,
+      firstName: value(member, "first_name"),
+      lastName: value(member, "last_name"),
+      gender: value(member, "gender") as "male" | "female" | null,
+      photoPath: value(member, "photo_path"),
+    })));
     const name = type === "couples"
       ? coupleDisplayName(value(group, "name"), members.map((member) => ({ firstName: value(member, "first_name"), lastName: value(member, "last_name"), email: value(member, "email"), gender: value(member, "gender") as "male" | "female" | null })), invitations.map((invitation) => ({ firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderByEmail.get(value(invitation, "email")?.toLowerCase()) as "male" | "female" | null | undefined })), intakeName)
       : value(group, "name")!;
@@ -73,9 +118,13 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
       id: value(group, "id")!, name, type,
       roles: groupedRoleNames(members, invitations), campus: campus ? value(campus, "name") : null,
       status: type === "couples" ? counselingStatusLabel(counselingCase ? value(counselingCase, "status") as PeopleRecord["status"] : null, Boolean(counselorAssignment), statuses[0]?.label !== "Partner Setup Incomplete" && statuses[0]?.label !== "Invitations Pending" && statuses[0]?.label !== "Waiting on Second Member") : operationalStatusLabel(statuses),
+      caseStatus: type === "couples" ? value(counselingCase ?? {}, "status") as CaseStatus | null : null,
+      unassigned: type === "couples" && !counselorAssignment,
+      active: group.active === true,
+      orderedPartnerProfiles,
       assignedTo: type === "couples" ? (counselorAssignment?.assigned_group ? value(counselorAssignment.assigned_group as Record<string, unknown>, "name") : null) : type === "coaches" ? groupsResult.data?.find((candidate) => candidate.id === campusLeadByCoach.get(value(group, "id")!))?.name ?? null : type === "counselors" ? groupsResult.data?.find((candidate) => candidate.id === supervisingCoachByCounselor.get(value(group, "id")!))?.name ?? null : null,
       updatedAt: value(group, "updated_at")!, searchText: [name, value(group, "name"), intakeName, ...members.flatMap((member) => [value(member, "first_name"), value(member, "last_name"), value(member, "email")])].filter(Boolean).join(" ").toLowerCase(),
-    } satisfies PeopleRecord;
+    };
   });
   const profiles = (profilesResult.data as unknown as ProfileRow[]).filter((profile) => !groupedMemberIds.has(value(profile, "id")!)).map((profile) => {
     const roles = rows(profile.profile_roles).map((role) => value(role, "role")).filter((role): role is string => Boolean(role));
@@ -85,5 +134,27 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string): Pr
     return { id: value(profile, "id")!, name, type, roles, campus: campus ? value(campus, "name") : null, status: null, assignedTo: null, updatedAt: value(profile, "updated_at")!, searchText: [name, value(profile, "email"), campus ? value(campus, "name") : null].filter(Boolean).join(" ").toLowerCase(), inactive: value(profile, "status") === "deactivated" } satisfies PeopleRecord;
   }).filter((profile) => profile.roles.includes("admin") || profile.roles.includes("super_admin") || profile.roles.includes("author"));
   const normalizedSearch = search.trim().toLowerCase();
-  return { records: [...groups, ...profiles].filter((record) => matchesPeopleFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch))).sort((a, b) => a.name.localeCompare(b.name)) };
+  if (!coupleListStatus) {
+    const visibleGroups = groups.map(publicPeopleGroup);
+    const records: PeopleRecord[] = [...visibleGroups, ...profiles]
+      .filter((record) => matchesPeopleFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch)));
+    return { records: records.sort((a, b) => a.name.localeCompare(b.name)) };
+  }
+
+  const coupleRecords = groups.filter((record) => matchesPeopleFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch)) && matchesCoupleListStatus(record, coupleListStatus));
+  return { records: await Promise.all(coupleRecords.map(async (record) => {
+    const { orderedPartnerProfiles, ...publicRecord } = record;
+    const status = record.unassigned
+      ? record.caseStatus ? `Unassigned · ${caseStatusLabels[record.caseStatus] ?? record.caseStatus}` : "Unassigned · No Case"
+      : record.caseStatus ? caseStatusLabels[record.caseStatus] ?? record.caseStatus : "No Case";
+    return {
+      ...publicRecord,
+      status,
+      couplePartners: await Promise.all(orderedPartnerProfiles.map(async (partner) => ({
+        id: partner.id,
+        name: [partner.firstName, partner.lastName].filter(Boolean).join(" ") || "Partner",
+        photoUrl: await getProfilePhotoUrl(partner.photoPath),
+      }))),
+    };
+  })).then((couples) => couples.sort((a, b) => a.name.localeCompare(b.name))) };
 }

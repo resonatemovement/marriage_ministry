@@ -4,10 +4,11 @@ import type { PeopleDetail } from "./detail-model";
 
 export type PeopleBreadcrumb = { label: string; href?: string; current?: true };
 
-export function peopleListHref(filter: string, search: string) {
+export function peopleListHref(filter: string, search: string, caseStatus?: string | null) {
   const params = new URLSearchParams();
   if (filter) params.set("filter", filter);
   if (search) params.set("q", search);
+  if (caseStatus) params.set("caseStatus", caseStatus);
   const query = params.toString();
   return `/people${query ? `?${query}` : ""}`;
 }

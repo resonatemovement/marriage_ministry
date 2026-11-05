@@ -19,6 +19,10 @@ export interface DashboardCounts {
   workflow: readonly { status: CaseStatus; label: string; count: number }[];
 }
 
+export function dashboardCoupleListHref(caseStatus: CaseStatus | "unassigned") {
+  return `/people?filter=couples&caseStatus=${caseStatus}`;
+}
+
 const workflowLabels: readonly { status: CaseStatus; label: string }[] = [
   { status: "requested", label: "Requested" },
   { status: "assessment", label: "Assessment" },
@@ -72,10 +76,10 @@ export function calculateDashboardCounts(activeCoupleGroupIds: readonly string[]
 
 export function dashboardMetrics(counts: DashboardCounts | null): readonly DashboardMetric[] {
   return [
-    { label: "Unassigned couples", value: counts?.unassignedCouples ?? null, detail: "No active Counselor-of-record assignment", href: "#unassigned", tone: "amber" },
-    { label: "Active couples", value: counts?.activeCouples ?? null, detail: "Current Case status: Active", href: "#active", tone: "blue" },
-    { label: "Pending final", value: counts?.pendingFinalCouples ?? null, detail: "Current Case status: Pending final", href: "#pending_final", tone: "coral" },
-    { label: "Completed couples", value: counts?.completedCouples ?? null, detail: "Current Case status: Finished", href: "#finished", tone: "green" },
+    { label: "Unassigned couples", value: counts?.unassignedCouples ?? null, detail: "No active Counselor-of-record assignment", href: dashboardCoupleListHref("unassigned"), tone: "amber" },
+    { label: "Active couples", value: counts?.activeCouples ?? null, detail: "Current Case status: Active", href: dashboardCoupleListHref("active"), tone: "blue" },
+    { label: "Pending final", value: counts?.pendingFinalCouples ?? null, detail: "Current Case status: Pending final", href: dashboardCoupleListHref("pending_final"), tone: "coral" },
+    { label: "Completed couples", value: counts?.completedCouples ?? null, detail: "Current Case status: Finished", href: dashboardCoupleListHref("finished"), tone: "green" },
   ];
 }
 
