@@ -81,7 +81,7 @@ describe("onboarding reminder processor", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("keeps the Mailinator allowlist enforced even if a claim returns a different address", async () => {
+  it("blocks unlisted recipients and records a retryable rejection without sending", async () => {
     configureRpc([{ ...claims[0], recipient_email: "unlisted@mailinator.com" }]);
     const send = vi.fn().mockResolvedValue({ success: true, providerMessageId: "should-not-send" });
     await expect(processOnboardingReminderEmails({ send })).resolves.toMatchObject({ failed: 1, sent: 0 });

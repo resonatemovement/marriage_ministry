@@ -9,7 +9,7 @@ function isAuthorized(request: Request) {
   return Boolean(secret && request.headers.get("authorization") === `Bearer ${secret}`);
 }
 
-export async function POST(request: Request) {
+async function handle(request: Request) {
   if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const result = await processOnboardingReminderEmails();
@@ -18,4 +18,14 @@ export async function POST(request: Request) {
     console.error("Onboarding reminder processing failed.");
     return NextResponse.json({ error: "Onboarding reminders could not be processed." }, { status: 500 });
   }
+}
+
+// Vercel Cron calls configured paths with GET and supplies CRON_SECRET as a
+// Bearer token. Keep POST for the existing protected verification workflow.
+export async function GET(request: Request) {
+  return handle(request);
+}
+
+export async function POST(request: Request) {
+  return handle(request);
 }

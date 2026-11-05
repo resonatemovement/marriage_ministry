@@ -28,15 +28,22 @@ describe("onboarding reminder delivery contract", () => {
 
   it("restricts delivery RPCs to service role and exact passed allowlist recipients", () => {
     expect(migration.match(/auth\.jwt\(\) ->> 'role'\) is distinct from 'service_role'/g)).toHaveLength(3);
-    expect(migration).toContain("lower(invitation.email) = any(normalized_allowlist)");
+    const allowlistFilter = migration.indexOf("lower(invitation.email) = any(normalized_allowlist)");
+    const deliveryInsert = migration.indexOf("insert into public.onboarding_reminder_deliveries");
+    expect(allowlistFilter).toBeGreaterThan(-1);
+    expect(allowlistFilter).toBeLessThan(deliveryInsert);
     expect(migration).toContain("onboarding_reminder_deliveries from public, anon, authenticated");
     expect(reminders).toContain("getConfiguredOnboardingReminderRecipients()");
     expect(reminders).toContain("createOnboardingReminderEmailProvider(provider)");
     expect(reminders).toContain("safeProvider.send(renderOnboardingReminderEmail");
   });
 
-  it("does not add an automatic onboarding reminder schedule", () => {
-    expect(vercelConfig.crons.some(({ path }) => path.includes("onboarding-reminders"))).toBe(false);
+  it("schedules only the dedicated onboarding endpoint hourly and preserves keep-alive", () => {
+    expect(vercelConfig.crons.filter(({ path }) => path === "/api/cron/onboarding-reminders")).toEqual([
+      { path: "/api/cron/onboarding-reminders", schedule: "0 * * * *" },
+    ]);
+    expect(vercelConfig.crons.some(({ path }) => path.includes("meeting-reminders"))).toBe(false);
+    expect(vercelConfig.crons).toContainEqual({ path: "/api/cron/keep-alive", schedule: "0 6 * * *" });
     expect(reminders).not.toContain("processDueMeetingReminders");
   });
 });

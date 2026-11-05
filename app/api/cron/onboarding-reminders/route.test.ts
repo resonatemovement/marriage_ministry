@@ -11,40 +11,49 @@ describe("onboarding reminder job endpoint", () => {
     delete process.env.CRON_SECRET;
   });
 
-  it("does not expose a GET invocation path", () => {
-    expect("GET" in route).toBe(false);
-  });
-
-  it.each([undefined, "Bearer wrong"])("rejects missing or invalid job authentication", async (authorization) => {
+  it.each(["GET", "POST"] as const)("rejects missing or invalid %s authentication", async (method) => {
     process.env.CRON_SECRET = "expected-test-secret";
-    const request = new Request("https://resonate.test/api/cron/onboarding-reminders", {
-      method: "POST",
-      headers: authorization ? { authorization } : {},
-    });
-    const response = await route.POST(request);
-    expect(response.status).toBe(401);
-    expect(processOnboardingReminderEmails).not.toHaveBeenCalled();
+    for (const authorization of [undefined, "Bearer wrong"]) {
+      const request = new Request("https://resonate.test/api/cron/onboarding-reminders", {
+        method,
+        headers: authorization ? { authorization } : {},
+      });
+      const response = await route[method](request);
+      expect(response.status).toBe(401);
+      expect(processOnboardingReminderEmails).not.toHaveBeenCalled();
+    }
   });
 
-  it("fails closed when the job credential is not configured", async () => {
+  it.each(["GET", "POST"] as const)("fails closed when the %s job credential is not configured", async (method) => {
     delete process.env.CRON_SECRET;
-    const response = await route.POST(new Request("https://resonate.test/api/cron/onboarding-reminders", {
-      method: "POST",
+    const response = await route[method](new Request("https://resonate.test/api/cron/onboarding-reminders", {
+      method,
       headers: { authorization: "Bearer expected-test-secret" },
     }));
     expect(response.status).toBe(401);
     expect(processOnboardingReminderEmails).not.toHaveBeenCalled();
   });
 
-  it("processes only an authenticated POST and returns aggregate counts", async () => {
+  it("processes an authenticated scheduled GET and returns aggregate counts", async () => {
     process.env.CRON_SECRET = "expected-test-secret";
     processOnboardingReminderEmails.mockResolvedValue({ claimed: 2, sent: 2, failed: 0, uncertain: 0, skipped: 0 });
     const request = new Request("https://resonate.test/api/cron/onboarding-reminders", {
-      method: "POST",
+      method: "GET",
       headers: { authorization: "Bearer expected-test-secret" },
     });
-    const response = await route.POST(request);
+    const response = await route.GET(request);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true, claimed: 2, sent: 2, failed: 0, uncertain: 0, skipped: 0 });
+  });
+
+  it("preserves the authenticated POST verification path", async () => {
+    process.env.CRON_SECRET = "expected-test-secret";
+    processOnboardingReminderEmails.mockResolvedValue({ claimed: 0, sent: 0, failed: 0, uncertain: 0, skipped: 0 });
+    const response = await route.POST(new Request("https://resonate.test/api/cron/onboarding-reminders", {
+      method: "POST",
+      headers: { authorization: "Bearer expected-test-secret" },
+    }));
+    expect(response.status).toBe(200);
+    expect(processOnboardingReminderEmails).toHaveBeenCalledOnce();
   });
 });
