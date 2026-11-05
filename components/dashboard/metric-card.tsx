@@ -39,9 +39,11 @@ export function MetricCard({ metric }: { metric: DashboardMetric }) {
         <div>
           <div className="flex items-end justify-between gap-3">
             <p className="font-heading text-sm font-medium text-text-muted">{metric.label}</p>
-            <p className="font-heading text-3xl font-extrabold text-text-primary">{metric.value}</p>
+            <p className="font-heading text-3xl font-extrabold text-text-primary" aria-label={metric.value === null ? "Live data unavailable" : `${metric.value} couples`}>
+              {metric.value ?? "—"}
+            </p>
           </div>
-          <p className="mt-2 text-xs text-text-muted">{metric.detail}</p>
+          <p className="mt-2 text-xs text-text-muted">{metric.value === null ? "Live data unavailable" : metric.detail}</p>
         </div>
       </div>
     </Card>

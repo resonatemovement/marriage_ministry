@@ -6,7 +6,8 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { UpcomingPanel } from "@/components/dashboard/upcoming-panel";
 import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
 import { WorkspaceShell } from "@/components/navigation/workspace-shell";
-import { dashboardMetrics } from "@/features/dashboard/data";
+import { dashboardMetrics, dashboardWorkflow } from "@/features/dashboard/data";
+import { getAdminDashboardCounts } from "@/features/dashboard/queries";
 import { WorkspacePlaceholder } from "@/features/workspace/workspace-placeholder";
 import { SessionsWorkspace } from "@/features/counseling-sessions/sessions-workspace";
 import { getCounselingSessionCards } from "@/features/counseling-sessions/queries";
@@ -43,13 +44,16 @@ export default async function WorkspaceRoute() {
     return <WorkspacePlaceholder workspace={workspace} identity={identity} />;
   }
 
+  const dashboardResult = await getAdminDashboardCounts();
+  const dashboardCounts = dashboardResult.error ? null : dashboardResult.counts;
+
   return (
     <WorkspaceShell workspace="admin" activeHref="/workspace" identity={identity}>
       <div id="overview">
         <DashboardHeader />
         <main className="mx-auto max-w-[1500px] p-5 sm:p-8 lg:p-10">
           <section aria-label="Case summary" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {dashboardMetrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
+            {dashboardMetrics(dashboardCounts).map((metric) => <MetricCard key={metric.label} metric={metric} />)}
           </section>
 
           <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.55fr)_minmax(21rem,0.85fr)]">
@@ -58,7 +62,7 @@ export default async function WorkspaceRoute() {
           </div>
 
           <div className="mt-7">
-            <WorkflowPanel />
+            <WorkflowPanel stages={dashboardWorkflow(dashboardCounts)} total={dashboardCounts?.currentCases ?? null} />
           </div>
 
           <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.55fr)_minmax(21rem,0.85fr)]">

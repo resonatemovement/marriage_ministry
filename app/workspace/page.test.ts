@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ workspace: "campus_lead" as "admin" | "campus_lead" | "coach" | "counselor" | "couple", roles: ["campus_lead"] as string[] }));
 const getCoupleWorkspaceData = vi.hoisted(() => vi.fn(async () => ({ coupleName: "Alex & Jordan" })));
+const getAdminDashboardCounts = vi.hoisted(() => vi.fn(async () => ({ counts: { unassignedCouples: 2, activeCouples: 5, pendingFinalCouples: 0, completedCouples: 1, currentCases: 9, workflow: [] }, error: null })));
 
 vi.mock("@/lib/auth/session", () => ({ requireActiveWorkspace: vi.fn(async () => ({ identity: { id: "profile", displayName: "Campus Lead", roles: state.roles, workspaces: state.roles.includes("super_admin") ? ["coach", "admin"] : [state.workspace] }, workspace: state.workspace })) }));
 vi.mock("@/components/navigation/workspace-shell", () => ({ WorkspaceShell: ({ children }: { children: ReactNode }) => createElement("div", { "data-shell": "workspace" }, children) }));
@@ -15,6 +16,7 @@ vi.mock("@/features/counseling-sessions/workspace-rail", () => ({ CampusLeadCoac
 vi.mock("@/features/workspace/workspace-placeholder", () => ({ WorkspacePlaceholder: () => createElement("div", null, "Placeholder") }));
 vi.mock("@/features/couple-workspace/queries", () => ({ getCoupleWorkspaceData }));
 vi.mock("@/features/prepare-enrich/server", () => ({ getCouplePrepareEnrichDocument: vi.fn(async () => null) }));
+vi.mock("@/features/dashboard/queries", () => ({ getAdminDashboardCounts }));
 vi.mock("@/features/couple-workspace/workspace", () => ({ CoupleWorkspace: ({ data }: { data: { coupleName: string } | null }) => createElement("div", { "data-couple-workspace": "true" }, data?.coupleName) }));
 vi.mock("@/components/dashboard/dashboard-header", () => ({ DashboardHeader: () => null }));
 vi.mock("@/components/dashboard/attention-panel", () => ({ AttentionPanel: () => null }));
@@ -23,7 +25,7 @@ vi.mock("@/components/dashboard/capacity-panel", () => ({ CapacityPanel: () => n
 vi.mock("@/components/dashboard/metric-card", () => ({ MetricCard: () => null }));
 vi.mock("@/components/dashboard/upcoming-panel", () => ({ UpcomingPanel: () => null }));
 vi.mock("@/components/dashboard/workflow-panel", () => ({ WorkflowPanel: () => null }));
-vi.mock("@/features/dashboard/data", () => ({ dashboardMetrics: [] }));
+vi.mock("@/features/dashboard/data", () => ({ dashboardMetrics: () => [], dashboardWorkflow: () => [] }));
 
 import WorkspaceRoute from "./page";
 import { counselingSessionsGridClassName, counselingSessionsOversightGridClassName } from "@/features/counseling-sessions/presentation";
@@ -75,11 +77,27 @@ describe("Counseling Workspace route", () => {
 
   it("keeps the Admin overview route separate from Coach and Campus Lead rails", async () => {
     state.workspace = "admin";
+    state.roles = ["admin"];
     const markup = renderToStaticMarkup(await WorkspaceRoute());
     expect(markup).toContain('id="overview"');
     expect(markup).not.toContain('data-sessions="primary"');
     expect(markup).not.toContain("Counselors");
     expect(markup).not.toContain("Coaches");
+    expect(getAdminDashboardCounts).toHaveBeenCalledOnce();
+  });
+
+  it("loads the same live dashboard data for an Admin-workspace Super Admin", async () => {
+    state.workspace = "admin";
+    state.roles = ["super_admin"];
+    await WorkspaceRoute();
+    expect(getAdminDashboardCounts).toHaveBeenCalledOnce();
+  });
+
+  it("does not request Admin dashboard data for non-Admin workspaces", async () => {
+    state.workspace = "coach";
+    state.roles = ["coach"];
+    await WorkspaceRoute();
+    expect(getAdminDashboardCounts).not.toHaveBeenCalled();
   });
 
   it("renders the server-resolved Couple Workspace at the shared entry point", async () => {

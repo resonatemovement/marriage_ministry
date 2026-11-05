@@ -1,7 +1,16 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 4, 2026
-Current working branch: main
+Current working branch: feature/admin-dashboard-live-metrics
 Repository: resonatemovement/marriage_ministry
+
+## Admin dashboard live metrics — Phase 1 (November 4, 2026)
+
+- On `feature/admin-dashboard-live-metrics`, the four summary metrics and all nine current Case-status workflow counts now load server-side from active Couple groups, their unique current `counseling_cases` row, and active `case_assignments`. Unassigned means no active `assignment_type = counselor` assignment (including an active Couple with no Case yet); Coach-type assignments alone do not count as Counselor-of-record. Active, pending final, and completed use current Case statuses `active`, `pending_final`, and `finished`. The database's unique constraint on `counseling_cases.couple_group_id` guarantees one current Case per Couple; lifecycle history is stored separately and is not counted.
+- Read-only authenticated DEV verification confirmed project `lctkqjjkhpyootwvttvj`. Admin and Super Admin reads returned the same scope: 10 active Couple groups, 9 Cases, 2 unassigned Couples (one interviewed Case without an active Counselor-of-record and one Couple without a Case), 5 active, 0 pending final, and 1 finished. The nine workflow status counts sum to 9; `referred` and `inactive` are included and currently zero. A Couple identity returned only its own Couple/Case through RLS, not global dashboard rows. No DEV data was modified.
+- Needs Attention, Assignment Queue details, Team Capacity, and Upcoming Activity now show neutral unavailable placeholders instead of fictional names, percentages, dates, and urgency. No capacity/availability limit exists in the current data model. Metric/query failures render unavailable rather than zero. Existing dashboard cards and layout are retained; status card anchors point to the corresponding workflow stage.
+- Focused tests pass: 18 tests across 3 files, covering zero/one/multiple Couples, current assignment status (including historical and Coach-only assignments), current Case status changes, the one-Case-per-Couple schema invariant, Admin/Super Admin role gating, unavailable states, and non-Admin route exclusion. `npm run typecheck`, `npm run lint`, `git diff --check`, and `npm run build` pass. `npm run knip` reports existing repository-wide findings (4 unused files, one unlisted dependency, 19 unused exports, 32 unused exported types); no dashboard-specific unused export remains. Browser verification was not performed.
+- No migration, schema, permission, or data changes were made. Vercel CLI read-only inspection verified project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is linked to `resonatemovement/marriage_ministry`, deployment branch `main`. Feature commit, merge, push, and deployment verification are pending. All seven existing stashes are preserved; actual Resonate PROD was not accessed.
+- Next: commit the focused change, fast-forward merge to `main`, push only after rechecking the dedicated DEV target, verify the Git-triggered deployment is `READY` at the pushed SHA, then remove the feature branch and finish on synchronized `main`.
 
 ## Hierarchy Couple count pluralization (November 4, 2026)
 

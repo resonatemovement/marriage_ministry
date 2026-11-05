@@ -4,57 +4,81 @@ type MetricTone = "blue" | "amber" | "green" | "coral";
 
 export interface DashboardMetric {
   label: string;
-  value: number;
+  value: number | null;
   detail: string;
   href: string;
   tone: MetricTone;
 }
 
-interface AttentionItem {
-  couple: string;
-  detail: string;
-  urgency: "Today" | "This week";
+export interface DashboardCounts {
+  unassignedCouples: number;
+  activeCouples: number;
+  pendingFinalCouples: number;
+  completedCouples: number;
+  currentCases: number;
+  workflow: readonly { status: CaseStatus; label: string; count: number }[];
 }
 
-interface UpcomingItem {
-  date: string;
-  title: string;
-  detail: string;
+const workflowLabels: readonly { status: CaseStatus; label: string }[] = [
+  { status: "requested", label: "Requested" },
+  { status: "assessment", label: "Assessment" },
+  { status: "interviewed", label: "Interviewed" },
+  { status: "matched", label: "Matched" },
+  { status: "active", label: "Active" },
+  { status: "pending_final", label: "Pending final" },
+  { status: "finished", label: "Finished" },
+  { status: "referred", label: "Referred" },
+  { status: "inactive", label: "Closed — Incomplete" },
+];
+
+export type DashboardCase = {
+  couple_group_id: string;
+  status: CaseStatus;
+  case_assignments: readonly { assignment_type: string; ended_at: string | null }[] | null;
+};
+
+export function canReadAdminDashboard(roles: readonly string[]) {
+  return roles.includes("admin") || roles.includes("super_admin");
 }
 
-export const dashboardMetrics: readonly DashboardMetric[] = [
-  { label: "Unassigned couples", value: 6, detail: "2 ready to match", href: "#unassigned", tone: "amber" },
-  { label: "Active couples", value: 24, detail: "+3 this month", href: "#workflow", tone: "blue" },
-  { label: "Pending final", value: 4, detail: "1 overdue", href: "#attention", tone: "coral" },
-  { label: "Completed couples", value: 38, detail: "12 this quarter", href: "#workflow", tone: "green" },
-];
+/** Counts each active Couple once, using its unique current Case and active Counselor-of-record assignment. */
+export function calculateDashboardCounts(activeCoupleGroupIds: readonly string[], cases: readonly DashboardCase[]): DashboardCounts {
+  const coupleIds = new Set(activeCoupleGroupIds);
+  const currentCaseByCouple = new Map<string, DashboardCase>();
+  for (const counselingCase of cases) {
+    if (coupleIds.has(counselingCase.couple_group_id)) currentCaseByCouple.set(counselingCase.couple_group_id, counselingCase);
+  }
 
-export const teamCapacity = [
-  { label: "Available Coaches", available: 5, total: 8, tone: "blue" as const },
-  { label: "Available Counselors", available: 9, total: 14, tone: "green" as const },
-].map((team) => ({
-  ...team,
-  percentage: Math.round((team.available / team.total) * 100),
-}));
+  const statusCounts = new Map<CaseStatus, number>(workflowLabels.map(({ status }) => [status, 0]));
+  currentCaseByCouple.forEach((counselingCase) => {
+    statusCounts.set(counselingCase.status, (statusCounts.get(counselingCase.status) ?? 0) + 1);
+  });
 
-export const attentionItems: readonly AttentionItem[] = [
-  { couple: "Maya & Jordan", detail: "Assessment review has been waiting 4 days", urgency: "Today" },
-  { couple: "Elena & Marcus", detail: "Ready for counselor assignment", urgency: "Today" },
-  { couple: "Naomi & David", detail: "Final review needs an Admin decision", urgency: "This week" },
-];
+  const unassignedCouples = [...coupleIds].filter((coupleId) => {
+    const assignments = currentCaseByCouple.get(coupleId)?.case_assignments ?? [];
+    return !assignments.some((assignment) => assignment.assignment_type === "counselor" && assignment.ended_at === null);
+  }).length;
+  const workflow = workflowLabels.map(({ status, label }) => ({ status, label, count: statusCounts.get(status) ?? 0 }));
 
-export const upcomingItems: readonly UpcomingItem[] = [
-  { date: "AUG 19", title: "Intake review", detail: "3 new counseling requests" },
-  { date: "AUG 21", title: "Assignment check-in", detail: "Coach and counselor capacity" },
-  { date: "AUG 25", title: "Final review", detail: "4 couples pending completion" },
-];
+  return {
+    unassignedCouples,
+    activeCouples: statusCounts.get("active") ?? 0,
+    pendingFinalCouples: statusCounts.get("pending_final") ?? 0,
+    completedCouples: statusCounts.get("finished") ?? 0,
+    currentCases: currentCaseByCouple.size,
+    workflow,
+  };
+}
 
-export const workflow: readonly { status: CaseStatus; label: string; count: number }[] = [
-  { status: "requested", label: "Requested", count: 3 },
-  { status: "assessment", label: "Assessment", count: 5 },
-  { status: "interviewed", label: "Interviewed", count: 2 },
-  { status: "matched", label: "Matched", count: 6 },
-  { status: "active", label: "Active", count: 24 },
-  { status: "pending_final", label: "Pending final", count: 4 },
-  { status: "finished", label: "Finished", count: 38 },
-];
+export function dashboardMetrics(counts: DashboardCounts | null): readonly DashboardMetric[] {
+  return [
+    { label: "Unassigned couples", value: counts?.unassignedCouples ?? null, detail: "No active Counselor-of-record assignment", href: "#unassigned", tone: "amber" },
+    { label: "Active couples", value: counts?.activeCouples ?? null, detail: "Current Case status: Active", href: "#active", tone: "blue" },
+    { label: "Pending final", value: counts?.pendingFinalCouples ?? null, detail: "Current Case status: Pending final", href: "#pending_final", tone: "coral" },
+    { label: "Completed couples", value: counts?.completedCouples ?? null, detail: "Current Case status: Finished", href: "#finished", tone: "green" },
+  ];
+}
+
+export function dashboardWorkflow(counts: DashboardCounts | null) {
+  return counts?.workflow ?? workflowLabels.map(({ status, label }) => ({ status, label, count: null }));
+}
