@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { renderOnboardingReminderEmail } from "./onboarding-reminder-template";
+import { ONBOARDING_REMINDER_LOGO_URL, renderOnboardingReminderEmail } from "./onboarding-reminder-template";
 
 describe("onboarding reminder email", () => {
+  it("places the official publicly hosted logo above the reminder in email-compatible markup", () => {
+    const message = renderOnboardingReminderEmail("synthetic@mailinator.com", "https://resonate.example/login");
+    expect(ONBOARDING_REMINDER_LOGO_URL).toBe("https://marriage-ministry-dev.vercel.app/images/logo-email.png");
+    expect(message.html.indexOf("<img")).toBeLessThan(message.html.indexOf("Your Resonate account setup"));
+    expect(message.html).toContain(`src="${ONBOARDING_REMINDER_LOGO_URL}"`);
+    expect(message.html).toContain('width="48" height="51" alt="Resonate logo"');
+    expect(message.html).toContain('style="display:block;width:48px;height:auto;max-width:100%');
+    expect(message.text).toContain("Resonate Marriage Ministry");
+  });
+
   it("uses a generic sign-in link and contains no personal or invitation secrets", () => {
     const message = renderOnboardingReminderEmail("synthetic@mailinator.com", "https://resonate.example/login");
     expect(message.to).toBe("synthetic@mailinator.com");
