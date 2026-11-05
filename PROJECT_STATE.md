@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 5, 2026
-Current working branch: main
+Current working branch: feature/onboarding-reminder-emails
 Repository: resonatemovement/marriage_ministry
+
+## Automatic Onboarding Reminder Emails — Phase 3A, Task 3 (Preflight Blocked, November 5, 2026)
+
+- Created `feature/onboarding-reminder-emails` from clean `main` at `3039fff`; all seven existing stashes remain preserved.
+- Preflight verified Supabase DEV project `lctkqjjkhpyootwvttvj`; `npm run verify:supabase` passed and linked migration history is aligned through `20261105110000`. Read-only database checks confirmed the existing `meeting-reminders-hourly` Supabase Cron job is active and hourly, and its Vault endpoint/authorization secret names are configured. The Vercel dedicated DEV project has `CRON_SECRET` configured. No DB records were modified.
+- Email release safety is blocked. The dedicated Vercel DEV project has no configured `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL`, or `NOTIFICATION_REPLY_TO_EMAIL`, and no `DEV_EMAIL_TEST_MODE` variable. The existing provider therefore returns a configuration failure in that deployment. The existing test-sink resolver only reroutes when `NODE_ENV=development`, the test flag is true, and the Supabase URL is DEV; Vercel's dedicated project deploys its `main` branch in production runtime mode. Consequently, adding provider credentials without a production-mode DEV sink guard could address emails to actual Couple email addresses. No provider delivery was attempted.
+- Per the task's stop condition, no source code, migration, or scheduled job was added/enabled, and no email was sent. Tests, typecheck, lint, DB lint, and build for this feature were not run because implementation stopped at the safety preflight.
+- Exact next step: configure Resend credentials and a dedicated safe test-recipient control for the dedicated DEV Vercel project through its approved secret-management process; then implement a DEV-project-aware fail-closed recipient guard and one-time delivery tracking, validate controlled delivery and retry/idempotency, and only then schedule/release. Do not configure actual Resonate PROD.
 
 ## Shared Dashboard & Needs Attention — Phase 3A, Task 2 (November 5, 2026)
 
