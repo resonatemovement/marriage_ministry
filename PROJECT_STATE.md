@@ -1,7 +1,17 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 5, 2026
-Current working branch: main
+Current working branch: feature/intake-alert-settings
 Repository: resonatemovement/marriage_ministry
+
+## Intake Alert Settings & Detection — Phase 3A, Task 1 (November 5, 2026)
+
+- Added the Admin Settings `Intake Request Alerts` section with four persisted whole-hour thresholds: Ready for Review 48, Under Review 72, Ready to Invite 168, and Invited with incomplete onboarding 168. Inputs enforce integer values from 1–720 with inline validation; saving is disabled unless valid changes exist. Missing settings cause the Settings page to report unavailable instead of using runtime defaults.
+- Added migration `20261105100000_intake_alert_settings_and_detection.sql` and applied only that migration to verified Supabase DEV project `lctkqjjkhpyootwvttvj`. Migration history is aligned through `20261105100000`. Admin/Super Admin settings writes use a role-checked SECURITY DEFINER RPC. The reusable alert RPC allows Admin/Super Admin global scope and limits Campus Leads to active assigned campuses; Campus Leads cannot read the settings table or update thresholds.
+- Detection uses latest matching status-history `changed_at` and elapsed hours, never `updated_at`. Ready for Review appears as actionable immediately and changes to stalled after threshold; Under Review and Ready to Invite require threshold age; Invited requires threshold age, two distinct linked invitations, and at least one partner without both accepted invitation and completed profile onboarding. It returns only incomplete partner names, returns at most one current alert per request, omits Closed, and fails closed for missing status history. No notification records, jobs, email, Dashboard UI, or lifecycle changes were added.
+- Authenticated DEV verification passed with existing Admin, Super Admin, Campus Lead, Couple, and anonymous identities: global staff reads match; Campus Lead scope is limited and cross-campus requests are denied; Admin and Super Admin writes pass; Campus Lead writes and direct settings-table reads are denied; unauthenticated and Couple reads are denied; invalid database thresholds are rejected without changing stored values. Synthetic boundary fixtures covered all statuses, one/two incomplete partners, completed onboarding, missing history, resend metadata not resetting status age, and duplicate-free repeat reads. The verifier removed its 11 temporary Intake Requests, 3 temporary Couple groups, 6 Invitations, and associated history; original threshold settings were restored.
+- Validation passed: 19 focused tests across 3 files, `npm run typecheck`, `npm run lint`, `npx supabase db lint --linked --level error`, `npm run build`, and `git diff --check`. No authenticated browser UI check was performed. Existing DEV records outside the verifier’s temporary fixtures were not modified.
+- Feature branch is `feature/intake-alert-settings`; release merge/push/deployment are pending. The Vercel target was read-only verified as dedicated DEV project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), linked to GitHub `resonatemovement/marriage_ministry`; recent deployments identify `main` as its Git deployment branch. All seven existing stashes remain preserved; actual Resonate PROD was not accessed.
+- Next: commit the validated feature, fast-forward it into `main`, push only to this verified dedicated DEV project, verify the Git-triggered deployment is READY at the pushed SHA, then delete the merged local feature branch and confirm clean `main` synchronized with `origin/main`.
 
 ## Consistent Admin summary card heights (November 5, 2026)
 

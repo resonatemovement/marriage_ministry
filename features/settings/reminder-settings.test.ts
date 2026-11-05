@@ -13,6 +13,7 @@ describe("Admin reminder settings integration", () => {
     expect(component.match(/Save Changes/g)).toHaveLength(1);
     expect(component).toContain("disabled={!dirty || pending}");
     expect(component).toContain("noValidate");
+    expect(page).toContain("<IntakeAlertSettingsForm initialSettings={intakeAlertSettings}");
   });
 
   it("uses the shared Input and shadCN Radix Switch without exposing scheduler credentials", () => {

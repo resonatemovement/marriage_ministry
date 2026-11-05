@@ -1338,6 +1338,10 @@ export type Database = {
           homework_enabled: boolean
           homework_hours_before: number
           id: string
+          intake_invited_onboarding_hours: number
+          intake_ready_for_review_hours: number
+          intake_ready_to_invite_hours: number
+          intake_under_review_hours: number
           meeting_enabled: boolean
           meeting_hours_before: number
           updated_at: string
@@ -1347,6 +1351,10 @@ export type Database = {
           homework_enabled?: boolean
           homework_hours_before?: number
           id?: string
+          intake_invited_onboarding_hours?: number
+          intake_ready_for_review_hours?: number
+          intake_ready_to_invite_hours?: number
+          intake_under_review_hours?: number
           meeting_enabled?: boolean
           meeting_hours_before?: number
           updated_at?: string
@@ -1356,6 +1364,10 @@ export type Database = {
           homework_enabled?: boolean
           homework_hours_before?: number
           id?: string
+          intake_invited_onboarding_hours?: number
+          intake_ready_for_review_hours?: number
+          intake_ready_to_invite_hours?: number
+          intake_under_review_hours?: number
           meeting_enabled?: boolean
           meeting_hours_before?: number
           updated_at?: string
@@ -3204,6 +3216,33 @@ export type Database = {
           roles: string[]
         }[]
       }
+      get_counseling_oversight_couple_identity: {
+        Args: { target_case_id: string; target_team_id: string }
+        Returns: {
+          counseling_case_id: string
+          couple_group_id: string
+          first_name: string
+          gender: string
+          group_name: string
+          last_name: string
+          photo_path: string
+          profile_id: string
+        }[]
+      }
+      get_counseling_oversight_progress: {
+        Args: { target_team_id: string }
+        Returns: {
+          case_status: string
+          counseling_case_id: string
+          couple_group_id: string
+          couple_name: string
+          homework_status: string
+          next_meeting_at: string
+          session_progress: string
+          team_id: string
+          team_name: string
+        }[]
+      }
       get_counseling_workspace_couple_identity: {
         Args: { target_case_id: string }
         Returns: {
@@ -3243,6 +3282,21 @@ export type Database = {
         Args: { target_case_id: string }
         Returns: boolean
       }
+      get_intake_request_alerts: {
+        Args: { target_campus_id?: string }
+        Returns: {
+          alert_type: string
+          campus_id: string
+          campus_name: string
+          elapsed_hours: number
+          incomplete_partners: Json
+          request_id: string
+          request_status: string
+          status_entered_at: string
+          submitted_at: string
+          threshold_hours: number
+        }[]
+      }
       get_or_create_homework_draft: {
         Args: { source_version_id?: string; target_homework_id: string }
         Returns: string
@@ -3250,6 +3304,14 @@ export type Database = {
       get_or_create_homework_draft_for_session: {
         Args: { target_session_id: string }
         Returns: string
+      }
+      get_oversight_counselor_teams: {
+        Args: { target_coach_team_id: string }
+        Returns: {
+          campus_name: string
+          id: string
+          name: string
+        }[]
       }
       get_partner_assessment_score_history: {
         Args: { target_schedule_id: string }
@@ -3600,6 +3662,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_global_intake_alert_settings: {
+        Args: {
+          next_invited_onboarding_hours: number
+          next_ready_for_review_hours: number
+          next_ready_to_invite_hours: number
+          next_under_review_hours: number
+        }
+        Returns: {
+          invited_onboarding_hours: number
+          ready_for_review_hours: number
+          ready_to_invite_hours: number
+          under_review_hours: number
+          updated_at: string
+        }[]
+      }
       update_global_reminder_settings: {
         Args: {
           next_homework_enabled: boolean
@@ -3611,6 +3688,10 @@ export type Database = {
           homework_enabled: boolean
           homework_hours_before: number
           id: string
+          intake_invited_onboarding_hours: number
+          intake_ready_for_review_hours: number
+          intake_ready_to_invite_hours: number
+          intake_under_review_hours: number
           meeting_enabled: boolean
           meeting_hours_before: number
           updated_at: string
