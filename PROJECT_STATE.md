@@ -3,6 +3,15 @@ Last updated: November 5, 2026
 Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
+## Onboarding Reminder Email Logo (November 5, 2026)
+
+- Reused the official `public/images/logo.svg` artwork and added a PNG rendition at `public/images/logo-email.png` for broader email-client support. The reminder template places the image centered above the existing message using a presentation table, proportional dimensions, and descriptive alt text. Existing plain-text copy remains intact as fallback when images are blocked.
+- No reminder eligibility, recipient safety, delivery, duplicate prevention, or scheduling code changed. Automatic onboarding reminders remain unscheduled/disabled.
+- Focused template/processor/contract/safety tests passed (44 tests across 4 files); `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` passed. The review of the code diff confirmed the only implementation changes are template rendering and its focused test, plus the email-specific PNG asset.
+- Feature commit `b6e2c4b` was fast-forward merged and pushed to `origin/main`. Dedicated DEV target was verified as Vercel team `resonate-movement`, project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`; Git-triggered deployment `dpl_ALMyTTcdZf9xUeXFKvWnft1GEMVy` reached `READY` for the matching `main` SHA `b6e2c4bfa4368778f673e3a604e411ba7338fd91`.
+- The deployed logo URL `https://marriage-ministry-dev.vercel.app/images/logo-email.png` returned HTTP 200 with `image/png`; the generated PNG was visually checked against the existing SVG artwork. The existing protected DEV verifier sent two reminders only to its fixed synthetic Mailinator recipients, recorded provider acceptance, sent zero on repeat execution, and removed its temporary records; independent read-only checks found zero matching temporary Intake people, invitations, and delivery rows afterward. Mailinator's public inbox endpoint returned HTTP 500 during this verification, so actual mailbox receipt/client rendering could not be independently confirmed. The HTML markup and public asset are verified, but no claim is made that the logo rendered in a Mailinator client.
+- The logo feature branch is merged. The earlier `feature/onboarding-reminder-emails` branch is also already fully contained in main. All seven stashes remain preserved. Final documentation commit/deployment status is recorded by Git after this update; no actual Resonate PROD was accessed.
+
 ## Onboarding Reminder Delivery — Implemented and DEV-Verified (November 5, 2026)
 
 - Continuing on `feature/onboarding-reminder-emails`, based on current `origin/main` at `d09bde3`; all seven existing stashes remain preserved. No unrelated worktree changes were present at task start.
