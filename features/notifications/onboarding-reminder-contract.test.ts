@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20261105120000_onboarding_reminder_delivery.sql", "utf8");
 const fixMigration = readFileSync("supabase/migrations/20261105130000_fix_onboarding_reminder_claim_ambiguity.sql", "utf8");
+const scheduleMigration = readFileSync("supabase/migrations/20261105140000_schedule_onboarding_reminders.sql", "utf8");
 const reminders = readFileSync("features/notifications/onboarding-reminders.ts", "utf8");
 const vercelConfig = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
 
@@ -38,11 +39,14 @@ describe("onboarding reminder delivery contract", () => {
     expect(reminders).toContain("safeProvider.send(renderOnboardingReminderEmail");
   });
 
-  it("schedules only the dedicated onboarding endpoint hourly and preserves keep-alive", () => {
-    expect(vercelConfig.crons.filter(({ path }) => path === "/api/cron/onboarding-reminders")).toEqual([
-      { path: "/api/cron/onboarding-reminders", schedule: "0 * * * *" },
-    ]);
-    expect(vercelConfig.crons.some(({ path }) => path.includes("meeting-reminders"))).toBe(false);
+  it("schedules onboarding separately through DEV Supabase Cron and preserves Vercel keep-alive", () => {
+    expect(scheduleMigration).toContain("'onboarding-reminders-hourly'");
+    expect(scheduleMigration).toContain("'0 * * * *'");
+    expect(scheduleMigration).toContain("meeting_reminder_endpoint_url");
+    expect(scheduleMigration).toContain("meeting_reminder_cron_secret");
+    expect(scheduleMigration).toContain("/api/cron/onboarding-reminders");
+    expect(scheduleMigration).not.toContain("'meeting-reminders-hourly'");
+    expect(vercelConfig.crons.some(({ path }) => path.includes("onboarding-reminders"))).toBe(false);
     expect(vercelConfig.crons).toContainEqual({ path: "/api/cron/keep-alive", schedule: "0 6 * * *" });
     expect(reminders).not.toContain("processDueMeetingReminders");
   });
