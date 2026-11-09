@@ -25,7 +25,7 @@ export function TeamAvailabilityCarousel({ teams, error = false }: { teams: read
   };
 
   return <Card id="team-availability" className="p-6 sm:p-7">
-    <SectionHeading title="Team Availability" description="Active teams accepting new Couples" action={<Link href="/dashboard/team-availability" className="text-sm font-semibold text-brand-primary hover:underline">View All Teams</Link>} />
+    <SectionHeading title="Team Availability" description="Active teams accepting new Couples" action={<Link href="/dashboard/team-availability" aria-label="View all teams" className="text-sm font-semibold text-brand-primary hover:underline">View All</Link>} />
     {error ? <p role="status" className="mt-6 text-sm text-text-muted">Team Availability is temporarily unavailable.</p> : count === 0 ? <p className="mt-6 text-sm text-text-muted">No active teams are currently accepting new Couples.</p> : <div className="mt-6" onTouchStart={(event) => setTouchStart(event.touches[0]?.clientX ?? null)} onTouchEnd={onTouchEnd}>
       <Link href={teamAvailabilityDetailHref(teams![activeIndex]!.id)} aria-label={`View ${teams![activeIndex]!.name} team details`} className="group block rounded-lg focus-visible:outline-none focus-visible:bg-sidebar-accent">
         <div className="rounded-lg border border-border bg-white p-4 transition-colors group-hover:border-brand-primary/40 group-hover:bg-surface-muted group-focus-visible:bg-sidebar-accent">

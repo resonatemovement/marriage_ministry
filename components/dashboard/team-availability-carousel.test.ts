@@ -14,7 +14,10 @@ describe("Team Availability carousel", () => {
     expect(html).toContain("Fremont");
     expect(html).toContain("Accepting New Couples");
     expect(html).toContain("0 Couples");
-    expect(html).toContain("View All Teams");
+    expect(html).toContain('aria-label="View all teams"');
+    expect(html).toContain("View All</a>");
+    expect(html).toContain('href="/dashboard/team-availability"');
+    expect(html).toContain('class="text-sm font-semibold text-brand-primary hover:underline"');
     expect(html).toContain("/people/team-id?from=team-availability");
     expect(html).not.toContain("Next available team");
   });
