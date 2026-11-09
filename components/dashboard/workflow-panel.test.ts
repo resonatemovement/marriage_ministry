@@ -23,10 +23,18 @@ const progression: DashboardProgression = {
 };
 
 describe("Dashboard ministry progression panel", () => {
-  it("renders approved progression outcomes and exact Admin drill-down filters", () => {
+  it("renders primary stages before grouped outcomes and preserves exact Admin drill-down filters", () => {
     const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression }));
     expect(markup).toContain("Ministry Progression");
     expect(markup).toContain("Counseling Sessions");
+    const primaryStageOrder = ["Intake", "Onboarding", "Awaiting Assignment", "Counseling", "Completed"];
+    const primaryStagePositions = primaryStageOrder.map((label) => markup.indexOf(`>${label}</p>`));
+    expect(primaryStagePositions.every((position) => position >= 0)).toBe(true);
+    expect(primaryStagePositions).toEqual([...primaryStagePositions].sort((a, b) => a - b));
+    const outcomesPosition = markup.indexOf("Other Outcomes");
+    expect(outcomesPosition).toBeGreaterThan(primaryStagePositions.at(-1)!);
+    expect(markup.indexOf(">Referred</p>")).toBeGreaterThan(outcomesPosition);
+    expect(markup.indexOf(">Closed — Incomplete</p>")).toBeGreaterThan(outcomesPosition);
     expect(markup).toContain("href=\"/intake-requests?view=open\"");
     expect(markup).toContain("workflowStage=counseling");
     expect(markup).toContain("workflowStage=closed_incomplete");
@@ -62,6 +70,21 @@ describe("Dashboard ministry progression panel", () => {
     }))];
     const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression: { ...progression, sessions } }));
     expect(markup.match(/class="[^"]*"[^>]*>Session \d+<\/p>/g)).toHaveLength(publishedSessionCount);
-    for (let number = 1; number <= publishedSessionCount; number += 1) expect(markup).toContain(`Published Session ${number}`);
+    expect(markup).toContain(">Initial Meeting</p>");
+    for (let number = 1; number <= publishedSessionCount; number += 1) {
+      expect(markup).toContain(`>Session ${number}</p>`);
+      expect(markup).not.toContain(`Published Session ${number}`);
+    }
+    expect(markup).not.toContain("Before the first published Session");
+  });
+
+  it("keeps Session counts while omitting stage descriptions", () => {
+    const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression }));
+    expect(markup).toContain(">3</p>");
+    expect(markup).toContain(">2</p>");
+    expect(markup).not.toContain("Session One");
+    expect(markup).not.toContain("Before the first published Session");
+    expect(markup).toContain("Intake Requests");
+    expect(markup).toContain("Couples");
   });
 });
