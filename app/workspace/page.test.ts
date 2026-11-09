@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ workspace: "campus_lead" as "admin" | "campus_lead" | "coach" | "counselor" | "couple", roles: ["campus_lead"] as string[] }));
 const getCoupleWorkspaceData = vi.hoisted(() => vi.fn(async () => ({ coupleName: "Alex & Jordan" })));
 const getAdminDashboardCounts = vi.hoisted(() => vi.fn(async () => ({ counts: { unassignedCouples: 2, activeCouples: 5, pendingFinalCouples: 0, completedCouples: 1, currentCases: 9, workflow: [] }, error: null })));
+const getMyCounselingTeamAvailability = vi.hoisted(() => vi.fn(async () => ({ teamId: "team", acceptingNewCouples: true })));
 
 vi.mock("@/lib/auth/session", () => ({ requireActiveWorkspace: vi.fn(async () => ({ identity: { id: "profile", displayName: "Campus Lead", roles: state.roles, workspaces: state.roles.includes("super_admin") ? ["coach", "admin"] : [state.workspace] }, workspace: state.workspace })) }));
 vi.mock("@/components/navigation/workspace-shell", () => ({ WorkspaceShell: ({ children }: { children: ReactNode }) => createElement("div", { "data-shell": "workspace" }, children) }));
 vi.mock("@/features/counseling-sessions/queries", () => ({ getCounselingSessionCards: vi.fn(async () => []) }));
+vi.mock("@/features/counseling-sessions/team-availability", () => ({ getMyCounselingTeamAvailability }));
 vi.mock("@/features/counseling-sessions/workspace-queries", () => ({ getCurrentCampusLeadCoaches: vi.fn(async () => [{ id: "coach", name: "Fremont Coaches", campus: "Fremont" }]), getCurrentCoachCounselors: vi.fn(async () => [{ id: "counselor", name: "John & Stacy Wu", campus: "Oakland" }]) }));
 vi.mock("@/features/counseling-sessions/oversight-rail-queries", () => ({ getCampusLeadCoachNodes: vi.fn(async () => [{ id: "coach" }]), getCoachCounselorNodes: vi.fn(async () => [{ id: "counselor" }]) }));
 vi.mock("@/features/counseling-sessions/sessions-workspace", () => ({ SessionsWorkspace: ({ className, workspaceRail, isCoachWorkspace = false }: { className?: string; workspaceRail?: ReactNode; isCoachWorkspace?: boolean }) => createElement("div", { "data-sessions": "primary", "data-coach-empty-state": isCoachWorkspace, className }, "Sessions", workspaceRail) }));

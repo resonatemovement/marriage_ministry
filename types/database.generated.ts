@@ -1427,6 +1427,7 @@ export type Database = {
       }
       groups: {
         Row: {
+          accepting_new_couples: boolean
           active: boolean
           campus_id: string | null
           created_at: string
@@ -1436,6 +1437,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accepting_new_couples?: boolean
           active?: boolean
           campus_id?: string | null
           created_at?: string
@@ -1445,6 +1447,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accepting_new_couples?: boolean
           active?: boolean
           campus_id?: string | null
           created_at?: string
@@ -3417,6 +3420,13 @@ export type Database = {
           threshold_hours: number
         }[]
       }
+      get_my_counseling_team_availability: {
+        Args: { target_group_type: string }
+        Returns: {
+          accepting_new_couples: boolean
+          team_id: string
+        }[]
+      }
       get_or_create_homework_draft: {
         Args: { source_version_id?: string; target_homework_id: string }
         Returns: string
@@ -3675,6 +3685,10 @@ export type Database = {
       set_assessment_counselor_preference: {
         Args: { target_assessment_id: string; target_session_id: string }
         Returns: undefined
+      }
+      set_my_counseling_team_availability: {
+        Args: { target_accepting_new_couples: boolean; target_team_id: string }
+        Returns: boolean
       }
       set_resource_archived: {
         Args: { should_archive: boolean; target_resource_id: string }

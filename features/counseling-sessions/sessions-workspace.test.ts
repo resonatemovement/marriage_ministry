@@ -2,6 +2,7 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => { const { unoptimized, ...imageProps } = props; void unoptimized; return createElement("img", imageProps); } }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => createElement("a", props, children) }));
 
@@ -32,6 +33,31 @@ describe("SessionsWorkspace", () => {
     expect(markup).toContain('href="/workspace/cases/case-1"');
     expect(markup).not.toContain("Schedule Initial Meeting");
     expect(markup).not.toContain("<button");
+  });
+
+  it("shows the saved team availability in the Workspace header only when authorized team data is available", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, {
+      cards: [],
+      availability: { teamId: "team-1", acceptingNewCouples: true },
+    }));
+    expect(markup).toContain("Accepting New Couples");
+    expect(markup).toContain('data-state="checked"');
+    expect(markup).toContain("flex-col gap-4 sm:flex-row sm:items-start sm:justify-between");
+    expect(markup).toContain("sm:pt-2");
+    expect(markup).not.toContain("accepting-new-couples-description");
+  });
+
+  it("reflects a saved OFF value on initial render", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, {
+      cards: [],
+      availability: { teamId: "team-1", acceptingNewCouples: false },
+    }));
+    expect(markup).toContain('data-state="unchecked"');
+  });
+
+  it("does not render team availability when the user has no active authorized team", () => {
+    const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [], availability: null }));
+    expect(markup).not.toContain("Accepting New Couples");
   });
 
   it("shows an accurate empty state for a Coach with no assigned cases", () => {

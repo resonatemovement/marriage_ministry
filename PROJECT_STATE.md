@@ -1,7 +1,16 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 9, 2026
-Current working branch: main
+Current working branch: feature/team-availability-toggle
 Repository: resonatemovement/marriage_ministry
+
+## Team Availability Toggle — Task 1 (November 9, 2026)
+
+- Added `groups.accepting_new_couples` as a non-null boolean defaulting to true, so existing and newly created teams begin ON without changing `groups.active`, assignment eligibility, or any Couple assignments. DEV project `lctkqjjkhpyootwvttvj` received only migration `20261109100000_team_availability.sql`; linked history is aligned through that migration. A read-only DEV aggregate showed 20 teams, all 20 accepting and zero inactive teams at verification time.
+- Added two authenticated-only SECURITY DEFINER RPCs with empty search paths. Reads are restricted to the caller's active team of the requested operational type and matching role; updates require active profile status, matching Coach/Counselor/Campus Lead role, active team, and the caller's active membership. Direct table RLS/policies remain unchanged. Couple users, unrelated identities, unauthenticated calls, and inactive teams cannot change availability.
+- The Counseling Workspace header now displays the saved value for Counselor, Coach, and Campus Lead workspaces. The compact label/switch is positioned top-right at desktop breakpoints and below the heading content on mobile. Changes persist immediately; pending submissions are disabled to prevent overlapping writes, and a failed write restores the prior value with an inline error. The toggle does not alter assignments, Case pages, workload, or eligibility.
+- DEV database-side checks used existing active identities for all three team types under the `authenticated` role, verified initial ON values and successful persisted OFF/ON updates, and confirmed unrelated and unauthenticated update denial. All writes and a temporary default-value check were inside a transaction rolled back after validation. `supabase db lint --linked --fail-on error` completed with only pre-existing warnings in unrelated functions.
+- Focused UI/action tests pass (21 tests across three files); typecheck, full lint, production build, and `git diff --check` pass. The full Vitest suite has one unrelated existing failure: `features/notifications/onboarding-reminder-contract.test.ts` expects a provider-wrapper call in `features/notifications/onboarding-reminders.ts`, while the working implementation imports and applies the wrapper in the processor path. Both files are unchanged from `main`; all other tests passed (1,257 passed, 1 failed). No browser/manual responsive verification was performed.
+- Feature commit and release are pending. The branch was created from clean, current `main` (`3bdf1a9`); the original worktree is in use and all seven existing stashes remain preserved. Dedicated DEV deployment target must be reverified before merge/push; actual Resonate PROD has not been accessed.
 
 ## Onboarding Reminder Failure Diagnostics (November 9, 2026)
 

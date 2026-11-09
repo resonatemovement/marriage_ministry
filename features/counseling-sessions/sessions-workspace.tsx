@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { CounselingSessionCard, CounselingSessionPartner } from "./queries";
+import type { CounselingTeamAvailability } from "./team-availability";
+import { TeamAvailabilityToggle } from "./team-availability-toggle";
 import { counselingSessionPresentation, counselingSessionsGridClassName, counselingSessionsOversightGridClassName, counselingSessionsRailClassName, couplePhotoSlots, sessionCardContainerClassName, sessionCardNavigation, sessionCardNavigationClassName } from "./presentation";
 
 function dateTime(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
@@ -36,15 +38,18 @@ function SessionCard({ card, naturalHeight = false }: { card: CounselingSessionC
   </Card>;
 }
 
-export function SessionsWorkspace({ cards, workspaceRail, className, isCoachWorkspace = false }: { cards: CounselingSessionCard[]; workspaceRail?: ReactNode; className?: string; isCoachWorkspace?: boolean }) {
+export function SessionsWorkspace({ cards, workspaceRail, className, isCoachWorkspace = false, availability = null }: { cards: CounselingSessionCard[]; workspaceRail?: ReactNode; className?: string; isCoachWorkspace?: boolean; availability?: CounselingTeamAvailability | null }) {
   const railLayout = Boolean(workspaceRail);
   const sessionCards = cards.map((card) => <SessionCard key={card.caseId} card={card} naturalHeight={railLayout} />);
   const emptyState = !cards.length ? <Card className={cn("p-8 text-center text-sm text-text-muted", !railLayout && "sm:col-span-2")}>{isCoachWorkspace ? <><h2 className="font-heading text-lg font-bold text-text-primary">Pending couple assignment</h2><p className="mt-2">No couple has been assigned to you yet.</p></> : "No assigned counseling cases."}</Card> : null;
   return <main className={cn("mx-auto max-w-[1400px] p-5 sm:p-8 lg:p-10", className)}>
-      <header>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
         <p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Counseling workspace</p>
         <h1 className="font-heading mt-1 text-3xl font-bold text-text-primary">Sessions</h1>
         <p className="mt-2 text-sm text-text-muted">Open a counseling case to schedule meetings and manage its current Session.</p>
+        </div>
+        {availability ? <div className="sm:pt-2"><TeamAvailabilityToggle teamId={availability.teamId} initialValue={availability.acceptingNewCouples} /></div> : null}
       </header>
       {railLayout ? <section aria-label="Counseling workspace" className={cn(counselingSessionsOversightGridClassName(cards.length), "mt-4")}>
         {sessionCards}

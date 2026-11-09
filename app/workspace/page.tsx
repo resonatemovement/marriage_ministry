@@ -8,6 +8,7 @@ import { CampusLeadCoachesRail, CoachCounselorsRail } from "@/features/counselin
 import { CoupleWorkspace } from "@/features/couple-workspace/workspace";
 import { getCoupleWorkspaceData } from "@/features/couple-workspace/queries";
 import { getCouplePrepareEnrichDocument } from "@/features/prepare-enrich/server";
+import { getMyCounselingTeamAvailability } from "@/features/counseling-sessions/team-availability";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
@@ -16,17 +17,17 @@ export default async function WorkspaceRoute() {
 
   if (workspace === "campus_lead" || workspace === "coach" || workspace === "counselor") {
     if (workspace === "campus_lead") {
-      const [cards, coaches] = await Promise.all([getCounselingSessionCards(workspace), getCurrentCampusLeadCoaches()]);
+      const [cards, coaches, availability] = await Promise.all([getCounselingSessionCards(workspace), getCurrentCampusLeadCoaches(), getMyCounselingTeamAvailability(workspace)]);
       const coachNodes = await getCampusLeadCoachNodes(coaches);
-      return <WorkspaceShell workspace="campus_lead" activeHref="/workspace" identity={identity}><SessionsWorkspace cards={cards} workspaceRail={<CampusLeadCoachesRail coaches={coachNodes} />} /></WorkspaceShell>;
+      return <WorkspaceShell workspace="campus_lead" activeHref="/workspace" identity={identity}><SessionsWorkspace cards={cards} workspaceRail={<CampusLeadCoachesRail coaches={coachNodes} />} availability={availability} /></WorkspaceShell>;
     }
     if (workspace === "coach") {
-      const [cards, counselors] = await Promise.all([getCounselingSessionCards(workspace), getCurrentCoachCounselors()]);
+      const [cards, counselors, availability] = await Promise.all([getCounselingSessionCards(workspace), getCurrentCoachCounselors(), getMyCounselingTeamAvailability(workspace)]);
       const counselorNodes = await getCoachCounselorNodes(counselors);
-      return <WorkspaceShell workspace="coach" activeHref="/workspace" identity={identity}><SessionsWorkspace cards={cards} workspaceRail={<CoachCounselorsRail counselors={counselorNodes} />} isCoachWorkspace /></WorkspaceShell>;
+      return <WorkspaceShell workspace="coach" activeHref="/workspace" identity={identity}><SessionsWorkspace cards={cards} workspaceRail={<CoachCounselorsRail counselors={counselorNodes} />} isCoachWorkspace availability={availability} /></WorkspaceShell>;
     }
-    const cards = await getCounselingSessionCards(workspace);
-    return <WorkspaceShell workspace="counselor" activeHref="/workspace" identity={identity}><SessionsWorkspace cards={cards} /></WorkspaceShell>;
+    const [cards, availability] = await Promise.all([getCounselingSessionCards(workspace), getMyCounselingTeamAvailability(workspace)]);
+    return <WorkspaceShell workspace="counselor" activeHref="/workspace" identity={identity}><SessionsWorkspace cards={cards} availability={availability} /></WorkspaceShell>;
   }
   if (workspace === "couple") {
     const [data, prepareEnrich] = await Promise.all([getCoupleWorkspaceData(identity.id), getCouplePrepareEnrichDocument()]);
