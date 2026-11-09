@@ -4,6 +4,7 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 
 import { createResendEmailProvider } from "./provider";
 import { createOnboardingReminderEmailProvider, getConfiguredOnboardingReminderRecipients } from "./onboarding-reminder-safety";
+import { OnboardingReminderProcessingError, safeOnboardingReminderErrorCode } from "./onboarding-reminder-errors";
 import { renderOnboardingReminderEmail } from "./onboarding-reminder-template";
 import type { EmailProvider } from "./types";
 
@@ -50,38 +51,79 @@ async function finishDelivery(
   state: "sent" | "failed" | "uncertain",
   result?: { providerMessageId?: string | null; errorCategory?: string; errorMessage?: string },
 ) {
-  const { data, error } = await client.rpc("finish_onboarding_reminder_delivery", {
-    target_delivery_id: claim.delivery_id,
-    target_claim_token: claim.claim_token,
-    next_state: state,
-    next_provider_message_id: result?.providerMessageId ?? undefined,
-    next_error_category: result?.errorCategory ?? undefined,
-    next_error_message: result?.errorMessage ?? undefined,
-  });
-  if (error || data !== true) throw new Error("Unable to finalize onboarding reminder delivery safely.");
-}
-
-export async function processOnboardingReminderEmails(provider: EmailProvider = createResendEmailProvider()) {
-  const allowedRecipients = getConfiguredOnboardingReminderRecipients();
-  if (!allowedRecipients) throw new Error("Onboarding reminder safety configuration is unavailable.");
-  const safeProvider = createOnboardingReminderEmailProvider(provider);
-  const loginUrl = appLoginUrl();
-  const rpc = createServiceRoleSupabaseClient();
-  const { data, error } = await rpc.rpc("claim_due_onboarding_reminder_deliveries", {
-    allowed_recipients: allowedRecipients,
-    claim_limit: 50,
-  });
-  if (error) throw new Error("Unable to claim onboarding reminders.");
-
-  const claims = parseClaims(data);
-  const result = { claimed: claims.length, sent: 0, failed: 0, uncertain: 0, skipped: 0 };
-  for (const claim of claims) {
-    const authorized = await rpc.rpc("authorize_onboarding_reminder_delivery", {
+  try {
+    const { data, error } = await client.rpc("finish_onboarding_reminder_delivery", {
       target_delivery_id: claim.delivery_id,
       target_claim_token: claim.claim_token,
-      allowed_recipients: allowedRecipients,
+      next_state: state,
+      next_provider_message_id: result?.providerMessageId ?? undefined,
+      next_error_category: result?.errorCategory ?? undefined,
+      next_error_message: result?.errorMessage ?? undefined,
     });
-    if (authorized.error) throw new Error("Unable to recheck onboarding reminder eligibility.");
+    if (error) throw new OnboardingReminderProcessingError("delivery_tracking", safeOnboardingReminderErrorCode(error, "finalize_rpc_failed"));
+    if (data !== true) throw new OnboardingReminderProcessingError("delivery_tracking", "finalize_rpc_rejected");
+  } catch (error) {
+    if (error instanceof OnboardingReminderProcessingError) throw error;
+    throw new OnboardingReminderProcessingError("delivery_tracking", safeOnboardingReminderErrorCode(error, "finalize_rpc_failed"));
+  }
+}
+
+export async function processOnboardingReminderEmails(provider?: EmailProvider) {
+  let allowedRecipients: string[] | null;
+  try {
+    allowedRecipients = getConfiguredOnboardingReminderRecipients();
+  } catch {
+    throw new OnboardingReminderProcessingError("configuration", "dev_safety_validation_failed");
+  }
+  if (!allowedRecipients) throw new OnboardingReminderProcessingError("configuration", "dev_safety_configuration_unavailable");
+
+  let safeProvider: EmailProvider;
+  try {
+    safeProvider = createOnboardingReminderEmailProvider(provider ?? createResendEmailProvider());
+  } catch {
+    throw new OnboardingReminderProcessingError("configuration", "email_provider_configuration_failed");
+  }
+
+  let rpc: ReminderRpcClient;
+  try {
+    rpc = createServiceRoleSupabaseClient();
+  } catch {
+    throw new OnboardingReminderProcessingError("supabase", "service_client_configuration_failed");
+  }
+  const loginUrl = appLoginUrl();
+
+  let claimData: unknown;
+  try {
+    const { data, error } = await rpc.rpc("claim_due_onboarding_reminder_deliveries", {
+      allowed_recipients: allowedRecipients,
+      claim_limit: 50,
+    });
+    if (error) throw new OnboardingReminderProcessingError("supabase", safeOnboardingReminderErrorCode(error, "claim_rpc_failed"));
+    claimData = data;
+  } catch (error) {
+    if (error instanceof OnboardingReminderProcessingError) throw error;
+    throw new OnboardingReminderProcessingError("supabase", safeOnboardingReminderErrorCode(error, "claim_rpc_failed"));
+  }
+
+  let claims: ReminderClaim[];
+  try {
+    claims = parseClaims(claimData);
+  } catch {
+    throw new OnboardingReminderProcessingError("eligibility", "invalid_claim_response");
+  }
+  const result = { claimed: claims.length, sent: 0, failed: 0, uncertain: 0, skipped: 0 };
+  for (const claim of claims) {
+    let authorized: { data: unknown; error: { code?: string } | null };
+    try {
+      authorized = await rpc.rpc("authorize_onboarding_reminder_delivery", {
+        target_delivery_id: claim.delivery_id,
+        target_claim_token: claim.claim_token,
+        allowed_recipients: allowedRecipients,
+      });
+    } catch (error) {
+      throw new OnboardingReminderProcessingError("eligibility", safeOnboardingReminderErrorCode(error, "authorization_rpc_failed"));
+    }
+    if (authorized.error) throw new OnboardingReminderProcessingError("eligibility", safeOnboardingReminderErrorCode(authorized.error, "authorization_rpc_failed"));
     if (authorized.data !== true) {
       result.skipped += 1;
       continue;

@@ -105,7 +105,62 @@ describe("onboarding reminder processor", () => {
 
   it("fails closed before claiming when DEV identity or the synthetic-recipient allowlist is missing", async () => {
     delete process.env.ONBOARDING_REMINDER_DEV_ALLOWED_RECIPIENTS;
-    await expect(processOnboardingReminderEmails()).rejects.toThrow("safety configuration");
+    await expect(processOnboardingReminderEmails()).rejects.toMatchObject({
+      stage: "configuration",
+      errorCode: "dev_safety_configuration_unavailable",
+    });
     expect(database.rpc).not.toHaveBeenCalled();
+  });
+
+  it("categorizes a claim RPC error without retaining its message", async () => {
+    database.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "contains-private@example.com and token" } });
+    await expect(processOnboardingReminderEmails({ send: vi.fn() })).rejects.toMatchObject({
+      stage: "supabase",
+      errorCode: "42501",
+      message: "Onboarding reminder processing failed.",
+    });
+  });
+
+  it("replaces an unsafe database error code with a safe category", async () => {
+    database.rpc.mockResolvedValue({ data: null, error: { code: "private@example.com", message: "secret" } });
+    await expect(processOnboardingReminderEmails({ send: vi.fn() })).rejects.toMatchObject({
+      stage: "supabase",
+      errorCode: "claim_rpc_failed",
+    });
+  });
+
+  it("categorizes an invalid claim payload as an eligibility failure", async () => {
+    configureRpc({ email: "private@example.com" });
+    await expect(processOnboardingReminderEmails({ send: vi.fn() })).rejects.toMatchObject({
+      stage: "eligibility",
+      errorCode: "invalid_claim_response",
+    });
+  });
+
+  it("categorizes an eligibility recheck RPC error without retaining its message", async () => {
+    database.rpc.mockImplementation(async (name: string) => {
+      if (name === "claim_due_onboarding_reminder_deliveries") return { data: [claims[0]], error: null };
+      return { data: null, error: { code: "PGRST301", message: "recipient and token must not be logged" } };
+    });
+    await expect(processOnboardingReminderEmails({ send: vi.fn() })).rejects.toMatchObject({
+      stage: "eligibility",
+      errorCode: "PGRST301",
+      message: "Onboarding reminder processing failed.",
+    });
+  });
+
+  it("categorizes a finalization RPC error as a delivery-tracking failure", async () => {
+    configureRpc([claims[0]]);
+    database.rpc.mockImplementation(async (name: string) => {
+      if (name === "claim_due_onboarding_reminder_deliveries") return { data: [claims[0]], error: null };
+      if (name === "authorize_onboarding_reminder_delivery") return { data: true, error: null };
+      return { data: null, error: { code: "XX000", message: "private@example.com token" } };
+    });
+    const provider: EmailProvider = { send: async () => ({ success: true, providerMessageId: "provider-id" }) };
+    await expect(processOnboardingReminderEmails(provider)).rejects.toMatchObject({
+      stage: "delivery_tracking",
+      errorCode: "XX000",
+      message: "Onboarding reminder processing failed.",
+    });
   });
 });

@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 5, 2026
-Current working branch: main
+Current working branch: feature/onboarding-reminder-error-logging
 Repository: resonatemovement/marriage_ministry
+
+## Onboarding Reminder Failure Diagnostics (November 9, 2026)
+
+- On `feature/onboarding-reminder-error-logging`, the `/api/cron/onboarding-reminders` processor now raises typed, stage-tagged failures for DEV safety/provider configuration, Supabase setup/claim RPC, eligibility recheck/claim validation, and delivery finalization. The route logs only the stage, a safe category/SQLSTATE code, UTC timestamp, and generated run ID. Raw exception messages, recipients, RPC payloads, credentials, and Couple data are not logged.
+- The caller-facing HTTP 500 response and `CRON_SECRET` authorization remain unchanged. Successes remain unlogged. Reminder eligibility, Mailinator safety, delivery state/retry behavior, schedules, and database schema were not changed; no database migration, Cron invocation, or email send was performed.
+- Focused route, processor, and safety tests pass (51 tests across 3 files), including sensitive-marker exclusion, categorized failures, generic error responses, and no success logging. `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` pass. Git status is on the feature branch; commit, merge, push, and DEV deployment are pending release verification.
+- Next: verify the dedicated DEV Vercel Git target, commit the focused changes, merge into `main`, push only if the target is confirmed, and verify the resulting READY deployment.
 
 ## Hourly Onboarding Reminder Schedule — DEV Enabled (November 5, 2026)
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { processOnboardingReminderEmails } from "@/features/notifications/onboarding-reminders";
+import { onboardingReminderFailureDetails } from "@/features/notifications/onboarding-reminder-errors";
 
 export const runtime = "nodejs";
 
@@ -14,8 +15,12 @@ async function handle(request: Request) {
   try {
     const result = await processOnboardingReminderEmails();
     return NextResponse.json({ ok: true, ...result });
-  } catch {
-    console.error("Onboarding reminder processing failed.");
+  } catch (error) {
+    console.error("Onboarding reminder processing failed.", {
+      ...onboardingReminderFailureDetails(error),
+      timestamp: new Date().toISOString(),
+      runId: crypto.randomUUID(),
+    });
     return NextResponse.json({ error: "Onboarding reminders could not be processed." }, { status: 500 });
   }
 }
