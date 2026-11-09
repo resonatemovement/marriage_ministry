@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 9, 2026
-Current working branch: feature/dashboard-view-all-links
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Dashboard View All Links (November 9, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - Updated the Team Availability Dashboard action label to `View All`, matching the Needs Attention action's shared heading placement and `text-sm font-semibold text-brand-primary hover:underline` styling. The route remains `/dashboard/team-availability`; the anchor has the accessible name `View all teams`.
 - Updated the focused SSR component test to verify visible label, accessible name, destination, and link style. The Team Availability card remains in the existing responsive layout; no Dashboard data, route, or unrelated component behavior changed.
 - Validation passed: focused carousel tests (2), `npm run typecheck`, `npm run lint`, and `git diff --check`. Browser/viewport testing is unavailable; link placement continues to use the existing responsive `SectionHeading` component.
-- Work is on `feature/dashboard-view-all-links`, created from clean `main` at `2ba35b3`; the seven pre-existing stashes are preserved. Commit, merge, DEV push/deployment, and branch cleanup are pending. Dedicated DEV target was verified as `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`; its current READY deployment matches `main` at `2ba35b3`. No actual Resonate PROD was accessed.
+- Feature commit `b717bb4` was fast-forward merged and pushed to `origin/main`. Dedicated DEV deployment `dpl_5oyigGsvN1VkfMAyX95sTdh9xuc3` reached READY for the matching SHA in `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`. The local feature branch was deleted normally. The worktree is clean on `main`; all seven stashes remain preserved. No manual browser/viewport verification was available; no actual Resonate PROD was accessed.
 
 ## Dashboard Team Availability — Task 2 (November 9, 2026)
 
