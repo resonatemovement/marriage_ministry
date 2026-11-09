@@ -9,20 +9,25 @@ export const CLOSE_REASONS = [
   ["other", "Other"],
 ] as const;
 
-export type IntakeRequestAction = "start_review" | "send_invite" | "close" | "reopen";
+export type IntakeRequestAction = "start_review" | "send_invite" | "close" | "reopen" | "refer_elsewhere";
 type IntakeCloseReason = (typeof CLOSE_REASONS)[number][0];
 
 const ACTIONS: Readonly<Record<IntakeRequestStatus, readonly IntakeRequestAction[]>> = {
-  ready_for_review: ["start_review", "close"],
-  under_review: ["send_invite", "close"],
+  ready_for_review: ["start_review", "refer_elsewhere", "close"],
+  under_review: ["send_invite", "refer_elsewhere", "close"],
   ready_to_invite: [],
   invited: [],
   closed: ["reopen"],
+  referred_elsewhere: ["reopen"],
 };
 
 export function intakeRequestActions(status: IntakeRequestStatus) { return ACTIONS[status]; }
-export function isIntakeRequestAction(value: string): value is IntakeRequestAction { return ["start_review", "send_invite", "close", "reopen"].includes(value); }
+export function isIntakeRequestAction(value: string): value is IntakeRequestAction { return ["start_review", "send_invite", "close", "reopen", "refer_elsewhere"].includes(value); }
 export function isIntakeCloseReason(value: string): value is IntakeCloseReason { return CLOSE_REASONS.some(([code]) => code === value); }
+export function normalizeIntakeReferralReason(value: string) {
+  const reason = value.trim();
+  return reason.length >= 10 && reason.length <= 500 ? reason : null;
+}
 export function intakeActionLabel(action: IntakeRequestAction) {
-  return ({ start_review: "Start Review", send_invite: "Send Invite", close: "Close Request", reopen: "Reopen for Review" })[action];
+  return ({ start_review: "Start Review", send_invite: "Send Invite", close: "Close Request", reopen: "Reopen for Review", refer_elsewhere: "Refer Elsewhere" })[action];
 }

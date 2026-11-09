@@ -22,6 +22,7 @@ export interface DashboardCounts {
 
 export type DashboardProgression = {
   stages: readonly { id: string; label: string; valueLabel: string; count: number; href: string | null }[];
+  intakeReferralCount: number;
   sessions: readonly { id: string; number: number | null; title: string; count: number; href: string | null }[];
   unclassifiedCount: number;
 };

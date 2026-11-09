@@ -99,9 +99,12 @@ export async function getCampusLeadDashboardCounts(): Promise<AdminDashboardResu
 
 export async function getDashboardCounselingProgression(canNavigate: boolean): Promise<{ progression: DashboardProgression | null; error: "unauthorized" | "unavailable" | null }> {
   const supabase = await createServerSupabaseClient();
-  const rpc = supabase as unknown as { rpc(name: "get_dashboard_counseling_progression"): Promise<{ data: unknown; error: { message: string } | null }> };
-  const { data, error } = await rpc.rpc("get_dashboard_counseling_progression");
-  if (error || !data || typeof data !== "object") return { progression: null, error: error ? "unauthorized" : "unavailable" };
+  const rpc = supabase as unknown as { rpc(name: "get_dashboard_counseling_progression" | "get_dashboard_intake_referral_count"): Promise<{ data: unknown; error: { message: string } | null }> };
+  const [{ data, error }, { data: intakeReferralCountRaw, error: referralError }] = await Promise.all([
+    rpc.rpc("get_dashboard_counseling_progression"),
+    rpc.rpc("get_dashboard_intake_referral_count"),
+  ]);
+  if (error || referralError || !data || typeof data !== "object") return { progression: null, error: error || referralError ? "unauthorized" : "unavailable" };
 
   const raw = data as { stages?: unknown; sessions?: unknown; unclassified_count?: unknown };
   const stageRows = Array.isArray(raw.stages) ? raw.stages : [];
@@ -120,7 +123,8 @@ export async function getDashboardCounselingProgression(canNavigate: boolean): P
     return [{ id: row.id, number, title: row.title, count: integer(row.count)!, href: canNavigate ? dashboardSessionHref(row.id) : null }];
   });
   const unclassifiedCount = integer(raw.unclassified_count);
-  if (unclassifiedCount === null || stageById.size !== MINISTRY_PROGRESSION_STAGES.length || sessions.length !== sessionRows.length) return { progression: null, error: "unavailable" };
+  const intakeReferralCount = integer(intakeReferralCountRaw);
+  if (unclassifiedCount === null || intakeReferralCount === null || stageById.size !== MINISTRY_PROGRESSION_STAGES.length || sessions.length !== sessionRows.length) return { progression: null, error: "unavailable" };
 
   return {
     progression: {
@@ -129,6 +133,7 @@ export async function getDashboardCounselingProgression(canNavigate: boolean): P
         count: stageById.get(stage.id)!,
         href: stage.id === "intake" ? "/intake-requests?view=open" : canNavigate ? dashboardProgressionHref(stage.id) : null,
       })),
+      intakeReferralCount,
       sessions,
       unclassifiedCount,
     },

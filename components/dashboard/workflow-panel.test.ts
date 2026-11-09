@@ -15,6 +15,7 @@ const progression: DashboardProgression = {
     { id: "referred", label: "Referred", valueLabel: "Couples", count: 6, href: "/people?filter=couples&workflowStage=referred" },
     { id: "closed_incomplete", label: "Closed — Incomplete", valueLabel: "Couples", count: 7, href: "/people?filter=couples&workflowStage=closed_incomplete" },
   ],
+  intakeReferralCount: 2,
   sessions: [
     { id: "initial", number: null, title: "Initial Meeting", count: 3, href: "/people?filter=couples&workflowSession=initial" },
     { id: "session-1", number: 1, title: "Session One", count: 2, href: "/people?filter=couples&workflowSession=session-1" },
@@ -35,6 +36,9 @@ describe("Dashboard ministry progression panel", () => {
     expect(outcomesPosition).toBeGreaterThan(primaryStagePositions.at(-1)!);
     expect(markup.indexOf(">Referred</p>")).toBeGreaterThan(outcomesPosition);
     expect(markup.indexOf(">Closed — Incomplete</p>")).toBeGreaterThan(outcomesPosition);
+    expect(markup.indexOf(">Intake Referrals</p>")).toBeGreaterThan(outcomesPosition);
+    expect(markup).toContain("href=\"/intake-requests?view=all&amp;status=referred_elsewhere\"");
+    expect(markup).toContain(">Intake Requests</p>");
     expect(markup).toContain("href=\"/intake-requests?view=open\"");
     expect(markup).toContain("workflowStage=counseling");
     expect(markup).toContain("workflowStage=closed_incomplete");
@@ -47,6 +51,7 @@ describe("Dashboard ministry progression panel", () => {
     const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression, canNavigate: false }));
     expect(markup).toContain("href=\"/intake-requests?view=open\"");
     expect(markup).not.toContain("href=\"/people?");
+    expect(markup).toContain("href=\"/intake-requests?view=all&amp;status=referred_elsewhere\"");
   });
 
   it("reports unclassified records without silently including them in a stage", () => {

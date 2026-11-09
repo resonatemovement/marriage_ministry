@@ -30,6 +30,7 @@ export function WorkflowPanel({ progression, canNavigate = true }: { progression
         <h3 id="other-outcomes-heading" className="px-5 pt-4 font-heading text-sm font-semibold text-text-primary sm:px-6">Other Outcomes</h3>
         <div className="grid items-stretch sm:grid-cols-2">
           {otherOutcomes.map((stage) => <div key={stage.id} className="h-full border-b border-border/70 sm:border-r sm:last:border-r-0"><ProgressTile label={stage.label} count={stage.count} detail={stage.valueLabel} href={canNavigate ? stage.href : null} /></div>)}
+          <div className="h-full border-b border-border/70 sm:border-r sm:last:border-r-0"><ProgressTile label="Intake Referrals" count={progression?.intakeReferralCount ?? null} detail="Intake Requests" href="/intake-requests?view=all&status=referred_elsewhere" /></div>
         </div>
       </section> : null}
       {progression && progression.unclassifiedCount > 0 ? <p role="status" className="border-t border-border/70 px-5 py-3 text-sm text-text-muted">{progression.unclassifiedCount} record{progression.unclassifiedCount === 1 ? "" : "s"} need review and are not included in stage totals.</p> : null}

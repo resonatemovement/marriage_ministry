@@ -7,7 +7,7 @@ import type { Database } from "../types/database.generated.ts";
 const DEV_PROJECT_REF = "lctkqjjkhpyootwvttvj";
 type Client = SupabaseClient<Database>;
 type Json = Record<string, unknown>;
-type Expected = { stages: { id: string; label: string; valueLabel: string; count: number }[]; sessions: { id: string; number: number | null; title: string; count: number }[]; unclassified_count: number };
+type Expected = { stages: { id: string; label: string; valueLabel: string; count: number }[]; sessions: { id: string; number: number | null; title: string; count: number }[]; unclassified_count: number; intake_referrals_count: number };
 const stageDefinitions = [
   ["intake", "Intake", "Intake Requests"], ["onboarding", "Onboarding", "Couples"],
   ["awaiting_assignment", "Awaiting Assignment", "Couples"], ["counseling", "Counseling", "Couples"],
@@ -34,6 +34,10 @@ async function progression(client: Client) {
   const caller = client as unknown as { rpc(name: "get_dashboard_counseling_progression"): Promise<{ data: unknown; error: { message: string } | null }> };
   return caller.rpc("get_dashboard_counseling_progression");
 }
+async function intakeReferralCount(client: Client) {
+  const caller = client as unknown as { rpc(name: "get_dashboard_intake_referral_count"): Promise<{ data: unknown; error: { message: string } | null }> };
+  return caller.rpc("get_dashboard_intake_referral_count");
+}
 async function expectDenied(client: Client, label: string) {
   const { data, error } = await progression(client);
   assert(error && !data, `${label} unexpectedly read Dashboard counseling progression.`);
@@ -49,7 +53,7 @@ async function expectedFor(service: Client, campusIds?: readonly string[]): Prom
     ids.length ? service.from("invitations").select("group_id,intended_role,status").in("group_id", ids) : Promise.resolve({ data: [], error: null }),
     ids.length ? service.from("counseling_cases").select("id,couple_group_id,status,case_assignments(assignment_type,ended_at)").in("couple_group_id", ids) : Promise.resolve({ data: [], error: null }),
     service.from("sessions").select("id,title,sequence_number").eq("status", "published").order("sequence_number"),
-    service.from("intake_requests").select("id,status,campus_id,invited_group_id").in("status", ["ready_for_review", "under_review", "ready_to_invite", "invited"]),
+    service.from("intake_requests").select("id,status,campus_id,invited_group_id"),
   ]);
   for (const [result, label] of [[membersResult, "members"], [invitationsResult, "invitations"], [casesResult, "Cases"], [sessionsResult, "published Sessions"], [intakesResult, "Intake Requests"]] as const) fail(result.error, `Unable to read DEV ${label}`);
 
@@ -92,13 +96,14 @@ async function expectedFor(service: Client, campusIds?: readonly string[]): Prom
   const allowedCampusIds = campusIds ? new Set(campusIds) : null;
   const inScope = (campusId: string | null) => !allowedCampusIds || (campusId !== null && allowedCampusIds.has(campusId));
   const intakes = (intakesResult.data ?? []).filter((request) => request.invited_group_id === null && ["ready_for_review", "under_review", "ready_to_invite"].includes(request.status) && inScope(request.campus_id)).length;
+  const intakeReferrals = (intakesResult.data ?? []).filter((request) => request.status === ("referred_elsewhere" as never) && inScope(request.campus_id)).length;
   unclassified += (intakesResult.data ?? []).filter((request) => request.status === "invited" && request.invited_group_id === null && inScope(request.campus_id)).length;
   const stages = stageDefinitions.map(([id, label, valueLabel]) => ({ id, label, valueLabel, count: id === "intake" ? intakes : stageCounts.get(id) ?? 0 }));
   const sessionsJson = [
     { id: "initial", number: null, title: "Initial Meeting", count: sessionCounts.get("initial") ?? 0 },
     ...published.map(({ id, number, title }) => ({ id, number, title, count: sessionCounts.get(id) ?? 0 })),
   ];
-  return { stages, sessions: sessionsJson, unclassified_count: unclassified };
+  return { stages, sessions: sessionsJson, unclassified_count: unclassified, intake_referrals_count: intakeReferrals };
 }
 
 async function main() {
@@ -114,18 +119,27 @@ async function main() {
     signIn("TEST_COUPLE_1_EMAIL", "TEST_COUPLE_1_PASSWORD", url, publishableKey),
   ]);
   const anonymous = createClient<Database>(url, publishableKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const [{ data: adminData, error: adminError }, { data: superData, error: superError }, leadResult, campusesResult] = await Promise.all([
+  const [{ data: adminData, error: adminError }, { data: superData, error: superError }, leadResult, campusesResult, adminReferralResult, superAdminReferralResult, leadReferralResult] = await Promise.all([
     progression(admin), progression(superAdmin), progression(campusLead),
     campusLead.from("campus_lead_assignments").select("campus_id,campuses!inner(active)").is("ended_at", null),
+    intakeReferralCount(admin), intakeReferralCount(superAdmin), intakeReferralCount(campusLead),
   ]);
   fail(adminError, "Admin aggregate query failed"); fail(superError, "Super Admin aggregate query failed"); fail(leadResult.error, "Campus Lead aggregate query failed");
   assert(adminData && typeof adminData === "object" && superData && typeof superData === "object" && leadResult.data && typeof leadResult.data === "object", "Authorized progression query returned no data.");
   same(superData, adminData, "Admin and Super Admin global counts differ");
+  fail(adminReferralResult.error, "Admin Intake referral count failed");
+  fail(superAdminReferralResult.error, "Super Admin Intake referral count failed");
+  fail(leadReferralResult.error, "Campus Lead Intake referral count failed");
+  assert(typeof adminReferralResult.data === "number" && adminReferralResult.data === superAdminReferralResult.data, "Admin and Super Admin Intake referral counts differ.");
   fail(campusesResult.error, "Unable to read assigned Campus Lead scope");
   const campusIds = [...new Set((campusesResult.data ?? []).filter((row) => row.campuses?.active).map(({ campus_id }) => campus_id))];
   assert(campusIds.length > 0, "Campus Lead account has no active assigned campus to verify.");
-  same(leadResult.data, await expectedFor(service, campusIds), "Campus Lead RPC did not match assigned-campus DEV records");
-  same(adminData, await expectedFor(service), "Global RPC did not match ministry-wide DEV records");
+  const expectedLead = await expectedFor(service, campusIds);
+  const expectedGlobal = await expectedFor(service);
+  same(leadResult.data, { stages: expectedLead.stages, sessions: expectedLead.sessions, unclassified_count: expectedLead.unclassified_count }, "Campus Lead RPC did not match assigned-campus DEV records");
+  same(adminData, { stages: expectedGlobal.stages, sessions: expectedGlobal.sessions, unclassified_count: expectedGlobal.unclassified_count }, "Global RPC did not match ministry-wide DEV records");
+  assert(expectedGlobal.intake_referrals_count === adminReferralResult.data, "Global Intake referral count differs from authorized source data.");
+  assert(expectedLead.intake_referrals_count === leadReferralResult.data, "Campus Lead Intake referral count differs from authorized source data.");
   const { data: activeCampuses, error: activeCampusesError } = await service.from("campuses").select("id").eq("active", true);
   fail(activeCampusesError, "Unable to read active DEV campuses");
   const outsideCampusIds = (activeCampuses ?? []).map(({ id }) => id).filter((id) => !campusIds.includes(id));
@@ -140,6 +154,10 @@ async function main() {
     }
   }
   await Promise.all([expectDenied(coach, "Coach"), expectDenied(counselor, "Counselor"), expectDenied(couple, "Couple"), expectDenied(anonymous, "Unauthenticated user")]);
+  for (const [client, label] of [[coach, "Coach"], [counselor, "Counselor"], [couple, "Couple"], [anonymous, "Unauthenticated user"]] as const) {
+    const { data, error } = await intakeReferralCount(client);
+    assert(error && !data, `${label} unexpectedly read Dashboard Intake referral counts.`);
+  }
 
   const stages = (adminData as Json).stages as { id: string; count: number }[];
   const sessions = (adminData as Json).sessions as { id: string; number: number | null; title: string; count: number }[];

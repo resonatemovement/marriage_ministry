@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { belongsToIntakeRequestView, CONNECTION_LABEL, coupleDisplayName, formatIntakeDate, formatIntakePhone, intakeLabels, intakeStatusesForView, INTAKE_STATUS_LABEL, intakeViewHref, isDeleteConfirmation, isIntakeDeleteEligible, isIntakeStatusFilterVisible, notProvided, REFERRAL_LABEL, SUPPORT_LABEL, yesNo } from "./model";
-import { intakeRequestActions } from "./action-model";
+import { intakeRequestActions, normalizeIntakeReferralReason } from "./action-model";
 
 describe("Intake Request status model", () => {
   it("defaults to the open view and classifies the work queue without hiding history", () => {
@@ -22,7 +22,8 @@ describe("Intake Request status model", () => {
   it("limits status options to statuses valid in each work-queue view", () => {
     expect(intakeStatusesForView("open")).toEqual(["ready_for_review", "under_review", "ready_to_invite"]);
     expect(intakeStatusesForView("added")).toEqual(["invited"]);
-    expect(intakeStatusesForView("all")).toEqual(["ready_for_review", "under_review", "ready_to_invite", "invited", "closed"]);
+    expect(intakeStatusesForView("all")).toEqual(["ready_for_review", "under_review", "ready_to_invite", "invited", "closed", "referred_elsewhere"]);
+    expect(intakeStatusesForView("open")).not.toContain("referred_elsewhere");
   });
   it("resets invalid tab statuses while preserving valid filters and search in URLs", () => {
     expect(intakeViewHref("open", "Avery Rivera", "closed")).toBe("/intake-requests?q=Avery+Rivera&view=open");
@@ -35,7 +36,14 @@ describe("Intake Request status model", () => {
     expect(isIntakeStatusFilterVisible("added")).toBe(false);
     expect(isIntakeStatusFilterVisible("all")).toBe(true);
   });
-  it("keeps the legacy label while exposing only explicit actions", () => { expect(INTAKE_STATUS_LABEL.ready_to_invite).toBe("Ready to Invite"); expect(intakeRequestActions("ready_for_review")).toEqual(["start_review", "close"]); expect(intakeRequestActions("under_review")).toEqual(["send_invite", "close"]); expect(intakeRequestActions("invited")).toEqual([]); });
+  it("keeps referral distinct from closure and allows reopening only through review", () => {
+    expect(INTAKE_STATUS_LABEL.ready_to_invite).toBe("Ready to Invite");
+    expect(INTAKE_STATUS_LABEL.referred_elsewhere).toBe("Referred Elsewhere");
+    expect(intakeRequestActions("ready_for_review")).toEqual(["start_review", "refer_elsewhere", "close"]);
+    expect(intakeRequestActions("under_review")).toEqual(["send_invite", "refer_elsewhere", "close"]);
+    expect(intakeRequestActions("referred_elsewhere")).toEqual(["reopen"]);
+    expect(intakeRequestActions("invited")).toEqual([]);
+  });
   it("formats a couple from the two prospective people", () => { expect(coupleDisplayName([{ personPosition: "partner", firstName: "Stacy", lastName: "Miller" }, { personPosition: "requester", firstName: "John", lastName: "Smith" }])).toBe("John Smith & Stacy Miller"); });
   it("formats submitted intake values for human review", () => {
     expect(intakeLabels(["member", "regular_attendee"], CONNECTION_LABEL)).toBe("Resonate Member, Regular Resonate Church Attendee (3+ times a month)");
@@ -69,5 +77,12 @@ describe("Intake Request status model", () => {
     expect(isIntakeDeleteEligible("closed", null)).toBe(true);
     expect(isIntakeDeleteEligible("invited", null)).toBe(false);
     expect(isIntakeDeleteEligible("under_review", "group-id")).toBe(false);
+  });
+  it("validates a trimmed 10–500 character referral reason", () => {
+    expect(normalizeIntakeReferralReason("  Clear referral reason.  ")).toBe("Clear referral reason.");
+    expect(normalizeIntakeReferralReason("123456789")).toBeNull();
+    expect(normalizeIntakeReferralReason("x".repeat(501))).toBeNull();
+    expect(normalizeIntakeReferralReason("  ")).toBeNull();
+    expect(normalizeIntakeReferralReason("x".repeat(500))).toBe("x".repeat(500));
   });
 });

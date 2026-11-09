@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireOneOfWorkspaces, requireWorkspace } from "@/lib/auth/session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import { createAuthIdentityAndSendActivation } from "@/features/people/invitation-delivery";
 import { recordInvitationDelivery } from "@/features/people/invitation-actions";
 
-import { isIntakeCloseReason, isIntakeRequestAction } from "./action-model";
+import { isIntakeCloseReason, isIntakeRequestAction, normalizeIntakeReferralReason } from "./action-model";
 
 type ActionResult = { success: true; delivery?: "complete" | "partial" } | { error: string };
 type IntakeActionClient = {
@@ -26,22 +26,25 @@ function revalidate(requestId: string) {
 }
 
 export async function takeIntakeRequestAction(formData: FormData): Promise<ActionResult> {
-  await requireWorkspace("admin", "/intake-requests");
+  await requireOneOfWorkspaces(["admin", "campus_lead"], "/intake-requests");
   const requestId = String(formData.get("requestId") ?? "");
   const action = String(formData.get("action") ?? "");
   const reasonCode = String(formData.get("reasonCode") ?? "");
   const reasonDetail = String(formData.get("reasonDetail") ?? "").trim();
-  if (!requestId || !isIntakeRequestAction(action) || action === "send_invite") return { error: "Choose a valid request action." };
+  if (!requestId || !isIntakeRequestAction(action)) return { error: "Choose a valid request action." };
+  if (action === "send_invite") return { error: "Only Admin or Super Admin may invite an Intake Request." };
   if (action === "close" && (!isIntakeCloseReason(reasonCode) || (reasonCode === "other" && !reasonDetail))) return { error: "Choose a close reason. Add a short explanation for Other." };
+  const referralReason = action === "refer_elsewhere" ? normalizeIntakeReferralReason(reasonDetail) : null;
+  if (action === "refer_elsewhere" && !referralReason) return { error: "Enter a referral reason between 10 and 500 characters." };
 
   const client = (await createServerSupabaseClient()) as unknown as IntakeActionClient;
   const { error } = await client.rpc("take_intake_request_action", {
     target_request_id: requestId,
     target_action: action,
     target_reason_code: action === "close" ? reasonCode : null,
-    target_reason_detail: action === "close" && reasonCode === "other" ? reasonDetail : null,
+    target_reason_detail: action === "close" && reasonCode === "other" ? reasonDetail : referralReason,
   });
-  if (error) return { error: error.message.includes("valid close reason") ? "Choose a valid close reason." : "Unable to update this request. Please try again." };
+  if (error) return { error: error.message.includes("valid close reason") ? "Choose a valid close reason." : error.message.includes("Referral reason") ? "Enter a referral reason between 10 and 500 characters." : "Unable to update this request. Please try again." };
   revalidate(requestId);
   return { success: true };
 }

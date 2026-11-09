@@ -1,15 +1,15 @@
 import { orderCouplePartners } from "@/features/people/partner-order";
-export const INTAKE_REQUEST_STATUSES = ["ready_for_review", "under_review", "ready_to_invite", "invited", "closed"] as const;
+export const INTAKE_REQUEST_STATUSES = ["ready_for_review", "under_review", "ready_to_invite", "invited", "closed", "referred_elsewhere"] as const;
 export type IntakeRequestStatus = (typeof INTAKE_REQUEST_STATUSES)[number];
 
 export const INTAKE_STATUS_LABEL: Readonly<Record<IntakeRequestStatus, string>> = {
-  ready_for_review: "Ready for Review", under_review: "Under Review", ready_to_invite: "Ready to Invite", invited: "Invited", closed: "Closed",
+  ready_for_review: "Ready for Review", under_review: "Under Review", ready_to_invite: "Ready to Invite", invited: "Invited", closed: "Closed", referred_elsewhere: "Referred Elsewhere",
 };
 
 export function isIntakeRequestStatus(value: string): value is IntakeRequestStatus { return INTAKE_REQUEST_STATUSES.includes(value as IntakeRequestStatus); }
 export type IntakeRequestView = "open" | "added" | "all";
 export function isIntakeRequestView(value: string): value is IntakeRequestView { return value === "open" || value === "added" || value === "all"; }
-const FILTERABLE_INTAKE_STATUSES = ["ready_for_review", "under_review", "ready_to_invite", "invited", "closed"] as const;
+const FILTERABLE_INTAKE_STATUSES = ["ready_for_review", "under_review", "ready_to_invite", "invited", "closed", "referred_elsewhere"] as const;
 export function intakeStatusesForView(view: IntakeRequestView) {
   if (view === "open") return FILTERABLE_INTAKE_STATUSES.slice(0, 3);
   if (view === "added") return FILTERABLE_INTAKE_STATUSES.slice(3, 4);

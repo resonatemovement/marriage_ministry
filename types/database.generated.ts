@@ -3402,6 +3402,7 @@ export type Database = {
         }[]
       }
       get_dashboard_counseling_progression: { Args: never; Returns: Json }
+      get_dashboard_intake_referral_count: { Args: never; Returns: number }
       get_dashboard_team_availability: {
         Args: never
         Returns: {
@@ -3945,6 +3946,7 @@ export type Database = {
         | "ready_to_invite"
         | "invited"
         | "closed"
+        | "referred_elsewhere"
       invitation_status: "pending" | "accepted" | "expired" | "revoked"
       profile_status:
         | "invited"
@@ -4131,6 +4133,7 @@ export const Constants = {
         "ready_to_invite",
         "invited",
         "closed",
+        "referred_elsewhere",
       ],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       profile_status: [

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20261105100000_intake_alert_settings_and_detection.sql", "utf8");
+const referralMigration = readFileSync("supabase/migrations/20261109140000_intake_referral_actions_and_alerts.sql", "utf8");
 const inviteMigration = readFileSync("supabase/migrations/20260915130300_fix_intake_invite_idempotency_query.sql", "utf8");
 
 describe("Intake alert database contract", () => {
@@ -39,5 +40,9 @@ describe("Intake alert database contract", () => {
     expect(detector).toContain("eligible.invitation_count = 2");
     expect(detector).toContain("eligible.distinct_invited_emails = 2");
     expect(inviteMigration).toContain("insert into public.intake_request_status_history");
+  });
+
+  it("explicitly excludes current Intake referrals from alerts", () => {
+    expect(referralMigration).toContain("request.request_status not in ('closed', 'referred_elsewhere')");
   });
 });
