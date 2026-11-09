@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 9, 2026
-Current working branch: feature/dynamic-counseling-workflow
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Dynamic Counseling Workflow Dashboard (November 9, 2026)
@@ -15,6 +15,7 @@ Repository: resonatemovement/marriage_ministry
 - Feature commit `f633165` (`feat: add dynamic counseling progression dashboard`) was fast-forward merged to `main` and pushed to `origin/main`. The verified Git-triggered DEV deployment `dpl_2igFeoAq7khcdDPnuHXnnDo71Byt` reached `READY` at matching SHA `f633165e4f27b51492e70e44eb745b8c19a36e83` in `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry` on `main`. Vercel labels its target `production` within this dedicated DEV project; actual Resonate PROD was not accessed.
 - Git state after feature release: implementation is on `main`/`origin/main` at `f633165`; the focused feature branch is retained temporarily while this release record is committed. All seven stashes remain preserved. The full Vitest suite has the one documented unrelated onboarding-reminder assertion failure; focused validation and DEV role checks passed. Direct cross-campus Couple RLS denial could not be exercised because no active out-of-scope Couple was available in DEV; Campus Lead aggregates matched the independently computed assigned-campus scope and the UI exposes no Couple/session drill-down for Campus Leads.
 - Next: commit this release-record update on the feature branch, fast-forward it to `main`, push the documentation-only commit, verify the dedicated DEV deployment for that main SHA, then delete the fully merged feature branch normally and confirm clean synchronized `main` with all seven stashes intact.
+- Final release cleanup: documentation commit `567ccb0` is on `main` and `origin/main`, and its dedicated DEV deployment `dpl_9nTNT1yo9sfHosSbCK5vPVwc3th4` is `READY` at SHA `567ccb0421264345e96a6355bae7efc995dd5177`. The implementation branch was deleted normally after merge. A documentation-only state-sync branch is being used to correct this document's current-branch header and record the completed cleanup; it will also be merged, deployed, and deleted before handoff. The final intended state remains clean `main`, all seven stashes preserved.
 
 ## Dashboard View All Links (November 9, 2026)
 
