@@ -3401,6 +3401,7 @@ export type Database = {
           published_session_count: number
         }[]
       }
+      get_dashboard_counseling_progression: { Args: never; Returns: Json }
       get_dashboard_team_availability: {
         Args: never
         Returns: {

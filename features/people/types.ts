@@ -1,11 +1,14 @@
 import type { CaseStatus } from "@/lib/counseling/domain";
 import { CASE_STATUSES } from "@/lib/counseling/domain";
+import type { MinistryProgressionStage } from "@/lib/counseling/progression";
 import { orderCouplePartners, type PartnerGender } from "./partner-order";
 
 export const peopleFilters = ["all", "inactive", "couples", "coaches", "counselors", "admins", "campus_leads", "authors"] as const;
 export type PeopleFilter = (typeof peopleFilters)[number];
 export type PeopleRecordType = Exclude<PeopleFilter, "all" | "inactive">;
 export type CoupleListStatus = CaseStatus | "unassigned";
+export type DashboardCoupleStage = Exclude<MinistryProgressionStage, "intake">;
+export type DashboardCoupleFilter = { stage?: string; session?: string };
 
 const peopleFilterRecordType = {
   couples: "couples",
@@ -88,4 +91,6 @@ export interface PeopleRecord {
   unassigned?: boolean;
   active?: boolean;
   couplePartners?: { id: string; name: string; photoUrl: string | null }[];
+  dashboardStage?: DashboardCoupleStage | null;
+  currentSessionId?: string | null;
 }

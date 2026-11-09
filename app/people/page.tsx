@@ -7,15 +7,17 @@ import { getCampusList } from "@/features/settings/campus-queries";
 import { InvitePeopleForm } from "@/features/people/invite-people-form";
 import { peopleListHref } from "@/features/people/breadcrumbs";
 
-export default async function PeopleRoute({ searchParams }: { searchParams: Promise<{ filter?: string; q?: string; caseStatus?: string }> }) {
+export default async function PeopleRoute({ searchParams }: { searchParams: Promise<{ filter?: string; q?: string; caseStatus?: string; workflowStage?: string; workflowSession?: string }> }) {
   const params = await searchParams;
   const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], "/people");
   const coupleListStatus = normalizeCoupleListStatus(params.caseStatus);
-  const filter = coupleListStatus ? "couples" : normalizePeopleFilter(params.filter);
+  const isDashboardCoupleList = params.workflowStage !== undefined || params.workflowSession !== undefined;
+  const dashboardFilter = isDashboardCoupleList ? { stage: params.workflowStage, session: params.workflowSession } : undefined;
+  const filter = coupleListStatus || isDashboardCoupleList ? "couples" : normalizePeopleFilter(params.filter);
   const search = params.q ?? "";
-  const result = await getPeopleRecords(filter, search, coupleListStatus);
+  const result = await getPeopleRecords(filter, search, coupleListStatus, dashboardFilter);
   const isAdmin = identity.workspaces.includes("admin");
   const campuses = isAdmin ? (await getCampusList()).filter((campus) => campus.active) : [];
-  const returnTo = coupleListStatus ? peopleListHref(filter, search, coupleListStatus) : peopleListHref(params.filter ?? "", search);
-  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeoplePage records={result.records} filter={filter} search={search} caseListStatus={coupleListStatus} returnTo={returnTo} error={result.error} inviteAction={!coupleListStatus && isAdmin ? <InvitePeopleForm campuses={campuses} isSuperAdmin={identity.roles.includes("super_admin")}/> : undefined} /></WorkspaceShell>;
+  const returnTo = coupleListStatus || dashboardFilter ? peopleListHref(filter, search, coupleListStatus, dashboardFilter) : peopleListHref(params.filter ?? "", search);
+  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeoplePage records={result.records} filter={filter} search={search} caseListStatus={coupleListStatus} dashboardFilter={dashboardFilter} returnTo={returnTo} error={result.error} inviteAction={!coupleListStatus && !dashboardFilter && isAdmin ? <InvitePeopleForm campuses={campuses} isSuperAdmin={identity.roles.includes("super_admin")}/> : undefined} /></WorkspaceShell>;
 }

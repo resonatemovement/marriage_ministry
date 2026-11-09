@@ -8,7 +8,7 @@ import { TeamAvailabilityCarousel } from "./team-availability-carousel";
 import { MetricCard } from "./metric-card";
 import { UpcomingPanel } from "./upcoming-panel";
 import { WorkflowPanel } from "./workflow-panel";
-import { dashboardMetrics, dashboardWorkflow } from "@/features/dashboard/data";
+import { dashboardMetrics } from "@/features/dashboard/data";
 
 describe("Admin dashboard live-data presentation", () => {
   it("shows explicit unavailable states instead of fictional queue or activity data", () => {
@@ -33,13 +33,11 @@ describe("Admin dashboard live-data presentation", () => {
     expect(markup).not.toContain("+3 this month");
   });
 
-  it("renders live workflow statuses without hardcoded values and includes every current Case status", () => {
-    const stages = dashboardWorkflow(null);
-    const markup = renderToStaticMarkup(createElement(WorkflowPanel, { stages, total: null }));
-    expect(stages).toHaveLength(8);
-    expect(stages.every(({ count }) => count === null)).toBe(true);
-    expect(markup).toContain("Requested");
+  it("renders progression unavailable state without hardcoded values or legacy Case statuses", () => {
+    const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression: null }));
+    expect(markup).toContain("Ministry Progression");
     expect(markup).toContain("Closed — Incomplete");
+    expect(markup).not.toContain("Requested");
     expect(markup).not.toContain("Pending final");
     expect(markup).not.toContain("82 total cases");
     expect(markup).toContain("Live data unavailable");

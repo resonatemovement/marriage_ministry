@@ -6,22 +6,23 @@ describe("Intake Request status model", () => {
   it("defaults to the open view and classifies the work queue without hiding history", () => {
     const ready = { status: "ready_for_review" as const, hasInvitedCouple: false };
     const reviewing = { status: "under_review" as const, hasInvitedCouple: false };
+    const readyToInvite = { status: "ready_to_invite" as const, hasInvitedCouple: false };
     const added = { status: "invited" as const, hasInvitedCouple: true };
     const linked = { status: "under_review" as const, hasInvitedCouple: true };
     const closed = { status: "closed" as const, hasInvitedCouple: false };
     expect(belongsToIntakeRequestView(ready, "open")).toBe(true);
     expect(belongsToIntakeRequestView(reviewing, "open")).toBe(true);
+    expect(belongsToIntakeRequestView(readyToInvite, "open")).toBe(true);
     expect(belongsToIntakeRequestView(added, "open")).toBe(false);
     expect(belongsToIntakeRequestView(added, "added")).toBe(true);
     expect(belongsToIntakeRequestView(linked, "added")).toBe(true);
-    expect([ready, reviewing, added, linked, closed].every((item) => belongsToIntakeRequestView(item, "all"))).toBe(true);
-    expect(belongsToIntakeRequestView({ status: "ready_to_invite", hasInvitedCouple: false }, "open")).toBe(false);
+    expect([ready, reviewing, readyToInvite, added, linked, closed].every((item) => belongsToIntakeRequestView(item, "all"))).toBe(true);
     expect(belongsToIntakeRequestView({ status: "ready_to_invite", hasInvitedCouple: false }, "all")).toBe(true);
   });
   it("limits status options to statuses valid in each work-queue view", () => {
-    expect(intakeStatusesForView("open")).toEqual(["ready_for_review", "under_review"]);
+    expect(intakeStatusesForView("open")).toEqual(["ready_for_review", "under_review", "ready_to_invite"]);
     expect(intakeStatusesForView("added")).toEqual(["invited"]);
-    expect(intakeStatusesForView("all")).toEqual(["ready_for_review", "under_review", "invited", "closed"]);
+    expect(intakeStatusesForView("all")).toEqual(["ready_for_review", "under_review", "ready_to_invite", "invited", "closed"]);
   });
   it("resets invalid tab statuses while preserving valid filters and search in URLs", () => {
     expect(intakeViewHref("open", "Avery Rivera", "closed")).toBe("/intake-requests?q=Avery+Rivera&view=open");

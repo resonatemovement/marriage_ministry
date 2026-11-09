@@ -4,11 +4,13 @@ import type { PeopleDetail } from "./detail-model";
 
 export type PeopleBreadcrumb = { label: string; href?: string; current?: true };
 
-export function peopleListHref(filter: string, search: string, caseStatus?: string | null) {
+export function peopleListHref(filter: string, search: string, caseStatus?: string | null, dashboardFilter?: { stage?: string; session?: string }) {
   const params = new URLSearchParams();
   if (filter) params.set("filter", filter);
   if (search) params.set("q", search);
   if (caseStatus) params.set("caseStatus", caseStatus);
+  if (dashboardFilter?.stage) params.set("workflowStage", dashboardFilter.stage);
+  if (dashboardFilter?.session) params.set("workflowSession", dashboardFilter.session);
   const query = params.toString();
   return `/people${query ? `?${query}` : ""}`;
 }

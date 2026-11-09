@@ -5,10 +5,11 @@ import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { canReadAdminDashboard } from "@/features/dashboard/data";
 import { orderCouplePartners } from "./partner-order";
 
-import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesCoupleListStatus, matchesPeopleFilter, type CoupleListStatus, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
+import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesCoupleListStatus, matchesPeopleFilter, type CoupleListStatus, type DashboardCoupleFilter, type DashboardCoupleStage, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
 import { groupOperationalStatuses, operationalStatusLabel } from "./detail-model";
 import { counselingStatusLabel, type CaseStatus } from "@/lib/counseling/domain";
+import { coupleOnboardingStatus, coupleProgressionStage } from "@/lib/counseling/progression";
 import { activeTeamAssignmentCounts, assignedCoupleAssignmentType } from "./team-assignment";
 
 type QueryResult = { records: PeopleRecord[]; error?: "unauthorized" | "unavailable" };
@@ -19,6 +20,8 @@ type GroupPeopleRecord = PeopleRecord & {
   unassigned: boolean;
   caseStatus: CaseStatus | null;
   orderedPartnerProfiles: { id: string; firstName: string | null; lastName: string | null; gender: "male" | "female" | null; photoPath: string | null }[];
+  dashboardStage: DashboardCoupleStage | null;
+  currentSessionId: string | null;
 };
 
 function value(row: Record<string, unknown>, key: string) {
@@ -48,12 +51,12 @@ function publicPeopleGroup(record: GroupPeopleRecord): PeopleRecord {
   };
 }
 
-export async function getPeopleRecords(filter: PeopleFilter, search: string, coupleListStatus?: CoupleListStatus | null): Promise<QueryResult> {
+export async function getPeopleRecords(filter: PeopleFilter, search: string, coupleListStatus?: CoupleListStatus | null, dashboardFilter?: DashboardCoupleFilter): Promise<QueryResult> {
   const supabase = await createServerSupabaseClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) return { records: [], error: "unauthorized" };
   const profileId = claims.claims.sub;
-  if (coupleListStatus) {
+  if (coupleListStatus || dashboardFilter) {
     if (typeof profileId !== "string") return { records: [], error: "unauthorized" };
     const [{ data: roleRows, error: roleError }, { data: profile, error: profileError }] = await Promise.all([
       supabase.from("profile_roles").select("role").eq("profile_id", profileId),
@@ -69,7 +72,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
     supabase.from("case_assignments").select("assigned_group_id,assignment_type,ended_at").in("assignment_type", ["coach", "counselor"]).is("ended_at", null),
     supabase.from("supervision_assignments").select("coach_group_id,counselor_group_id").is("ended_at", null),
     (supabase as unknown as { from: (table: "campus_lead_coach_assignments") => { select: (columns: string) => { is: (column: string, value: null) => Promise<{ data: GroupRow[] | null; error: { message: string } | null }> } } }).from("campus_lead_coach_assignments").select("campus_lead_group_id,coach_group_id").is("ended_at", null),
-    supabase.from("counseling_cases").select("couple_group_id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(id,name,group_type))"),
+    supabase.from("counseling_cases").select("id,couple_group_id,status,case_assignments(ended_at,assignment_type,assigned_group:groups!case_assignments_assigned_group_id_fkey(id,name,group_type))"),
   ]);
   if (groupsResult.error || profilesResult.error || teamAssignmentsResult.error || supervisionResult.error || campusLeadAssignmentsResult.error || counselingCasesResult.error) return { records: [], error: "unavailable" };
 
@@ -79,12 +82,35 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
   (supervisionResult.data ?? []).forEach((assignment) => { if (assignment.coach_group_id && assignment.counselor_group_id) { supervisingCoachByCounselor.set(assignment.counselor_group_id, assignment.coach_group_id); supervisedCounselorCounts.set(assignment.coach_group_id, (supervisedCounselorCounts.get(assignment.coach_group_id) ?? 0) + 1); } });
   const campusLeadByCoach = new Map<string, string>();
   (campusLeadAssignmentsResult.data ?? []).forEach((assignment) => campusLeadByCoach.set(value(assignment, "coach_group_id")!, value(assignment, "campus_lead_group_id")!));
-  const casesByCouple = new Map((counselingCasesResult.data ?? []).map((counselingCase) => [counselingCase.couple_group_id, counselingCase as unknown as GroupRow]));
+  const caseRows = counselingCasesResult.data as unknown as GroupRow[];
+  const casesByCouple = new Map(caseRows.map((counselingCase) => [value(counselingCase, "couple_group_id")!, counselingCase]));
+  const currentSessionByCase = new Map<string, string>();
+  let sessionQueryFailed = false;
+  if (dashboardFilter?.session) {
+    const caseIds = caseRows.map((row) => value(row, "id")).filter((id): id is string => Boolean(id));
+    if (dashboardFilter.session === "initial") {
+      if (caseIds.length) {
+        const { data: activeSessions, error } = await supabase.from("case_sessions").select("counseling_case_id,session_id").eq("status", "active").in("counseling_case_id", caseIds);
+        if (error) sessionQueryFailed = true;
+        (activeSessions ?? []).forEach((row) => currentSessionByCase.set(row.counseling_case_id, row.session_id));
+      }
+    } else if (/^[0-9a-f-]{36}$/i.test(dashboardFilter.session)) {
+      const { data: publishedSession, error: publishedError } = await supabase.from("sessions").select("id").eq("id", dashboardFilter.session).eq("status", "published").maybeSingle();
+      if (publishedError) sessionQueryFailed = true;
+      if (publishedSession && caseIds.length) {
+        const { data: activeSessions, error } = await supabase.from("case_sessions").select("counseling_case_id,session_id").eq("status", "active").eq("session_id", dashboardFilter.session).in("counseling_case_id", caseIds);
+        if (error) sessionQueryFailed = true;
+        (activeSessions ?? []).forEach((row) => currentSessionByCase.set(row.counseling_case_id, row.session_id));
+      }
+    }
+  }
+  if (sessionQueryFailed) return { records: [], error: "unavailable" };
 
   const groupedMemberIds = new Set<string>();
   const groups: GroupPeopleRecord[] = (groupsResult.data as unknown as GroupRow[]).map((group) => {
     const members = rows(group.group_members).filter((member) => member.ended_at === null).map((member) => member.profile as Record<string, unknown>).filter(Boolean);
-    const invitations = rows(group.invitations).filter((invitation) => invitation.status === "pending");
+    const allInvitations = rows(group.invitations);
+    const invitations = allInvitations.filter((invitation) => invitation.status === "pending");
     members.forEach((member) => { const id = value(member, "id"); if (id) groupedMemberIds.add(id); });
     const groupType = value(group, "group_type") as "couple" | "coach_team" | "counselor_team" | "campus_lead_team";
     const counselingCase = casesByCouple.get(value(group, "id")!) ?? rows(group.counseling_cases)[0];
@@ -92,6 +118,13 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
     const counselorAssignment = activeAssignments.find((assignment) => value(assignment, "assignment_type") === "counselor");
     const campus = group.campus as Record<string, unknown> | null;
     const type = groupType === "coach_team" ? "coaches" : groupType === "counselor_team" ? "counselors" : groupType === "campus_lead_team" ? "campus_leads" : "couples";
+    const caseStatus = type === "couples" ? value(counselingCase ?? {}, "status") as CaseStatus | null : null;
+    const onboarding = coupleOnboardingStatus(
+      members.map((member) => value(member, "onboarding_completed_at") !== null),
+      allInvitations.filter((invitation) => value(invitation, "intended_role") === "couple" && ["pending", "accepted"].includes(value(invitation, "status") ?? "")).length,
+    );
+    const dashboardStage = type === "couples" ? coupleProgressionStage({ caseStatus, hasCounselorOfRecord: Boolean(counselorAssignment), onboarding }) : null;
+    const caseId = value(counselingCase ?? {}, "id");
     const assignedCoupleType = assignedCoupleAssignmentType(type);
     const intake = group.intake_requests as GroupRow | null;
     const intakePeople = rows(intake?.intake_request_people);
@@ -120,6 +153,8 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
       status: type === "couples" ? counselingStatusLabel(counselingCase ? value(counselingCase, "status") as PeopleRecord["status"] : null, Boolean(counselorAssignment), statuses[0]?.label !== "Partner Setup Incomplete" && statuses[0]?.label !== "Invitations Pending" && statuses[0]?.label !== "Waiting on Second Member") : operationalStatusLabel(statuses),
       caseStatus: type === "couples" ? value(counselingCase ?? {}, "status") as CaseStatus | null : null,
       unassigned: type === "couples" && !counselorAssignment,
+      dashboardStage,
+      currentSessionId: caseId ? currentSessionByCase.get(caseId) ?? null : null,
       active: group.active === true,
       orderedPartnerProfiles,
       assignedTo: type === "couples" ? (counselorAssignment?.assigned_group ? value(counselorAssignment.assigned_group as Record<string, unknown>, "name") : null) : type === "coaches" ? groupsResult.data?.find((candidate) => candidate.id === campusLeadByCoach.get(value(group, "id")!))?.name ?? null : type === "counselors" ? groupsResult.data?.find((candidate) => candidate.id === supervisingCoachByCounselor.get(value(group, "id")!))?.name ?? null : null,
@@ -134,14 +169,22 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
     return { id: value(profile, "id")!, name, type, roles, campus: campus ? value(campus, "name") : null, status: null, assignedTo: null, updatedAt: value(profile, "updated_at")!, searchText: [name, value(profile, "email"), campus ? value(campus, "name") : null].filter(Boolean).join(" ").toLowerCase(), inactive: value(profile, "status") === "deactivated" } satisfies PeopleRecord;
   }).filter((profile) => profile.roles.includes("admin") || profile.roles.includes("super_admin") || profile.roles.includes("author"));
   const normalizedSearch = search.trim().toLowerCase();
-  if (!coupleListStatus) {
+  if (!coupleListStatus && !dashboardFilter) {
     const visibleGroups = groups.map(publicPeopleGroup);
     const records: PeopleRecord[] = [...visibleGroups, ...profiles]
       .filter((record) => matchesPeopleFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch)));
     return { records: records.sort((a, b) => a.name.localeCompare(b.name)) };
   }
 
-  const coupleRecords = groups.filter((record) => matchesPeopleFilter(record, filter) && (!normalizedSearch || record.searchText.includes(normalizedSearch)) && matchesCoupleListStatus(record, coupleListStatus));
+  const coupleRecords = groups.filter((record) => {
+    if (record.type !== "couples" || !matchesPeopleFilter(record, "couples") || (normalizedSearch && !record.searchText.includes(normalizedSearch))) return false;
+    if (dashboardFilter && record.active !== true) return false;
+    if (coupleListStatus && !matchesCoupleListStatus(record, coupleListStatus)) return false;
+    if (dashboardFilter?.stage) return record.dashboardStage === dashboardFilter.stage;
+    if (dashboardFilter?.session === "initial") return record.dashboardStage === "counseling" && record.currentSessionId === null;
+    if (dashboardFilter?.session) return record.dashboardStage === "counseling" && record.currentSessionId === dashboardFilter.session;
+    return Boolean(coupleListStatus);
+  });
   return { records: await Promise.all(coupleRecords.map(async (record) => {
     const { orderedPartnerProfiles, ...publicRecord } = record;
     const status = record.unassigned

@@ -6,7 +6,8 @@ import { getPeopleRecords } from "@/features/people/queries";
 import { coupleDisplayName } from "@/features/people/types";
 import { counselingStatusLabel } from "@/lib/counseling/domain";
 
-import { calculateDashboardCounts, canReadAdminDashboard, canReadSharedDashboard, intakeAttentionItems, dedupeDashboardAttentionItems, type DashboardAttentionItem, type DashboardCase, type DashboardCounts } from "./data";
+import { MINISTRY_PROGRESSION_STAGES } from "@/lib/counseling/progression";
+import { calculateDashboardCounts, canReadAdminDashboard, canReadSharedDashboard, dashboardProgressionHref, dashboardSessionHref, intakeAttentionItems, dedupeDashboardAttentionItems, type DashboardAttentionItem, type DashboardCase, type DashboardCounts, type DashboardProgression } from "./data";
 
 type AdminDashboardResult =
   | { counts: DashboardCounts; error: null }
@@ -94,6 +95,45 @@ export async function getCampusLeadDashboardCounts(): Promise<AdminDashboardResu
     completedCouples: counts[3]!, currentCases: counts[4]!,
     workflow: stages.map(([status, label]) => ({ status, label, count: workflowByStatus.get(status) ?? 0 })),
   }, error: null };
+}
+
+export async function getDashboardCounselingProgression(canNavigate: boolean): Promise<{ progression: DashboardProgression | null; error: "unauthorized" | "unavailable" | null }> {
+  const supabase = await createServerSupabaseClient();
+  const rpc = supabase as unknown as { rpc(name: "get_dashboard_counseling_progression"): Promise<{ data: unknown; error: { message: string } | null }> };
+  const { data, error } = await rpc.rpc("get_dashboard_counseling_progression");
+  if (error || !data || typeof data !== "object") return { progression: null, error: error ? "unauthorized" : "unavailable" };
+
+  const raw = data as { stages?: unknown; sessions?: unknown; unclassified_count?: unknown };
+  const stageRows = Array.isArray(raw.stages) ? raw.stages : [];
+  const sessionRows = Array.isArray(raw.sessions) ? raw.sessions : [];
+  const stageById = new Map(stageRows.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const row = entry as { id?: unknown; count?: unknown };
+    return typeof row.id === "string" && integer(row.count) !== null ? [[row.id, integer(row.count)!] as const] : [];
+  }));
+  const sessions = sessionRows.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const row = entry as { id?: unknown; number?: unknown; title?: unknown; count?: unknown };
+    if (typeof row.id !== "string" || typeof row.title !== "string" || integer(row.count) === null) return [];
+    const number = row.number === null ? null : integer(row.number);
+    if (row.number !== null && number === null) return [];
+    return [{ id: row.id, number, title: row.title, count: integer(row.count)!, href: canNavigate ? dashboardSessionHref(row.id) : null }];
+  });
+  const unclassifiedCount = integer(raw.unclassified_count);
+  if (unclassifiedCount === null || stageById.size !== MINISTRY_PROGRESSION_STAGES.length || sessions.length !== sessionRows.length) return { progression: null, error: "unavailable" };
+
+  return {
+    progression: {
+      stages: MINISTRY_PROGRESSION_STAGES.map((stage) => ({
+        ...stage,
+        count: stageById.get(stage.id)!,
+        href: stage.id === "intake" ? "/intake-requests?view=open" : canNavigate ? dashboardProgressionHref(stage.id) : null,
+      })),
+      sessions,
+      unclassifiedCount,
+    },
+    error: null,
+  };
 }
 
 export async function getDashboardAttentionItems(identity: { id: string; roles: readonly string[]; workspaces: readonly string[] }): Promise<{ items: DashboardAttentionItem[] | null; error: "unauthorized" | "unavailable" | null }> {

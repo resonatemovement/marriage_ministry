@@ -9,10 +9,10 @@ export const INTAKE_STATUS_LABEL: Readonly<Record<IntakeRequestStatus, string>> 
 export function isIntakeRequestStatus(value: string): value is IntakeRequestStatus { return INTAKE_REQUEST_STATUSES.includes(value as IntakeRequestStatus); }
 export type IntakeRequestView = "open" | "added" | "all";
 export function isIntakeRequestView(value: string): value is IntakeRequestView { return value === "open" || value === "added" || value === "all"; }
-const FILTERABLE_INTAKE_STATUSES = ["ready_for_review", "under_review", "invited", "closed"] as const;
+const FILTERABLE_INTAKE_STATUSES = ["ready_for_review", "under_review", "ready_to_invite", "invited", "closed"] as const;
 export function intakeStatusesForView(view: IntakeRequestView) {
-  if (view === "open") return FILTERABLE_INTAKE_STATUSES.slice(0, 2);
-  if (view === "added") return FILTERABLE_INTAKE_STATUSES.slice(2, 3);
+  if (view === "open") return FILTERABLE_INTAKE_STATUSES.slice(0, 3);
+  if (view === "added") return FILTERABLE_INTAKE_STATUSES.slice(3, 4);
   return FILTERABLE_INTAKE_STATUSES;
 }
 export function isIntakeStatusAvailableInView(status: string, view: IntakeRequestView) {
@@ -28,7 +28,7 @@ export function intakeViewHref(view: IntakeRequestView, search?: string, status?
 }
 export function belongsToIntakeRequestView(request: { status: IntakeRequestStatus; hasInvitedCouple: boolean }, view: IntakeRequestView) {
   if (view === "added") return request.status === "invited" || request.hasInvitedCouple;
-  if (view === "open") return !request.hasInvitedCouple && (request.status === "ready_for_review" || request.status === "under_review");
+  if (view === "open") return !request.hasInvitedCouple && (request.status === "ready_for_review" || request.status === "under_review" || request.status === "ready_to_invite");
   return true;
 }
 export function coupleDisplayName(people: readonly { personPosition: "requester" | "partner"; firstName: string; lastName: string; gender?: "male" | "female" | null }[]) {

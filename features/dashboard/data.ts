@@ -20,6 +20,12 @@ export interface DashboardCounts {
   workflow: readonly { status: CaseStatus; label: string; count: number }[];
 }
 
+export type DashboardProgression = {
+  stages: readonly { id: string; label: string; valueLabel: string; count: number; href: string | null }[];
+  sessions: readonly { id: string; number: number | null; title: string; count: number; href: string | null }[];
+  unclassifiedCount: number;
+};
+
 export type DashboardAttentionItem = {
   id: string;
   category: "Intake Request" | "Unassigned Couple";
@@ -60,6 +66,14 @@ export function intakeAttentionItems(alerts: readonly DashboardAlert[]): Dashboa
 
 export function dashboardCoupleListHref(caseStatus: CaseStatus | "unassigned") {
   return `/people?filter=couples&caseStatus=${caseStatus}`;
+}
+
+export function dashboardProgressionHref(stage: string) {
+  return `/people?filter=couples&workflowStage=${encodeURIComponent(stage)}`;
+}
+
+export function dashboardSessionHref(sessionId: string) {
+  return `/people?filter=couples&workflowSession=${encodeURIComponent(sessionId)}`;
 }
 
 const workflowLabels: readonly { status: CaseStatus; label: string }[] = [

@@ -5,18 +5,19 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { UpcomingPanel } from "@/components/dashboard/upcoming-panel";
 import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
-import { dashboardMetrics, dashboardWorkflow } from "@/features/dashboard/data";
+import { dashboardMetrics } from "@/features/dashboard/data";
 import { filterDashboardAvailabilityTeams } from "@/features/dashboard/team-availability";
-import { getDashboardAttentionItems, getAdminDashboardCounts, getCampusLeadDashboardCounts } from "@/features/dashboard/queries";
+import { getDashboardAttentionItems, getAdminDashboardCounts, getCampusLeadDashboardCounts, getDashboardCounselingProgression } from "@/features/dashboard/queries";
 import { getDashboardTeamAvailability } from "@/features/dashboard/team-availability-queries";
 import type { AuthenticatedIdentity } from "@/lib/auth/session";
 
 export async function DashboardPage({ identity }: { identity: AuthenticatedIdentity }) {
   const isAdmin = identity.roles.includes("admin") || identity.roles.includes("super_admin");
-  const [countsResult, attentionResult, teamAvailabilityResult] = await Promise.all([
+  const [countsResult, attentionResult, teamAvailabilityResult, progressionResult] = await Promise.all([
     isAdmin ? getAdminDashboardCounts() : getCampusLeadDashboardCounts(),
     getDashboardAttentionItems(identity),
     getDashboardTeamAvailability(),
+    getDashboardCounselingProgression(isAdmin),
   ]);
   const counts = countsResult.error ? null : countsResult.counts;
   const metrics = dashboardMetrics(counts, isAdmin, "/intake-requests?status=under_review");
@@ -35,7 +36,7 @@ export async function DashboardPage({ identity }: { identity: AuthenticatedIdent
       </div>
 
       <div className="mt-7">
-        <WorkflowPanel stages={dashboardWorkflow(counts)} total={counts?.currentCases ?? null} canNavigate={isAdmin} />
+        <WorkflowPanel progression={progressionResult.error ? null : progressionResult.progression} canNavigate={isAdmin} />
       </div>
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.55fr)_minmax(21rem,0.85fr)]">
