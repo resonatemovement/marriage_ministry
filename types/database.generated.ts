@@ -3401,6 +3401,17 @@ export type Database = {
           published_session_count: number
         }[]
       }
+      get_dashboard_team_availability: {
+        Args: never
+        Returns: {
+          accepting_new_couples: boolean
+          campus_name: string
+          couple_count: number
+          team_id: string
+          team_name: string
+          team_type: string
+        }[]
+      }
       get_homework_reopen_eligibility: {
         Args: { target_case_id: string }
         Returns: boolean

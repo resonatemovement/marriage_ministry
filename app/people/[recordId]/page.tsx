@@ -10,10 +10,12 @@ import { getOperationalHierarchy } from "@/features/people/operational-hierarchy
 import { getAdminPrepareEnrichDocuments } from "@/features/prepare-enrich/server";
 import { getCounselingOversightProgress } from "@/features/counseling-sessions/oversight-queries";
 import { getOversightCounselorNodes } from "@/features/counseling-sessions/oversight-rail-queries";
+import { validateTeamAvailabilityReturnTo } from "@/features/dashboard/team-availability";
+import type { PeopleBreadcrumb } from "@/features/people/breadcrumbs";
 
-export default async function PeopleDetailRoute({ params, searchParams }: { params: Promise<{ recordId: string }>; searchParams: Promise<{ trail?: string; returnTo?: string }> }) {
+export default async function PeopleDetailRoute({ params, searchParams }: { params: Promise<{ recordId: string }>; searchParams: Promise<{ trail?: string; returnTo?: string; from?: string }> }) {
   const { recordId } = await params;
-  const { trail: rawTrail, returnTo } = await searchParams;
+  const { trail: rawTrail, returnTo, from } = await searchParams;
   const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${recordId}`);
   const detail = await getPeopleDetail(recordId);
   if (!detail) notFound();
@@ -27,6 +29,13 @@ export default async function PeopleDetailRoute({ params, searchParams }: { para
     detail.kind === "group" && detail.type !== "couples" ? getCounselingOversightProgress(detail.id) : null,
     detail.kind === "group" && detail.type === "coaches" ? getOversightCounselorNodes(detail.id, "people") : [],
   ]);
+  const availabilityTrail: PeopleBreadcrumb[] | null = from === "team-availability" && detail.kind === "group" && detail.type !== "couples"
+    ? [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Team Availability", href: validateTeamAvailabilityReturnTo(returnTo) },
+      { label: detail.name, current: true },
+    ]
+    : null;
 
-  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeopleDetailPage detail={detail} context={context} hierarchy={hierarchy} breadcrumbs={buildPeopleBreadcrumbs(detail, parents, trail, validatePeopleReturnTo(returnTo))} trail={[...trail, recordId]} isSuperAdmin={identity.roles.includes("super_admin")} prepareEnrich={prepareEnrich} oversightProgress={oversightProgress} oversightChildren={oversightChildren} /></WorkspaceShell>;
+  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeopleDetailPage detail={detail} context={context} hierarchy={hierarchy} breadcrumbs={availabilityTrail ?? buildPeopleBreadcrumbs(detail, parents, trail, validatePeopleReturnTo(returnTo))} trail={[...trail, recordId]} isSuperAdmin={identity.roles.includes("super_admin")} prepareEnrich={prepareEnrich} oversightProgress={oversightProgress} oversightChildren={oversightChildren} /></WorkspaceShell>;
 }

@@ -4,18 +4,20 @@ import { describe, expect, it } from "vitest";
 
 import { AssignmentQueuePanel } from "./assignment-queue-panel";
 import { AttentionPanel } from "./attention-panel";
-import { CapacityPanel } from "./capacity-panel";
+import { TeamAvailabilityCarousel } from "./team-availability-carousel";
 import { MetricCard } from "./metric-card";
 import { UpcomingPanel } from "./upcoming-panel";
 import { WorkflowPanel } from "./workflow-panel";
 import { dashboardMetrics, dashboardWorkflow } from "@/features/dashboard/data";
 
 describe("Admin dashboard live-data presentation", () => {
-  it("shows explicit unavailable states instead of fictional queue, capacity, or activity data", () => {
+  it("shows explicit unavailable states instead of fictional queue or activity data", () => {
     const markup = renderToStaticMarkup(createElement("div", null,
-      createElement(AttentionPanel, { items: [] }), createElement(CapacityPanel), createElement(AssignmentQueuePanel), createElement(UpcomingPanel),
+      createElement(AttentionPanel, { items: [] }), createElement(TeamAvailabilityCarousel, { teams: [], error: false }), createElement(AssignmentQueuePanel), createElement(UpcomingPanel),
     ));
-    expect(markup.match(/Not yet available\./g)).toHaveLength(2);
+    expect(markup.match(/Not yet available\./g)).toHaveLength(1);
+    expect(markup).toContain("Team Availability");
+    expect(markup).not.toContain("Team Capacity");
     expect(markup).toContain("Assignment queue details are not yet available.");
     expect(markup).not.toContain("Maya &amp; Jordan");
     expect(markup).not.toContain("AUG 19");

@@ -31,6 +31,7 @@
     "verify:intake-requests": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-requests.ts",
     "verify:intake-alerts": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-alerts.ts",
     "verify:shared-dashboard": "node --experimental-strip-types --env-file=.env.local scripts/verify-shared-dashboard.ts",
+    "verify:dashboard-team-availability": "node --experimental-strip-types --env-file=.env.local scripts/verify-dashboard-team-availability.ts",
     "verify:intake-invite-handoff": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-invite-handoff.ts",
     "verify:intake-delete": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-delete.ts",
     "verify:intake-submission": "node --experimental-strip-types --env-file=.env.local scripts/verify-intake-submission.ts",

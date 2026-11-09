@@ -23,7 +23,6 @@ vi.mock("@/features/couple-workspace/workspace", () => ({ CoupleWorkspace: ({ da
 vi.mock("@/components/dashboard/dashboard-header", () => ({ DashboardHeader: () => null }));
 vi.mock("@/components/dashboard/attention-panel", () => ({ AttentionPanel: () => null }));
 vi.mock("@/components/dashboard/assignment-queue-panel", () => ({ AssignmentQueuePanel: () => null }));
-vi.mock("@/components/dashboard/capacity-panel", () => ({ CapacityPanel: () => null }));
 vi.mock("@/components/dashboard/metric-card", () => ({ MetricCard: ({ metric }: { metric: { label: string } }) => createElement("div", { "data-metric": metric.label }) }));
 vi.mock("@/components/dashboard/upcoming-panel", () => ({ UpcomingPanel: () => null }));
 vi.mock("@/components/dashboard/workflow-panel", () => ({ WorkflowPanel: () => null }));
