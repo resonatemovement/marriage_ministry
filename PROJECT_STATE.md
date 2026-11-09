@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 9, 2026
-Current working branch: feature/team-availability-toggle
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Team Availability Toggle — Task 1 (November 9, 2026)
@@ -10,7 +10,7 @@ Repository: resonatemovement/marriage_ministry
 - The Counseling Workspace header now displays the saved value for Counselor, Coach, and Campus Lead workspaces. The compact label/switch is positioned top-right at desktop breakpoints and below the heading content on mobile. Changes persist immediately; pending submissions are disabled to prevent overlapping writes, and a failed write restores the prior value with an inline error. The toggle does not alter assignments, Case pages, workload, or eligibility.
 - DEV database-side checks used existing active identities for all three team types under the `authenticated` role, verified initial ON values and successful persisted OFF/ON updates, and confirmed unrelated and unauthenticated update denial. All writes and a temporary default-value check were inside a transaction rolled back after validation. `supabase db lint --linked --fail-on error` completed with only pre-existing warnings in unrelated functions.
 - Focused UI/action tests pass (21 tests across three files); typecheck, full lint, production build, and `git diff --check` pass. The full Vitest suite has one unrelated existing failure: `features/notifications/onboarding-reminder-contract.test.ts` expects a provider-wrapper call in `features/notifications/onboarding-reminders.ts`, while the working implementation imports and applies the wrapper in the processor path. Both files are unchanged from `main`; all other tests passed (1,257 passed, 1 failed). No browser/manual responsive verification was performed.
-- Implementation commit `1632c04` is on `feature/team-availability-toggle`, created from clean, current `main` (`3bdf1a9`). Focused tests, typecheck, lint, production build, migration, DEV authorization checks, and database lint are complete; one unrelated existing full-suite contract test remains failing as detailed above. Pre-push Vercel verification confirms the exact dedicated DEV project (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is Git-connected to `resonatemovement/marriage_ministry` on `main`; merge and push/deployment verification are pending. The original worktree is in use, all seven existing stashes remain preserved, and actual Resonate PROD has not been accessed.
+- Feature implementation commit `1632c04` and validation documentation commit `d159a19` were fast-forward merged to `main` and pushed to `origin/main`. The dedicated DEV Vercel project (`resonate-movement/marriage-ministry-dev`, `prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is Git-connected to `resonatemovement/marriage_ministry` on `main`; deployment `dpl_ETrrJp2Th7q3dgKvXSCfqBD3osAK` reached `READY` at SHA `d159a192a6e52d02e62af2445f5c2b3e09cd9a57`. The feature branch is merged and pending normal local deletion. The original worktree is in use, all seven existing stashes remain preserved, and actual Resonate PROD has not been accessed.
 
 ## Onboarding Reminder Failure Diagnostics (November 9, 2026)
 
