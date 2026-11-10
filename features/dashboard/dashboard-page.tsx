@@ -1,5 +1,4 @@
 import { AttentionPanel } from "@/components/dashboard/attention-panel";
-import { AssignmentQueuePanel } from "@/components/dashboard/assignment-queue-panel";
 import { TeamAvailabilityCarousel } from "@/components/dashboard/team-availability-carousel";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -38,7 +37,6 @@ export async function DashboardPage({ identity }: { identity: AuthenticatedIdent
         <WorkflowPanel progression={progressionResult.error ? null : progressionResult.progression} canNavigate={isAdmin} />
       </div>
 
-      <div className="mt-7"><AssignmentQueuePanel /></div>
       {!isAdmin ? <p className="mt-4 text-xs text-text-muted">Couple identities and Case details are available through your authorized Workspace, not from campus-wide Dashboard aggregates.</p> : null}
     </main>
   </>;

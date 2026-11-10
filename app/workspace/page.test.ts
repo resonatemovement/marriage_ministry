@@ -22,7 +22,6 @@ vi.mock("@/features/dashboard/queries", () => ({ getAdminDashboardCounts }));
 vi.mock("@/features/couple-workspace/workspace", () => ({ CoupleWorkspace: ({ data }: { data: { coupleName: string } | null }) => createElement("div", { "data-couple-workspace": "true" }, data?.coupleName) }));
 vi.mock("@/components/dashboard/dashboard-header", () => ({ DashboardHeader: () => null }));
 vi.mock("@/components/dashboard/attention-panel", () => ({ AttentionPanel: () => null }));
-vi.mock("@/components/dashboard/assignment-queue-panel", () => ({ AssignmentQueuePanel: () => null }));
 vi.mock("@/components/dashboard/metric-card", () => ({ MetricCard: ({ metric }: { metric: { label: string } }) => createElement("div", { "data-metric": metric.label }) }));
 vi.mock("@/components/dashboard/workflow-panel", () => ({ WorkflowPanel: () => null }));
 vi.mock("@/features/dashboard/data", () => ({ dashboardMetrics: () => [

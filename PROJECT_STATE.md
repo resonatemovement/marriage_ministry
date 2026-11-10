@@ -1,7 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: main
+Current working branch: feature/remove-assignment-queue
 Repository: resonatemovement/marriage_ministry
+
+## Remove Assignment Queue from Dashboard (November 10, 2026)
+
+- Removed the Dashboard Assignment Queue placeholder, its component, and the now-empty Dashboard row. The real Couple assignment workflows remain in People & Teams; no assignment logic, permissions, or destinations changed. The Unassigned Couples metric continues to link to `/people?filter=couples&caseStatus=unassigned`.
+- Dashboard SSR regression coverage confirms summary metrics, Needs Attention, Team Availability, Ministry Progression, and Counseling Sessions remain rendered, Assignment Queue is absent, and Unassigned Couples navigation is unchanged. Focused Dashboard/metric/attention tests (11 across 5 files), typecheck, lint, production build, and `git diff --check` pass. Browser-based responsive verification has not been performed; remaining section markup and existing responsive classes are unchanged.
+- Current branch: `feature/remove-assignment-queue`; implementation is not yet committed, merged, or deployed. No database or authorization changes. All seven stashes are preserved. Next: verify the dedicated `marriage-ministry-dev` Vercel target, commit the focused changes and this state update, fast-forward merge/push to `main`, confirm the exact deployment reaches READY, delete the merged feature branch normally, and verify clean synchronized `main`.
 
 ## Remove Upcoming Activity from Dashboard (November 10, 2026)
 
