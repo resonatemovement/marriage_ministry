@@ -3,6 +3,14 @@ Last updated: November 10, 2026
 Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
+## Pending Invitation Partner Ordering (November 10, 2026)
+
+- Fixed authoritative gender lookup for pending Couple invitations. Both the People listing query and Couple detail query now select the Intake person's email needed to match an invitation; a shared helper resolves only the matching stored `male`/`female` value. Existing `orderCouplePartners` remains the only partner-ordering rule. Gender labels are not added to the UI, and the Intake email is used only for the server-side match.
+- Regression tests cover male-active/female-pending and female-active/male-pending ordering, two active members, case-insensitive email matching, missing-match stable fallback, query selections, and display names that do not contain email addresses. Existing same-gender and missing-gender stable fallback tests remain passing.
+- Read-only DEV verification positively matched Supabase ref `lctkqjjkhpyootwvttvj` and the reported Couple/Intake records. Intake stores James as male and Ann as female; James is an active male member and Ann is a pending invitation with no membership. The updated lookup/order functions applied to those DEV rows return James first and Ann second. No DEV records were modified. The original screenshot route was not supplied, so this confirms the identified People query path and data behavior, not which route produced the original screenshot.
+- Validation passed: 53 focused tests across `features/people/queries.test.ts`, `features/people/partner-order.test.ts`, and `features/people/detail-model.test.ts`; `npm run typecheck`; `npm run lint`; `npm run build`; and `git diff --check`. No browser/manual authenticated UI verification was performed. No schema, RLS, permission, invitation, or onboarding changes.
+- Implementation commit `d746d9f21e61304c41ed637047ecf00b980df366` was fast-forward merged and pushed to `main`. The verified dedicated DEV Vercel project is `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`; deployment `dpl_AbC58wgihBCmsV955EPh4ejQ9r5W` reached `READY` at that exact SHA. Vercel labels the target `production` within this dedicated DEV project; actual Resonate PROD was not accessed. The documentation release commit is being finalized through the same feature branch. All seven stashes remain preserved.
+
 ## Adjustable Phone Camera Zoom (November 10, 2026)
 
 - On `feature/photo-handoff-adjustable-zoom`, replaced the fixed 1.1× browser-camera crop with a compact, accessible Zoom range control: default 1.2×, minimum 1.0×, maximum 1.5×, and 0.1× steps. It appears below the live preview and above the camera controls, shows the selected value, updates preview scaling immediately, and is disabled outside the ready live-camera state.
