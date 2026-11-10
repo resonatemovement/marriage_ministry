@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: main
+Current working branch: feature/fix-photo-handoff-qr-url
 Repository: resonatemovement/marriage_ministry
+
+## Phone Handoff QR URL Rooting (November 10, 2026)
+
+- Fixed photo handoff URL construction so it uses the selected application URL's origin and an origin-rooted `/onboarding/photo-handoff/{token}` path. This prevents a path such as `/login` or another nested page in the base URL from being prepended to the handoff route. Token creation, expiration, single-use completion, and upload authorization are unchanged.
+- Added URL-builder regression coverage for a `/login` base, another nested route, and a plain origin, using only a placeholder token. Focused handoff tests (5 tests), typecheck, lint, production build, and `git diff --check` pass. No real handoff token was generated or logged; no browser or database-backed handoff was exercised.
+- Dedicated Vercel DEV project identity and GitHub repository linkage were verified before release. The configured `APP_URL` variable is present for Preview and Production, but Vercel's returned value was not readable as a URL during verification; local `.env.local` uses localhost for local development. The URL builder was tested against the dedicated DEV host. Code commit and deployment verification are pending.
+- Current work is on `feature/fix-photo-handoff-qr-url`, created from clean `main` at `1e9672c466fb50b6864d6d66f995fec74e96bc85`. All seven existing stashes are preserved. Actual Resonate PROD was not accessed.
 
 ## Remove Assignment Queue from Dashboard (November 10, 2026)
 

@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabaseEnvironment } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { handoffMessage, type PhotoHandoffState } from "./handoff-state";
+import { buildPhotoHandoffUrl } from "./photo-handoff-url";
 import { storeProfilePhoto } from "./profile-photo-server";
 
 type Handoff = { id: string; profile_id: string; expires_at: string; completed_at: string | null };
@@ -13,7 +14,7 @@ function admin() { const { url } = getSupabaseEnvironment(); return createClient
 async function lookup(token: string) { const { data } = await admin().from("profile_photo_handoffs").select("id,profile_id,expires_at,completed_at").eq("token_hash", hash(token)).maybeSingle(); return data as Handoff | null; }
 async function state(token: string): Promise<PhotoHandoffState> { const handoff = await lookup(token); if (!handoff) return "invalid"; if (handoff.completed_at) return "completed"; return new Date(handoff.expires_at) > new Date() ? "active" : "expired"; }
 async function valid(token: string) { const handoff = await lookup(token); return handoff && !handoff.completed_at && new Date(handoff.expires_at) > new Date() ? handoff : null; }
-export async function createPhotoHandoff() { const supabase = await createServerSupabaseClient(); const client = supabase as unknown as { rpc(name: "create_profile_photo_handoff", args: Record<string, never>): Promise<{ data: { token: string; expires_at: string } | null; error: { message: string } | null }> }; const { data, error } = await client.rpc("create_profile_photo_handoff", {}); if (error || !data) return { success: false as const, error: "We could not create a phone handoff." }; const baseUrl = (process.env.HANDOFF_APP_URL || process.env.APP_URL || (await headers()).get("origin") || "").replace(/\/$/, ""); return { success: true as const, token: data.token, expiresAt: data.expires_at, url: `${baseUrl}/onboarding/photo-handoff/${data.token}` }; }
+export async function createPhotoHandoff() { const supabase = await createServerSupabaseClient(); const client = supabase as unknown as { rpc(name: "create_profile_photo_handoff", args: Record<string, never>): Promise<{ data: { token: string; expires_at: string } | null; error: { message: string } | null }> }; const { data, error } = await client.rpc("create_profile_photo_handoff", {}); if (error || !data) return { success: false as const, error: "We could not create a phone handoff." }; const baseUrl = process.env.HANDOFF_APP_URL || process.env.APP_URL || (await headers()).get("origin") || ""; let url: string; try { url = buildPhotoHandoffUrl(baseUrl, data.token); } catch { return { success: false as const, error: "We could not create a phone handoff." }; } return { success: true as const, token: data.token, expiresAt: data.expires_at, url }; }
 async function completePhoneUpload(token: string) {
   const handoffState = await state(token);
   if (handoffState !== "active") return { success: false as const, error: handoffMessage(handoffState) };
