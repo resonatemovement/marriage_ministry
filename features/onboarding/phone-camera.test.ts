@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { cameraConstraints, cameraUnavailableMessage, canFlipCamera, frontCameraConstraints, nextCameraFacingMode, stopCameraStream, switchCameraStream } from "./phone-camera";
+import { cameraConstraints, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, nextCameraFacingMode, stopCameraStream, switchCameraStream } from "./phone-camera";
 
 describe("phone camera", () => {
   it("requests a front-facing video stream without audio", () => {
-    expect(frontCameraConstraints).toEqual({ audio: false, video: { facingMode: "user" } });
+    expect(frontCameraConstraints).toEqual({ audio: false, video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1440 } } });
   });
 
   it("selects and toggles the front and rear cameras", () => {
-    expect(cameraConstraints("environment")).toEqual({ audio: false, video: { facingMode: "environment" } });
+    expect(cameraConstraints("environment")).toEqual({ audio: false, video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1440 } } });
     expect(nextCameraFacingMode("user")).toBe("environment");
     expect(nextCameraFacingMode("environment")).toBe("user");
   });
@@ -57,5 +57,23 @@ describe("phone camera", () => {
     const current = { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
     await expect(switchCameraStream(current, "user", vi.fn().mockRejectedValue(new Error("unavailable"))))
       .rejects.toThrow("The camera could not be restarted.");
+  });
+
+  it("captures at the source dimensions without adding a mirror or aspect-ratio transform", async () => {
+    const drawImage = vi.fn();
+    const setTransform = vi.fn();
+    const toBlob = vi.fn((callback: BlobCallback) => callback(new Blob(["photo"], { type: "image/webp" })));
+    const canvas = { width: 0, height: 0, getContext: () => ({ drawImage, setTransform }), toBlob };
+    vi.stubGlobal("document", { createElement: vi.fn(() => canvas) });
+    const video = { videoWidth: 1280, videoHeight: 720 } as HTMLVideoElement;
+
+    const result = await captureCameraFrame(video);
+
+    expect(canvas.width).toBe(1280);
+    expect(canvas.height).toBe(720);
+    expect(setTransform).toHaveBeenCalledWith(1, 0, 0, 1, 0, 0);
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720);
+    expect(result.type).toBe("image/webp");
+    vi.unstubAllGlobals();
   });
 });

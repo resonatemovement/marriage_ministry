@@ -36,6 +36,7 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain("Center your face in the frame.");
     expect(html).toContain('aria-label="Back"');
     expect(html).toContain('playsInline=""');
+    expect(html).toContain("transform-none");
     expect(html).toContain("aspect-[3/4]");
     expect(html).toContain("max-h-[min(64svh,36rem)]");
     expect(html).toContain('aria-label="Take photo"');
