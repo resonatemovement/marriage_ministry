@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/photo-handoff-camera-quality
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Phone Photo Handoff Camera Quality (November 10, 2026)
@@ -9,7 +9,7 @@ Repository: resonatemovement/marriage_ministry
 - Added non-mandatory 1920×1440 resolution preferences alongside the existing front/rear `facingMode`; these are ideal hints, not exact constraints, so browsers may select supported modes. No aspect-ratio constraint, crop, lens correction, image conversion, upload, handoff, or authorization behavior changed.
 - Focused phone camera and capture-view tests pass (18 tests), covering default/front and rear selection, switching/recovery, preferred constraints, native canvas dimensions, identity transform, live and captured preview states, and existing controls. `npm run lint`, `npm run build`, `npm run typecheck` (rerun after the build generated `.next/types`), and `git diff --check` pass. Typecheck initially ran concurrently with the build and encountered transient missing `.next/types`; the sequential rerun passed. No physical-device/browser camera verification was performed.
 - Root cause evidence: there was no application-authored mirroring transform to remove. Whether the reported mirroring originates in a specific browser/device camera stream remains unverified. Close-up curvature is likely phone front-lens perspective/wide-angle distortion, not layout or capture stretching; browser constraints cannot remove optical distortion.
-- Current Git state: feature branch created from `main` at `2334460859d759f139d423fe7e9c3fde89df23bb`; four focused source/test files are modified and all seven stashes remain. This implementation is not yet committed, merged, or deployed. Dedicated DEV release verification and physical-device testing remain outstanding. Actual Resonate PROD was not accessed.
+- Feature commit `444908c45bbf3d3e4b2d3413e4dd2be78dbc4d4e` was fast-forward merged and pushed to `origin/main`. Dedicated Vercel DEV project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), under `resonate-movement`, reached READY as deployment `dpl_D5WviKBqPNZ57BSopuaNzk76FAHw`; deployment metadata confirms repository `resonatemovement/marriage_ministry`, branch `main`, and the exact commit SHA. Its target is `production` within the dedicated DEV project; actual Resonate PROD was not accessed. The feature branch was deleted normally after merge. The worktree is on `main`; all seven stashes remain. Physical-device/browser camera testing remains outstanding.
 
 ## Phone Photo Handoff Camera UI (November 10, 2026)
 
