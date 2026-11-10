@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- Local photo previews use blob URLs, not optimizer-compatible sources. */
-import { ArrowLeft, FlipHorizontal, Image as ImageIcon, SwitchCamera } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, SwitchCamera } from "lucide-react";
 import type { RefObject } from "react";
 import type { PhonePhotoStage } from "./phone-photo-state";
 
@@ -12,18 +12,13 @@ type PhonePhotoCaptureViewProps = {
   cameraTransitioning: boolean;
   mirrorLivePreview: boolean;
   cameraCropZoom: number;
-  canMirrorPhoto: boolean;
-  nativePhotoMirrored: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   libraryInputRef: RefObject<HTMLInputElement | null>;
-  nativeCameraInputRef: RefObject<HTMLInputElement | null>;
   onStartCamera: () => void;
   onTakePhoto: () => void;
   onFlipCamera: () => void;
   onCancelCamera: () => void;
   onChoosePhoto: () => void;
-  onUsePhoneCamera: () => void;
-  onToggleMirrorPhoto: () => void;
   onRetake: () => void;
   onUpload: () => void;
 };
@@ -39,18 +34,13 @@ export function PhonePhotoCaptureView({
   cameraTransitioning,
   mirrorLivePreview,
   cameraCropZoom,
-  canMirrorPhoto,
-  nativePhotoMirrored,
   videoRef,
   libraryInputRef,
-  nativeCameraInputRef,
   onStartCamera,
   onTakePhoto,
   onFlipCamera,
   onCancelCamera,
   onChoosePhoto,
-  onUsePhoneCamera,
-  onToggleMirrorPhoto,
   onRetake,
   onUpload,
 }: PhonePhotoCaptureViewProps) {
@@ -94,18 +84,6 @@ export function PhonePhotoCaptureView({
             tabIndex={-1}
             disabled={busy}
           />
-          <input
-            id="phone-native-camera-input"
-            ref={nativeCameraInputRef}
-            className="sr-only"
-            type="file"
-            accept="image/*"
-            capture="user"
-            aria-hidden="true"
-            tabIndex={-1}
-            disabled={busy}
-          />
-
           {isLive ? (
             <section className="mt-4 sm:mt-6" aria-label="Camera capture">
               <p className="mb-3 text-center text-sm text-text-muted">Center your face in the frame.</p>
@@ -114,13 +92,13 @@ export function PhonePhotoCaptureView({
                 <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 shadow-[0_0_0_999px_rgb(0_0_0/12%)]" />
               </div>
 
-              <div className="mt-4 grid grid-cols-3 items-center justify-items-center gap-1">
+              <div className="relative mt-4 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={onChoosePhoto}
                   disabled={busy}
                   aria-label="Choose a photo from your library"
-                  className={`${pickerClass} col-start-1 w-full disabled:pointer-events-none disabled:opacity-60`}
+                  className={`${pickerClass} disabled:pointer-events-none disabled:opacity-60`}
                 >
                   <ImageIcon size={19} aria-hidden="true" />
                   <span>Photo Library</span>
@@ -130,7 +108,7 @@ export function PhonePhotoCaptureView({
                   onClick={onTakePhoto}
                   disabled={busy}
                   aria-label="Take photo"
-                  className="col-start-2 grid size-[4.5rem] place-items-center rounded-full border-4 border-white bg-transparent transition-transform hover:scale-105 focus-visible:scale-105 disabled:cursor-wait disabled:opacity-60"
+                  className="absolute left-1/2 grid size-[4.5rem] -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-transparent transition-transform hover:scale-105 focus-visible:scale-105 disabled:cursor-wait disabled:opacity-60"
                 >
                   <span aria-hidden="true" className="size-[3.45rem] rounded-full bg-white" />
                 </button>
@@ -141,18 +119,13 @@ export function PhonePhotoCaptureView({
                     disabled={busy}
                     aria-label="Flip camera between front and rear cameras"
                     title="Flip Camera"
-                    className="col-start-3 grid size-12 place-items-center rounded-full text-brand-primary transition-colors hover:bg-surface-muted focus-visible:bg-sidebar-accent disabled:cursor-wait disabled:opacity-60"
+                    className="grid size-12 place-items-center rounded-full text-brand-primary transition-colors hover:bg-surface-muted focus-visible:bg-sidebar-accent disabled:cursor-wait disabled:opacity-60"
                   >
                     <SwitchCamera size={22} aria-hidden="true" />
                     <span className="sr-only">Flip Camera</span>
                   </button>
-                ) : (
-                  <span aria-hidden="true" className="col-start-3 size-12" />
-                )}
+                ) : null}
               </div>
-              <button type="button" onClick={onUsePhoneCamera} disabled={busy} aria-label="Use Phone Camera" className={`${pickerClass} mx-auto mt-1 w-fit disabled:pointer-events-none disabled:opacity-60`}>
-                Use Phone Camera
-              </button>
               {cameraTransitioning ? <p role="status" className="mt-3 text-center text-sm text-text-muted">Switching cameras...</p> : null}
             </section>
           ) : hasPreview ? (
@@ -168,12 +141,6 @@ export function PhonePhotoCaptureView({
                   {stage === "uploading" ? "Uploading..." : "Use Photo"}
                 </button>
               </div>
-              {canMirrorPhoto ? (
-                <button type="button" onClick={onToggleMirrorPhoto} disabled={busy} aria-pressed={nativePhotoMirrored} aria-label={nativePhotoMirrored ? "Mirror Photo: mirrored" : "Mirror Photo: natural orientation"} className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-60">
-                  <FlipHorizontal size={18} aria-hidden="true" />
-                  <span>{nativePhotoMirrored ? "Mirror Photo (On)" : "Mirror Photo (Off)"}</span>
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={onChoosePhoto}
@@ -183,18 +150,12 @@ export function PhonePhotoCaptureView({
                 <ImageIcon size={18} aria-hidden="true" />
                 Choose another photo
               </button>
-              <button type="button" onClick={onUsePhoneCamera} disabled={busy} className={`${pickerClass} mt-1 w-full disabled:pointer-events-none disabled:opacity-60`}>
-                Use Phone Camera
-              </button>
             </section>
           ) : (
             <section className="mt-6 flex flex-1 flex-col justify-center gap-3 pb-4" aria-label="Choose a profile photo">
               <p className="text-sm text-text-muted">Take a photo or choose one from your library.</p>
               <button type="button" onClick={onStartCamera} disabled={busy} className="min-h-12 rounded-lg bg-brand-primary px-4 text-sm font-bold text-white transition-colors hover:bg-brand-secondary focus-visible:bg-brand-secondary disabled:opacity-60">
                 Take Photo
-              </button>
-              <button type="button" onClick={onUsePhoneCamera} disabled={busy} className="min-h-12 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:bg-sidebar-accent disabled:opacity-60">
-                Use Phone Camera
               </button>
               <button
                 type="button"

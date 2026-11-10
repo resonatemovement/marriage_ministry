@@ -15,18 +15,13 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
     cameraTransitioning: false,
     mirrorLivePreview: false,
     cameraCropZoom: 1.1,
-    canMirrorPhoto: false,
-    nativePhotoMirrored: false,
     videoRef: createRef<HTMLVideoElement>(),
     libraryInputRef: createRef<HTMLInputElement>(),
-    nativeCameraInputRef: createRef<HTMLInputElement>(),
     onStartCamera: vi.fn(),
     onTakePhoto: vi.fn(),
     onFlipCamera: vi.fn(),
     onCancelCamera: vi.fn(),
     onChoosePhoto: vi.fn(),
-    onUsePhoneCamera: vi.fn(),
-    onToggleMirrorPhoto: vi.fn(),
     onRetake: vi.fn(),
     onUpload: vi.fn(),
     ...overrides,
@@ -36,14 +31,13 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
 }
 
 describe("phone photo capture presentation", () => {
-  it("offers browser camera, native camera, and library fallback from the ready state", () => {
+  it("offers the browser camera and library fallback from the ready state", () => {
     const html = markup();
 
     expect(html).toContain(">Take Photo</button>");
-    expect(html).toContain(">Use Phone Camera</button>");
     expect(html).toContain(">Photo Library</button>");
-    expect(html).toContain('id="phone-native-camera-input"');
-    expect(html).toContain('capture="user"');
+    expect(html).not.toContain("Use Phone Camera");
+    expect(html).not.toContain('capture="user"');
   });
 
   it("shows the live camera, guidance, accessible controls, and responsive viewport", () => {
@@ -60,8 +54,6 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain('aria-label="Take photo"');
     expect(html).toContain('aria-label="Flip camera between front and rear cameras"');
     expect(html).toContain("Photo Library");
-    expect(html).toContain('type="file" accept="image/*" capture="user"');
-    expect(html).toContain('aria-label="Use Phone Camera"');
     expect(html).toContain("safe-area-inset-bottom");
   });
 
@@ -75,6 +67,7 @@ describe("phone photo capture presentation", () => {
 
     expect(html).toContain('aria-label="Take photo"');
     expect(html).not.toContain("Flip Camera");
+    expect(html).not.toContain('aria-hidden="true" class="col-start-3 size-12"');
   });
 
   it("disables camera actions while a switch is in progress", () => {
@@ -93,17 +86,16 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain(">Retake</button>");
     expect(html).toContain(">Use Photo</button>");
     expect(html).toContain("Choose another photo");
-    expect(html).toContain(">Use Phone Camera</button>");
   });
 
-  it("shows a pressed-state Mirror Photo control only for native-camera captures", () => {
-    const nativeCapture = markup({ stage: "preview", preview: "blob:selfie", canMirrorPhoto: true, nativePhotoMirrored: true });
-    expect(nativeCapture).toContain('aria-label="Mirror Photo: mirrored"');
-    expect(nativeCapture).toContain('aria-pressed="true"');
-    expect(nativeCapture).toContain("Mirror Photo");
-
-    const librarySelection = markup({ stage: "preview", preview: "blob:library" });
-    expect(librarySelection).not.toContain("Mirror Photo");
+  it("keeps preview actions and library reselection without native-camera controls", () => {
+    const html = markup({ stage: "preview", preview: "blob:library" });
+    expect(html).toContain(">Retake</button>");
+    expect(html).toContain(">Use Photo</button>");
+    expect(html).toContain("Choose another photo");
+    expect(html).not.toContain("Mirror Photo");
+    expect(html).not.toContain("Use Phone Camera");
+    expect(html).not.toContain('capture="user"');
   });
 
   it("disables preview actions while uploading and shows upload progress", () => {
@@ -127,7 +119,6 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain('role="alert"');
     expect(html).toContain("Camera permission was not granted.");
     expect(html).toContain(">Photo Library</button>");
-    expect(html).toContain(">Use Phone Camera</button>");
     expect(html).toContain('aria-hidden="true"');
   });
 

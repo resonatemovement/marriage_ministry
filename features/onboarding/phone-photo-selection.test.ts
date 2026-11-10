@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { attachNativePhotoChangeListener, isSupportedPhonePhoto, selectedPhonePhoto } from "./phone-photo-selection";
+import { attachPhotoChangeListener, isSupportedPhonePhoto, selectedPhonePhoto } from "./phone-photo-selection";
 
 describe("phone photo selection", () => {
-  it("copies the selected file before the native input is reset", () => {
-    const file = { name: "camera.heic", type: "image/heic", size: 42 } as File;
+  it("copies the selected file before the input is reset", () => {
+    const file = { name: "selected.heic", type: "image/heic", size: 42 } as File;
     expect(selectedPhonePhoto({ item: (index) => index === 0 ? file : null })).toBe(file);
   });
 
-  it("accepts iPhone camera files with an empty MIME type when the extension is known", () => {
+  it("accepts extension-known image files with an empty MIME type for normal validation", () => {
     expect(isSupportedPhonePhoto({ name: "IMG_001.HEIC", type: "", size: 42 })).toBe(true);
     expect(isSupportedPhonePhoto({ name: "document.pdf", type: "application/pdf", size: 42 })).toBe(false);
   });
 
-  it("attaches and cleans up one native change listener", () => {
+  it("attaches and cleans up the library photo change listener", () => {
     let listener: (() => void) | undefined;
     let file: File | null = null;
     const input = {
@@ -23,9 +23,9 @@ describe("phone photo selection", () => {
       removeEventListener: (_name: string, callback: EventListenerOrEventListenerObject) => { if (listener === callback) listener = undefined; },
     } as unknown as HTMLInputElement;
     const received: File[] = [];
-    input.value = "old-camera-file.jpg";
-    const cleanup = attachNativePhotoChangeListener(input, (selected) => { if (selected) received.push(selected); });
-    file = { name: "camera.heic", type: "image/heic", size: 42 } as File;
+    input.value = "old-selection.jpg";
+    const cleanup = attachPhotoChangeListener(input, (selected) => { if (selected) received.push(selected); });
+    file = { name: "selected.heic", type: "image/heic", size: 42 } as File;
     listener?.();
     input.value = "IMG_001.HEIC";
     listener?.();
@@ -44,7 +44,7 @@ describe("phone photo selection", () => {
       removeEventListener: () => { listener = undefined; },
     } as unknown as HTMLInputElement;
     const onFile = vi.fn();
-    const cleanup = attachNativePhotoChangeListener(input, onFile);
+    const cleanup = attachPhotoChangeListener(input, onFile);
 
     listener?.();
 
