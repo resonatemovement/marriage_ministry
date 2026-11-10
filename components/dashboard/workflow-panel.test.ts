@@ -24,6 +24,28 @@ const progression: DashboardProgression = {
 };
 
 describe("Dashboard ministry progression panel", () => {
+  it("lays out Other Outcomes as three equal, naturally stretched desktop tiles with responsive columns", () => {
+    const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression }));
+    const otherOutcomesSection = markup.slice(markup.indexOf("Other Outcomes"), markup.indexOf("Counseling Sessions"));
+
+    expect(otherOutcomesSection).toContain("grid items-stretch sm:grid-cols-2 xl:grid-cols-3");
+    expect(otherOutcomesSection.match(/h-full border-b border-border\/70/g)).toHaveLength(3);
+    expect(otherOutcomesSection).toContain("sm:border-r xl:border-r");
+    expect(otherOutcomesSection).toContain("sm:border-r-0 xl:border-r");
+    expect(otherOutcomesSection).toContain("sm:border-r xl:border-r-0");
+    expect(otherOutcomesSection).toContain(">Referred</p>");
+    expect(otherOutcomesSection).toContain(">Closed — Incomplete</p>");
+    expect(otherOutcomesSection).toContain(">Intake Referrals</p>");
+    expect(otherOutcomesSection).toContain(">6</p>");
+    expect(otherOutcomesSection).toContain(">7</p>");
+    expect(otherOutcomesSection).toContain(">2</p>");
+    expect(otherOutcomesSection).toContain(">Couples</p>");
+    expect(otherOutcomesSection).toContain(">Intake Requests</p>");
+    expect(otherOutcomesSection).toContain("workflowStage=referred");
+    expect(otherOutcomesSection).toContain("workflowStage=closed_incomplete");
+    expect(otherOutcomesSection).toContain("status=referred_elsewhere");
+  });
+
   it("renders primary stages before grouped outcomes and preserves exact Admin drill-down filters", () => {
     const markup = renderToStaticMarkup(createElement(WorkflowPanel, { progression }));
     expect(markup).toContain("Ministry Progression");
