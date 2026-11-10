@@ -32,6 +32,10 @@ export async function preparePhonePhoto(file: File, source: PhonePhotoSource) {
   }
 }
 
+export function photoForMirrorSetting(photo: { original: File; mirrored: File }, mirrored: boolean) {
+  return mirrored ? photo.mirrored : photo.original;
+}
+
 function loadPhoto(sourceUrl: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();

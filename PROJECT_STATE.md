@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/photo-handoff-selfie-mirroring
+Current working branch: feature/photo-handoff-framing-mirror
 Repository: resonatemovement/marriage_ministry
+
+## Camera Framing and Native Photo Mirror Control (November 10, 2026)
+
+- Added a shared centered 3:4 crop with modest 1.1x framing for the live browser camera and captured canvas. The live video uses `object-cover` plus the same 1.1x scale; the portrait viewport is width-constrained from available screen height so its aspect ratio stays 3:4 on short screens. Front camera preview/capture remain mirrored; rear camera remains natural. Capture uses the crop's native pixel dimensions without nonuniform stretching.
+- Added an accessible “Mirror Photo” pressed-state control only for the existing Use Phone Camera path. Native capture retains the established mirrored default. The unmodified original and one mirrored WebP are cached; toggling selects the corresponding actual File for both preview and upload without re-encoding per tap. Retake/new source resets mirror state. Photo Library files remain unchanged.
+- Focused camera/onboarding tests passed: 32 tests across 4 files; `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` passed. Automated tests verify crop geometry, orientation transforms, cached mirror selection, and UI states; they do not establish physical-device rendering behavior.
+- No physical iOS Safari or Android device verification was performed. No database changes or migrations. Feature implementation and release are in progress on `feature/photo-handoff-framing-mirror`; no feature commit or deployment has occurred yet. Seven existing stashes are preserved.
 
 ## Consistent Mirrored Selfies (November 10, 2026)
 

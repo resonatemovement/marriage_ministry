@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- Local photo previews use blob URLs, not optimizer-compatible sources. */
-import { ArrowLeft, Image as ImageIcon, SwitchCamera } from "lucide-react";
+import { ArrowLeft, FlipHorizontal, Image as ImageIcon, SwitchCamera } from "lucide-react";
 import type { RefObject } from "react";
 import type { PhonePhotoStage } from "./phone-photo-state";
 
@@ -11,6 +11,9 @@ type PhonePhotoCaptureViewProps = {
   canSwitchCamera: boolean;
   cameraTransitioning: boolean;
   mirrorLivePreview: boolean;
+  cameraCropZoom: number;
+  canMirrorPhoto: boolean;
+  nativePhotoMirrored: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   libraryInputRef: RefObject<HTMLInputElement | null>;
   nativeCameraInputRef: RefObject<HTMLInputElement | null>;
@@ -20,6 +23,7 @@ type PhonePhotoCaptureViewProps = {
   onCancelCamera: () => void;
   onChoosePhoto: () => void;
   onUsePhoneCamera: () => void;
+  onToggleMirrorPhoto: () => void;
   onRetake: () => void;
   onUpload: () => void;
 };
@@ -34,6 +38,9 @@ export function PhonePhotoCaptureView({
   canSwitchCamera,
   cameraTransitioning,
   mirrorLivePreview,
+  cameraCropZoom,
+  canMirrorPhoto,
+  nativePhotoMirrored,
   videoRef,
   libraryInputRef,
   nativeCameraInputRef,
@@ -43,6 +50,7 @@ export function PhonePhotoCaptureView({
   onCancelCamera,
   onChoosePhoto,
   onUsePhoneCamera,
+  onToggleMirrorPhoto,
   onRetake,
   onUpload,
 }: PhonePhotoCaptureViewProps) {
@@ -101,8 +109,8 @@ export function PhonePhotoCaptureView({
           {isLive ? (
             <section className="mt-4 sm:mt-6" aria-label="Camera capture">
               <p className="mb-3 text-center text-sm text-text-muted">Center your face in the frame.</p>
-              <div className="relative mx-auto aspect-[3/4] w-full max-h-[min(64svh,36rem)] overflow-hidden rounded-3xl bg-black shadow-lg">
-                <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 size-full object-contain ${mirrorLivePreview ? "-scale-x-100" : "transform-none"}`} />
+              <div className="relative mx-auto aspect-[3/4] w-full max-w-[min(100%,48svh,27rem)] overflow-hidden rounded-3xl bg-black shadow-lg">
+                <video ref={videoRef} autoPlay playsInline muted style={{ transform: `${mirrorLivePreview ? "scaleX(-1) " : ""}scale(${cameraCropZoom})` }} className="absolute inset-0 size-full object-cover" />
                 <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 shadow-[0_0_0_999px_rgb(0_0_0/12%)]" />
               </div>
 
@@ -149,7 +157,7 @@ export function PhonePhotoCaptureView({
             </section>
           ) : hasPreview ? (
             <section className="mt-5 sm:mt-6" aria-label="Photo preview">
-              <div className="relative mx-auto aspect-[3/4] w-full max-h-[min(64svh,36rem)] overflow-hidden rounded-3xl bg-black">
+              <div className="relative mx-auto aspect-[3/4] w-full max-w-[min(100%,48svh,27rem)] overflow-hidden rounded-3xl bg-black">
                 <img src={preview} alt="Selected profile photo preview" className="absolute inset-0 size-full object-contain" />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3">
@@ -160,6 +168,12 @@ export function PhonePhotoCaptureView({
                   {stage === "uploading" ? "Uploading..." : "Use Photo"}
                 </button>
               </div>
+              {canMirrorPhoto ? (
+                <button type="button" onClick={onToggleMirrorPhoto} disabled={busy} aria-pressed={nativePhotoMirrored} aria-label={nativePhotoMirrored ? "Mirror Photo: mirrored" : "Mirror Photo: natural orientation"} className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-60">
+                  <FlipHorizontal size={18} aria-hidden="true" />
+                  <span>{nativePhotoMirrored ? "Mirror Photo (On)" : "Mirror Photo (Off)"}</span>
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={onChoosePhoto}

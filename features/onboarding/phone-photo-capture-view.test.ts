@@ -14,6 +14,9 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
     canSwitchCamera: false,
     cameraTransitioning: false,
     mirrorLivePreview: false,
+    cameraCropZoom: 1.1,
+    canMirrorPhoto: false,
+    nativePhotoMirrored: false,
     videoRef: createRef<HTMLVideoElement>(),
     libraryInputRef: createRef<HTMLInputElement>(),
     nativeCameraInputRef: createRef<HTMLInputElement>(),
@@ -23,6 +26,7 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
     onCancelCamera: vi.fn(),
     onChoosePhoto: vi.fn(),
     onUsePhoneCamera: vi.fn(),
+    onToggleMirrorPhoto: vi.fn(),
     onRetake: vi.fn(),
     onUpload: vi.fn(),
     ...overrides,
@@ -43,15 +47,16 @@ describe("phone photo capture presentation", () => {
   });
 
   it("shows the live camera, guidance, accessible controls, and responsive viewport", () => {
-    const html = markup({ stage: "camera_live", canSwitchCamera: true });
+    const html = markup({ stage: "camera_live", canSwitchCamera: true, mirrorLivePreview: true });
 
     expect(html).toContain("Profile Photo");
     expect(html).toContain("Center your face in the frame.");
     expect(html).toContain('aria-label="Back"');
     expect(html).toContain('playsInline=""');
-    expect(html).toContain("transform-none");
+    expect(html).toContain("object-cover");
+    expect(html).toContain('style="transform:scaleX(-1) scale(1.1)"');
     expect(html).toContain("aspect-[3/4]");
-    expect(html).toContain("max-h-[min(64svh,36rem)]");
+    expect(html).toContain("max-w-[min(100%,48svh,27rem)]");
     expect(html).toContain('aria-label="Take photo"');
     expect(html).toContain('aria-label="Flip camera between front and rear cameras"');
     expect(html).toContain("Photo Library");
@@ -60,9 +65,9 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain("safe-area-inset-bottom");
   });
 
-  it("mirrors the front-camera live preview and leaves the rear preview natural", () => {
-    expect(markup({ stage: "camera_live", mirrorLivePreview: true })).toContain("-scale-x-100");
-    expect(markup({ stage: "camera_live", mirrorLivePreview: false })).toContain("transform-none");
+  it("uses centered zoom framing and keeps front/rear preview orientation correct", () => {
+    expect(markup({ stage: "camera_live", mirrorLivePreview: true })).toContain('style="transform:scaleX(-1) scale(1.1)"');
+    expect(markup({ stage: "camera_live", mirrorLivePreview: false })).toContain('style="transform:scale(1.1)"');
   });
 
   it("keeps the camera switch column without showing Flip when unavailable", () => {
@@ -89,6 +94,16 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain(">Use Photo</button>");
     expect(html).toContain("Choose another photo");
     expect(html).toContain(">Use Phone Camera</button>");
+  });
+
+  it("shows a pressed-state Mirror Photo control only for native-camera captures", () => {
+    const nativeCapture = markup({ stage: "preview", preview: "blob:selfie", canMirrorPhoto: true, nativePhotoMirrored: true });
+    expect(nativeCapture).toContain('aria-label="Mirror Photo: mirrored"');
+    expect(nativeCapture).toContain('aria-pressed="true"');
+    expect(nativeCapture).toContain("Mirror Photo");
+
+    const librarySelection = markup({ stage: "preview", preview: "blob:library" });
+    expect(librarySelection).not.toContain("Mirror Photo");
   });
 
   it("disables preview actions while uploading and shows upload progress", () => {

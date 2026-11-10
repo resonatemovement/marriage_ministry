@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { cameraConstraints, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, nextCameraFacingMode, stopCameraStream, switchCameraStream } from "./phone-camera";
+import { CAMERA_CROP_ZOOM, CAMERA_PREVIEW_ASPECT_RATIO, cameraConstraints, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, centeredCameraCrop, frontCameraConstraints, nextCameraFacingMode, stopCameraStream, switchCameraStream } from "./phone-camera";
 
 describe("phone camera", () => {
   it("requests a front-facing video stream without audio", () => {
@@ -11,6 +11,26 @@ describe("phone camera", () => {
     expect(cameraConstraints("environment")).toEqual({ audio: false, video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1440 } } });
     expect(nextCameraFacingMode("user")).toBe("environment");
     expect(nextCameraFacingMode("environment")).toBe("user");
+  });
+
+  it("calculates a centered portrait crop without changing aspect ratio", () => {
+    const crop = centeredCameraCrop(1920, 1440);
+
+    expect(crop.x).toBeCloseTo((1920 - crop.width) / 2);
+    expect(crop.y).toBeCloseTo((1440 - crop.height) / 2);
+    expect(crop.width / crop.height).toBeCloseTo(CAMERA_PREVIEW_ASPECT_RATIO);
+    expect(crop.width).toBeCloseTo((1440 * CAMERA_PREVIEW_ASPECT_RATIO) / CAMERA_CROP_ZOOM);
+    expect(crop.height).toBeCloseTo(1440 / CAMERA_CROP_ZOOM);
+  });
+
+  it("keeps the centered portrait crop inside a portrait-oriented camera frame", () => {
+    const crop = centeredCameraCrop(720, 1280);
+
+    expect(crop.x).toBeGreaterThan(0);
+    expect(crop.y).toBeGreaterThan(0);
+    expect(crop.x + crop.width).toBeLessThan(720);
+    expect(crop.y + crop.height).toBeLessThan(1280);
+    expect(crop.width / crop.height).toBeCloseTo(CAMERA_PREVIEW_ASPECT_RATIO);
   });
 
   it("offers switching only when multiple video inputs are available", () => {
@@ -69,11 +89,12 @@ describe("phone camera", () => {
 
     const result = await captureCameraFrame(video, true);
 
-    expect(canvas.width).toBe(1280);
-    expect(canvas.height).toBe(720);
+    const crop = centeredCameraCrop(1280, 720);
+    expect(canvas.width).toBe(Math.round(crop.width));
+    expect(canvas.height).toBe(Math.round(crop.height));
     expect(setTransform).toHaveBeenCalledOnce();
-    expect(setTransform).toHaveBeenCalledWith(-1, 0, 0, 1, 1280, 0);
-    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720);
+    expect(setTransform).toHaveBeenCalledWith(-1, 0, 0, 1, canvas.width, 0);
+    expect(drawImage).toHaveBeenCalledWith(video, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
     expect(result.type).toBe("image/webp");
     vi.unstubAllGlobals();
   });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { preparePhonePhoto } from "./phone-photo-mirroring";
+import { photoForMirrorSetting, preparePhonePhoto } from "./phone-photo-mirroring";
 
 describe("native phone selfie mirroring", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -62,5 +62,15 @@ describe("native phone selfie mirroring", () => {
 
     await expect(preparePhonePhoto(source, "library")).resolves.toBe(source);
     expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("toggles between cached original and mirrored files without re-encoding", () => {
+    const original = new File(["original orientation"], "native.jpg", { type: "image/jpeg" });
+    const mirrored = new File(["mirrored orientation"], "selfie.webp", { type: "image/webp" });
+    const photo = { original, mirrored };
+
+    expect(photoForMirrorSetting(photo, true)).toBe(mirrored);
+    expect(photoForMirrorSetting(photo, false)).toBe(original);
+    expect(photoForMirrorSetting(photo, true)).toBe(mirrored);
   });
 });
