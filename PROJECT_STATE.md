@@ -1,13 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/other-outcomes-grid-layout
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Other Outcomes Grid Layout (November 10, 2026)
 
 - Updated Dashboard > Ministry Progression > Other Outcomes to use a responsive, stretch-aligned CSS Grid: one column on mobile, two on tablet, and three equal columns at the wide desktop breakpoint. Referred Couples, Closed — Incomplete Couples, and Intake Referrals remain in their existing order with unchanged counts, units, and destinations. Tile wrappers continue to stretch naturally; no fixed heights or data/authorization changes were introduced.
 - Added focused SSR coverage for responsive column classes, three equal-height row wrappers, tile order/content, count units, and existing navigation. Focused workflow-panel tests (9), typecheck, lint, production build, and `git diff --check` pass. Browser-based desktop/mobile visual verification has not been performed; responsive Grid behavior is checked through rendered classes.
-- Current feature branch is `feature/other-outcomes-grid-layout`; implementation is not yet committed, merged, or deployed. All seven stashes are preserved. Next: commit focused implementation and this state update, verify the dedicated `marriage-ministry-dev` Vercel target, merge/push to `main`, confirm the exact deployment is READY, then remove the merged feature branch normally and verify clean synchronized `main`.
+- Feature implementation commit `2d7e7ba` (`fix: lay out other outcomes in three columns`) was fast-forward merged and pushed to `origin/main`. Dedicated Vercel DEV project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`, reached READY at exact SHA `2d7e7ba4322717e70df80b2c62da10b32fccf49c` as deployment `dpl_EE3nkUwzEdpgzB43SCN4G2qZRXi2`. The deployment target is `production` within that dedicated DEV project; actual Resonate PROD was not accessed. The merged feature branch was deleted normally. The worktree is on `main`, synchronized with `origin/main`; all seven stashes remain preserved.
 
 ## Intake Referral Workflow (November 9, 2026)
 
