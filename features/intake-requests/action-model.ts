@@ -22,6 +22,10 @@ const ACTIONS: Readonly<Record<IntakeRequestStatus, readonly IntakeRequestAction
 };
 
 export function intakeRequestActions(status: IntakeRequestStatus) { return ACTIONS[status]; }
+export function intakeActionForStatus(status: IntakeRequestStatus, action: IntakeRequestAction | "", canInvite = true): IntakeRequestAction | "" {
+  if (!action || !intakeRequestActions(status).includes(action) || (!canInvite && action === "send_invite")) return "";
+  return action;
+}
 export function isIntakeRequestAction(value: string): value is IntakeRequestAction { return ["start_review", "send_invite", "close", "reopen", "refer_elsewhere"].includes(value); }
 export function isIntakeCloseReason(value: string): value is IntakeCloseReason { return CLOSE_REASONS.some(([code]) => code === value); }
 export function normalizeIntakeReferralReason(value: string) {

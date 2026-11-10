@@ -34,7 +34,7 @@ describe("Intake Request toast feedback", () => {
   it("preserves close-reason validation, form values, and pending duplicate protection", () => {
     expect(manager).toContain("reasonCode === \"other\" && !reasonDetail.trim()");
     expect(manager).toContain("value={reasonDetail}");
-    expect(manager).toContain("disabled={pending || !action");
+    expect(manager).toContain("disabled={pending || !selectedAction");
     expect(manager).toContain("onValueChange={setReasonCode}");
   });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { belongsToIntakeRequestView, CONNECTION_LABEL, coupleDisplayName, formatIntakeDate, formatIntakePhone, intakeLabels, intakeStatusesForView, INTAKE_STATUS_LABEL, intakeViewHref, isDeleteConfirmation, isIntakeDeleteEligible, isIntakeStatusFilterVisible, notProvided, REFERRAL_LABEL, SUPPORT_LABEL, yesNo } from "./model";
-import { intakeRequestActions, normalizeIntakeReferralReason } from "./action-model";
+import { intakeActionForStatus, intakeRequestActions, normalizeIntakeReferralReason } from "./action-model";
 
 describe("Intake Request status model", () => {
   it("defaults to the open view and classifies the work queue without hiding history", () => {
@@ -43,6 +43,13 @@ describe("Intake Request status model", () => {
     expect(intakeRequestActions("under_review")).toEqual(["send_invite", "refer_elsewhere", "close"]);
     expect(intakeRequestActions("referred_elsewhere")).toEqual(["reopen"]);
     expect(intakeRequestActions("invited")).toEqual([]);
+  });
+  it("invalidates a selected action when the persisted request status no longer allows it", () => {
+    expect(intakeActionForStatus("referred_elsewhere", "refer_elsewhere")).toBe("");
+    expect(intakeActionForStatus("referred_elsewhere", "reopen")).toBe("reopen");
+    expect(intakeActionForStatus("under_review", "refer_elsewhere")).toBe("refer_elsewhere");
+    expect(intakeActionForStatus("under_review", "send_invite", false)).toBe("");
+    expect(intakeActionForStatus("under_review", "close")).toBe("close");
   });
   it("formats a couple from the two prospective people", () => { expect(coupleDisplayName([{ personPosition: "partner", firstName: "Stacy", lastName: "Miller" }, { personPosition: "requester", firstName: "John", lastName: "Smith" }])).toBe("John Smith & Stacy Miller"); });
   it("formats submitted intake values for human review", () => {

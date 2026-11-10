@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 9, 2026
-Current working branch: main
+Current working branch: feature/fix-intake-referral-form-state
 Repository: resonatemovement/marriage_ministry
 
 ## Intake Referral Workflow (November 9, 2026)
@@ -13,6 +13,7 @@ Repository: resonatemovement/marriage_ministry
 - Authenticated DEV checks passed for Admin and Super Admin referrals, an in-scope Campus Lead referral/reopen, Admin action outside the Campus Lead's campus, Campus Lead cross-campus denial, and Coach/Counselor/Couple/anonymous denials. Short/long reasons were rejected; trimmed reason, actor, history, audit details, alert exclusion, invitation block, and preserved history after reopen were verified. Admin/Super Admin counts matched; Dashboard aggregate values were checked against DEV source rows, including assigned-campus scope. DEV Dashboard progression verification passed. No actual Resonate PROD was accessed.
 - Focused tests passed (30 across 5 files); `npm run verify:intake-referrals`, `npm run verify:intake-requests`, `npm run verify:dashboard-counseling-progression`, typecheck, lint, production build, linked DB lint, and `git diff --check` passed. Full Vitest had 1,294 passing and one unrelated existing failure: `features/notifications/onboarding-reminder-contract.test.ts` expects `createOnboardingReminderEmailProvider(provider)` in the processor file although the unchanged implementation wraps the provider in the current processing path. No browser automation/manual mobile/desktop visual verification was available.
 - Implementation commit `34cb5a6` was fast-forwarded to `main` and pushed to `origin/main`. Dedicated Vercel DEV project `resonatemovement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) built it successfully as READY deployment `dpl_G4yXW5Q766PP688UGEPnJmWG66CZ`; Git metadata confirms repo `resonatemovement/marriage_ministry`, branch `main`. The final documentation commit `6cdfe9d` is also pushed and deployed READY as `dpl_Cp19EGaHypy31DoJLsZZmLFRuum7`. Feature branch `feature/intake-referral-workflow` was safely deleted after merge. No actual Resonate PROD was accessed.
+- November 10 UI correction: the action form is keyed by Intake Request ID and persisted status so a refreshed/external status transition remounts it with only valid actions and empty transient inputs. Selected actions are bound to the status where they were chosen, providing a safe blank state if props change before remount. Successful status actions and invitation creation clear temporary state and refresh the route; failures return before reset and preserve staff input. The saved referral reason remains in the existing read-only history. Focused tests (21 tests across 3 files), typecheck, lint, production build, and `git diff --check` pass. Manual browser testing was not performed. Implementation commit, merge, and DEV deployment are pending.
 
 ## Dynamic Counseling Workflow Dashboard (November 9, 2026)
 
