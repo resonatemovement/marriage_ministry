@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/remove-native-camera-option
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Remove Native Phone Camera Option (November 10, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - Removed the “Use Phone Camera” buttons and `capture="user"` input from the photo-handoff UI, along with the native-only “Mirror Photo” control, native source state/handlers, and the native image-mirroring helper/tests. The generic file-input change listener remains for Photo Library and is now named `attachPhotoChangeListener`.
 - Browser Camera behavior remains intact: front camera is still the default and mirrored in preview/captured pixels; rear camera remains natural; camera switching/stream cleanup, shared 1.1× 3:4 framing, Capture/Retake/Use Photo, photo validation/upload, and the Photo Library fallback are preserved. No handoff, token, authorization, desktop-sync, onboarding, or database behavior changed.
 - Focused onboarding tests passed (58 tests across 14 files), along with typecheck, lint, production build, and `git diff --check`. Static source searches confirm no native camera input, source state, mirror helper, or native-only UI remains; UI assertions retain text checks to prevent those options returning.
-- Manual browser/physical-device verification was not performed. No database changes or migrations. Implementation is on `feature/remove-native-camera-option`; merge and DEV deployment are pending. Seven existing stashes remain preserved.
+- Manual browser/physical-device verification was not performed. No database changes or migrations. Feature commit `307c5c6d5b9b7e0a5abe1abbb2470895ea0edc2a` was fast-forward merged and pushed to `main`. Dedicated Vercel project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`, reached `READY` as deployment `dpl_BcaxgUAM8d4YPznNSYLS4FDfJuAD` at that exact SHA. Vercel labels its target `production` within this dedicated DEV project; actual Resonate PROD was not accessed. The feature branch was deleted normally. `main` is synchronized with `origin/main`; the worktree is clean and all seven stashes are preserved.
 
 ## Camera Framing and Native Photo Mirror Control (November 10, 2026)
 
