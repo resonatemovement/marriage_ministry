@@ -17,6 +17,8 @@ import {
 import { coupleDisplayName, intakeCoupleDisplayName } from "./types";
 import { assignedCoupleAssignmentType } from "./team-assignment";
 import { orderCouplePartners } from "./partner-order";
+import { peopleDetailGroupSelection } from "./selections";
+import { intakeGenderForInvitation } from "./intake-gender";
 
 type Row = Record<string, unknown>;
 
@@ -57,7 +59,7 @@ export async function getPeopleDetail(recordId: string): Promise<PeopleDetail | 
   const [groupResult, profileResult] = await Promise.all([
     supabase
       .from("groups")
-      .select("id,name,group_type,updated_at,campus:campuses(id,name),intake_requests(id,status,submitted_at,intake_request_people(person_position,first_name,last_name,gender)),group_members(ended_at,profile:profiles(id,first_name,last_name,gender,email,phone,campus_id,photo_path,status,onboarding_completed_at,profile_roles!profile_roles_profile_id_fkey(role)))")
+      .select(peopleDetailGroupSelection)
       .eq("id", recordId)
       .maybeSingle(),
     supabase
@@ -152,12 +154,12 @@ async function getGroupDetail(supabase: Awaited<ReturnType<typeof createServerSu
   const invitations = rows(invitationResult.data);
   const invitationByProfileId = new Map(invitations.map((invitation) => [value(invitation, "auth_user_id"), value(invitation, "id")]));
   const intake = group.intake_requests as Row | null;
-  const intakeGenderByEmail = new Map(rows(intake?.intake_request_people).map((person) => [value(person, "email")?.toLowerCase(), value(person, "gender")]));
+  const intakePeople = rows(intake?.intake_request_people).map((person) => ({ email: value(person, "email"), gender: value(person, "gender") }));
   const profileMembers = rows(group.group_members)
     .filter((membership) => membership.ended_at === null && membership.profile)
     .map((membership) => { const profile = membership.profile as Row; return asMember(profile, invitationByProfileId.get(value(profile, "id")) ?? undefined); });
   const resolvedProfileMembers = await Promise.all(profileMembers);
-  const pendingMembers = invitations.filter((invitation) => value(invitation, "status") === "pending").map((invitation) => createPendingDetailMember({ id: value(invitation, "id")!, firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderByEmail.get(value(invitation, "email")?.toLowerCase()) as "male" | "female" | null | undefined, delivered: Boolean(value(invitation, "last_delivery_succeeded_at")), failed: Boolean(value(invitation, "delivery_error_category")) }));
+  const pendingMembers = invitations.filter((invitation) => value(invitation, "status") === "pending").map((invitation) => createPendingDetailMember({ id: value(invitation, "id")!, firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderForInvitation(value(invitation, "email"), intakePeople), delivered: Boolean(value(invitation, "last_delivery_succeeded_at")), failed: Boolean(value(invitation, "delivery_error_category")) }));
   const members = [...resolvedProfileMembers, ...pendingMembers];
   const [caseResult, assignmentResult, supervisionResult] = await Promise.all([
     type === "couples"

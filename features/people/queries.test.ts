@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { peopleGroupSelection, peopleProfileSelection } from "./selections";
+import { peopleDetailGroupSelection, peopleGroupSelection, peopleProfileSelection } from "./selections";
+import { intakeGenderForInvitation } from "./intake-gender";
 import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesCoupleListStatus, matchesPeopleFilter, normalizeCoupleListStatus, normalizePeopleFilter, type PeopleRecord } from "./types";
 
 describe("People query selections", () => {
@@ -9,6 +10,13 @@ describe("People query selections", () => {
 
     expect(peopleGroupSelection).toContain(profileRolesRelationship);
     expect(peopleProfileSelection).toContain(profileRolesRelationship);
+  });
+
+  it("selects Intake email for internal pending-invitation gender matching", () => {
+    const intakePeople = "intake_request_people(person_position,first_name,last_name,email,gender)";
+
+    expect(peopleGroupSelection).toContain(intakePeople);
+    expect(peopleDetailGroupSelection).toContain(intakePeople);
   });
 });
 
@@ -78,6 +86,48 @@ describe("Couple display names", () => {
     ], [
       { firstName: "Jordan", lastName: "Walker", email: "jordan@example.com", gender: "male" },
     ])).toBe("Jordan Walker & Casey Walker");
+  });
+
+  it("keeps a male active member before a female pending invitation", () => {
+    const pendingGender = intakeGenderForInvitation("ann@example.test", [
+      { email: "ANN@example.test", gender: "female" },
+    ]);
+    expect(coupleDisplayName("Couple", [
+      { firstName: "James", lastName: "Bond", email: "james@example.test", gender: "male" },
+    ], [
+      { firstName: "Ann", lastName: "Johnson", email: "ann@example.test", gender: pendingGender },
+    ])).toBe("James Bond & Ann Johnson");
+  });
+
+  it("orders a male pending invitation before a female active member", () => {
+    const pendingGender = intakeGenderForInvitation("james@example.test", [
+      { email: "james@example.test", gender: "male" },
+    ]);
+    expect(coupleDisplayName("Couple", [
+      { firstName: "Ann", lastName: "Johnson", email: "ann@example.test", gender: "female" },
+    ], [
+      { firstName: "James", lastName: "Bond", email: "james@example.test", gender: pendingGender },
+    ])).toBe("James Bond & Ann Johnson");
+  });
+
+  it("preserves stable fallback when an invitation email has no Intake gender match", () => {
+    const pendingGender = intakeGenderForInvitation("pending@example.test", [
+      { email: "different@example.test", gender: "male" },
+    ]);
+    expect(pendingGender).toBeUndefined();
+    expect(coupleDisplayName("Couple", [
+      { firstName: "First", lastName: "Partner", gender: null },
+    ], [
+      { firstName: "Second", lastName: "Partner", gender: pendingGender },
+    ])).toBe("First Partner & Second Partner");
+  });
+
+  it("does not include partner email addresses in Couple display names", () => {
+    expect(coupleDisplayName("Couple", [
+      { firstName: "James", lastName: "Bond", email: "private@example.test", gender: "male" },
+    ], [
+      { firstName: "Ann", lastName: "Johnson", email: "also-private@example.test", gender: "female" },
+    ])).toBe("James Bond & Ann Johnson");
   });
 
   it("prefers full profile names and avoids duplicate members", () => {

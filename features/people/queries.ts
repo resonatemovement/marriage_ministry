@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { canReadAdminDashboard } from "@/features/dashboard/data";
 import { orderCouplePartners } from "./partner-order";
+import { intakeGenderForInvitation } from "./intake-gender";
 
 import { coupleDisplayName, groupedRoleNames, intakeCoupleDisplayName, matchesCoupleListStatus, matchesPeopleFilter, type CoupleListStatus, type DashboardCoupleFilter, type DashboardCoupleStage, type PeopleFilter, type PeopleRecord, type PeopleRecordType } from "./types";
 import { peopleGroupSelection, peopleProfileSelection } from "./selections";
@@ -128,7 +129,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
     const assignedCoupleType = assignedCoupleAssignmentType(type);
     const intake = group.intake_requests as GroupRow | null;
     const intakePeople = rows(intake?.intake_request_people);
-    const intakeGenderByEmail = new Map(intakePeople.map((person) => [value(person, "email")?.toLowerCase(), value(person, "gender")]));
+    const intakeGenderPeople = intakePeople.map((person) => ({ email: value(person, "email"), gender: value(person, "gender") }));
     const intakeName = intakeCoupleDisplayName(intakePeople.map((person) => ({ firstName: value(person, "first_name"), lastName: value(person, "last_name"), position: value(person, "person_position"), gender: value(person, "gender") as "male" | "female" | null })));
     const orderedPartnerProfiles = orderCouplePartners(members.map((member) => ({
       id: value(member, "id")!,
@@ -138,7 +139,7 @@ export async function getPeopleRecords(filter: PeopleFilter, search: string, cou
       photoPath: value(member, "photo_path"),
     })));
     const name = type === "couples"
-      ? coupleDisplayName(value(group, "name"), members.map((member) => ({ firstName: value(member, "first_name"), lastName: value(member, "last_name"), email: value(member, "email"), gender: value(member, "gender") as "male" | "female" | null })), invitations.map((invitation) => ({ firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderByEmail.get(value(invitation, "email")?.toLowerCase()) as "male" | "female" | null | undefined })), intakeName)
+      ? coupleDisplayName(value(group, "name"), members.map((member) => ({ firstName: value(member, "first_name"), lastName: value(member, "last_name"), email: value(member, "email"), gender: value(member, "gender") as "male" | "female" | null })), invitations.map((invitation) => ({ firstName: value(invitation, "first_name"), lastName: value(invitation, "last_name"), email: value(invitation, "email"), gender: intakeGenderForInvitation(value(invitation, "email"), intakeGenderPeople) })), intakeName)
       : value(group, "name")!;
     const statuses = groupOperationalStatuses({
       type,
