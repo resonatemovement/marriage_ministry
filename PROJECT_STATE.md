@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/photo-handoff-native-camera
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Native Phone Camera Capture (November 10, 2026)
@@ -9,7 +9,7 @@ Repository: resonatemovement/marriage_ministry
 - Native and library selections use the same existing file-change listener, source validation, preview, confirmation, and authorized upload flow. The input value is cleared on each change for repeat selections. Choosing native capture stops any active browser stream and returns the UI to a ready state first; a canceled capture leaves the existing preview (if any) intact and does not leave a loading state. Upload remains user-confirmed and protected by the existing immediate duplicate guard.
 - HEIC/HEIF is not converted or accepted by the current upload source validator (JPG, PNG, WebP, and AVIF only); native files in those formats display the existing supported-format error. No storage, upload endpoint, schema, token, URL, polling, or authorization changes.
 - Focused phone camera, file selection, capture-view, photo-processing, and photo-state tests pass (30 tests), including native input attributes, cancellation/empty selection, repeat selection after input reset, existing camera/library controls, unsupported HEIC, preview confirmation, and duplicate-upload guard. Lint, production build, sequential typecheck, and `git diff --check` pass. No physical iPhone/iOS Safari or Android device verification was performed.
-- Current Git state: implementation is on `feature/photo-handoff-native-camera`, created from clean `main` at `f7a0738d56b179cd526d3104cae4b6f34bb965f3`; all seven stashes remain. This work is not yet committed, merged, or deployed. Actual Resonate PROD was not accessed.
+- Feature commit `ac11fb3fd753911d1168cfcd3188c5cf458e8bfa` was fast-forward merged and pushed to `origin/main`. Dedicated Vercel DEV project `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) reached READY as deployment `dpl_DPKz2TvbTcsQYFfDXunPwaabgw3B`; metadata confirms exact commit SHA, `main`, and GitHub repository `resonatemovement/marriage_ministry`. Its target is `production` within this dedicated DEV project; actual Resonate PROD was not accessed. The feature branch was deleted normally. The worktree is on clean `main`, synchronized with `origin/main`, and all seven stashes remain. Physical-device verification remains outstanding.
 
 ## Phone Photo Handoff Camera Quality (November 10, 2026)
 
