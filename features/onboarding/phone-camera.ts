@@ -51,15 +51,15 @@ export async function switchCameraStream(
   }
 }
 
-export async function captureCameraFrame(video: HTMLVideoElement) {
+export async function captureCameraFrame(video: HTMLVideoElement, mirror = false) {
   if (!video.videoWidth || !video.videoHeight) throw new Error("The camera is still starting. Try again in a moment.");
   const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("The photo could not be captured. Please try again.");
-  // Keep the source's natural orientation and aspect ratio; do not mirror or stretch it.
-  context.setTransform(1, 0, 0, 1, 0, 0);
+  // Mirror front-camera pixels once so the saved photo matches the mirrored preview.
+  context.setTransform(mirror ? -1 : 1, 0, 0, 1, mirror ? canvas.width : 0, 0);
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
   const image = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.92));
   if (!image) throw new Error("The photo could not be captured. Please try again.");

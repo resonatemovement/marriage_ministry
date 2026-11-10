@@ -6,8 +6,9 @@ import { createPhotoHandoff, photoHandoffStatus } from "./handoff-actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contract";
 import { canStartPhonePhotoUpload, phonePhotoStageIsBusy, type PhonePhotoStage } from "./phone-photo-state";
-import { attachNativePhotoChangeListener, isSupportedPhonePhoto } from "./phone-photo-selection";
+import { attachNativePhotoChangeListener, isSupportedPhonePhoto, type PhonePhotoSource } from "./phone-photo-selection";
 import { cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, stopCameraStream, switchCameraStream, type CameraFacingMode } from "./phone-camera";
+import { preparePhonePhoto } from "./phone-photo-mirroring";
 import { PhonePhotoCaptureView } from "./phone-photo-capture-view";
 
 type HandoffProps = { profileId: string; onCompleted: (url: string) => void };
@@ -28,9 +29,23 @@ export function PhonePhotoUpload({ token }: { token: string }) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; stopCamera(); }; }, [stopCamera]);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   const prepare = useCallback((file: File) => { const sourceError = profilePhotoSourceError(file); if (sourceError) { setStage("error"); setMessage(sourceError); return; } setStage("processing"); setMessage(""); const nextPreview = URL.createObjectURL(file); setImage(file); setPreview((current) => { if (current) URL.revokeObjectURL(current); return nextPreview; }); setStage("preview"); }, []);
-  const receivePhotoFile = useCallback((file: File | null) => { if (!file) return; if (!isSupportedPhonePhoto(file)) { stopCamera(); setCanSwitchCamera(false); setStage("error"); setMessage("Choose a photo from your camera or library."); return; } stopCamera(); setCanSwitchCamera(false); prepare(file); }, [prepare, stopCamera]);
-  useEffect(() => { const input = libraryInput.current; return input ? attachNativePhotoChangeListener(input, receivePhotoFile) : undefined; }, [receivePhotoFile]);
-  useEffect(() => { const input = nativeCameraInput.current; return input ? attachNativePhotoChangeListener(input, receivePhotoFile) : undefined; }, [receivePhotoFile]);
+  const receivePhotoFile = useCallback(async (file: File | null, source: PhonePhotoSource = "library") => {
+    if (!file) return;
+    if (!isSupportedPhonePhoto(file)) { stopCamera(); setCanSwitchCamera(false); setStage("error"); setMessage("Choose a photo from your camera or library."); return; }
+    stopCamera();
+    setCanSwitchCamera(false);
+    if (profilePhotoSourceError(file)) { prepare(file); return; }
+    setStage("processing");
+    setMessage("");
+    try {
+      const preparedPhoto = await preparePhonePhoto(file, source);
+      if (mounted.current) prepare(preparedPhoto);
+    } catch (error) {
+      if (mounted.current) { setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be prepared. Please try again."); }
+    }
+  }, [prepare, stopCamera]);
+  useEffect(() => { const input = libraryInput.current; return input ? attachNativePhotoChangeListener(input, (file) => { void receivePhotoFile(file, "library"); }) : undefined; }, [receivePhotoFile]);
+  useEffect(() => { const input = nativeCameraInput.current; return input ? attachNativePhotoChangeListener(input, (file) => { void receivePhotoFile(file, "native-camera"); }) : undefined; }, [receivePhotoFile]);
   useEffect(() => { if (stage !== "camera_live" || !video.current || !stream.current) return; video.current.srcObject = stream.current; void video.current.play(); }, [stage, cameraSession]);
   async function startCamera() {
     if (cameraRequest.current) return;
@@ -58,7 +73,7 @@ export function PhonePhotoUpload({ token }: { token: string }) {
     } catch { if (mounted.current) { setCanSwitchCamera(false); setStage("error"); setMessage(cameraUnavailableMessage(true, true)); } }
     finally { cameraRequest.current = false; if (mounted.current) setCameraTransitioning(false); }
   }
-  async function takeCameraPhoto() { if (!video.current || cameraRequest.current) return; setStage("processing"); setCanSwitchCamera(false); try { const frame = await captureCameraFrame(video.current); stopCamera(); prepare(new File([frame], "camera.webp", { type: "image/webp" })); } catch (error) { stopCamera(); setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be captured. Please try again."); } }
+  async function takeCameraPhoto() { if (!video.current || cameraRequest.current) return; setStage("processing"); setCanSwitchCamera(false); try { const frame = await captureCameraFrame(video.current, cameraFacingMode === "user"); stopCamera(); prepare(new File([frame], "camera.webp", { type: "image/webp" })); } catch (error) { stopCamera(); setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be captured. Please try again."); } }
   async function upload() {
     if (!image || !canStartPhonePhotoUpload(true, uploadInProgress.current, stage)) return;
     uploadInProgress.current = true;
@@ -82,6 +97,7 @@ export function PhonePhotoUpload({ token }: { token: string }) {
     busy={busy}
     canSwitchCamera={canSwitchCamera}
     cameraTransitioning={cameraTransitioning}
+    mirrorLivePreview={cameraFacingMode === "user"}
     videoRef={video}
     libraryInputRef={libraryInput}
     nativeCameraInputRef={nativeCameraInput}

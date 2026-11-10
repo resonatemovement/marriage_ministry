@@ -59,7 +59,7 @@ describe("phone camera", () => {
       .rejects.toThrow("The camera could not be restarted.");
   });
 
-  it("captures at the source dimensions without adding a mirror or aspect-ratio transform", async () => {
+  it("mirrors front-camera capture pixels without changing dimensions or aspect ratio", async () => {
     const drawImage = vi.fn();
     const setTransform = vi.fn();
     const toBlob = vi.fn((callback: BlobCallback) => callback(new Blob(["photo"], { type: "image/webp" })));
@@ -67,13 +67,26 @@ describe("phone camera", () => {
     vi.stubGlobal("document", { createElement: vi.fn(() => canvas) });
     const video = { videoWidth: 1280, videoHeight: 720 } as HTMLVideoElement;
 
-    const result = await captureCameraFrame(video);
+    const result = await captureCameraFrame(video, true);
 
     expect(canvas.width).toBe(1280);
     expect(canvas.height).toBe(720);
-    expect(setTransform).toHaveBeenCalledWith(1, 0, 0, 1, 0, 0);
+    expect(setTransform).toHaveBeenCalledOnce();
+    expect(setTransform).toHaveBeenCalledWith(-1, 0, 0, 1, 1280, 0);
     expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720);
     expect(result.type).toBe("image/webp");
+    vi.unstubAllGlobals();
+  });
+
+  it("leaves rear-camera capture pixels in their natural orientation", async () => {
+    const setTransform = vi.fn();
+    const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: vi.fn(), setTransform }), toBlob: (callback: BlobCallback) => callback(new Blob(["photo"], { type: "image/webp" })) };
+    vi.stubGlobal("document", { createElement: vi.fn(() => canvas) });
+
+    await captureCameraFrame({ videoWidth: 640, videoHeight: 480 } as HTMLVideoElement, false);
+
+    expect(setTransform).toHaveBeenCalledOnce();
+    expect(setTransform).toHaveBeenCalledWith(1, 0, 0, 1, 0, 0);
     vi.unstubAllGlobals();
   });
 });

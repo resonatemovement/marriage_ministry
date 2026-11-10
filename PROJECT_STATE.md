@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: main
+Current working branch: feature/photo-handoff-selfie-mirroring
 Repository: resonatemovement/marriage_ministry
+
+## Consistent Mirrored Selfies (November 10, 2026)
+
+- The front-facing browser preview is horizontally mirrored, and the captured canvas pixels are mirrored once using the same orientation. Rear-camera preview/capture remains natural. Camera frame dimensions continue to use the stream's native dimensions.
+- The distinct `capture="user"` native-camera file input now transforms accepted photos once into a same-dimension WebP before confirmation. The exact transformed File is used for both the blob preview and existing upload path. Browser image decoding supplies the displayed EXIF-corrected orientation before canvas processing. Photo Library files bypass decoding and are passed through unchanged. Existing source validation (including HEIC/HEIF rejection), upload endpoint, duplicate guard, and handoff security remain unchanged.
+- Automated focused onboarding tests pass (58 tests across 15 files), including preview mirroring, front/rear canvas transforms, native selfie pixel transformation and dimensions, safe transform failure, unchanged library File identity, current confirmation/upload state behavior, and existing camera selection/switching. Typecheck, lint, production build, and `git diff --check` pass. Automated tests verify transform instructions and data flow, not actual rendered pixels on device.
+- No iOS Safari or Android physical-device testing was performed. Native camera behavior varies by browser/device; because the file input does not reveal whether a browser ignored `capture="user"` and opened a picker, selections made through that dedicated native-camera control are treated as selfie captures and mirrored. The separate Photo Library control is never mirrored.
+- Release status at this milestone: implementation and validation are complete on `feature/photo-handoff-selfie-mirroring`; merge, push, and dedicated DEV deployment verification remain pending. No database changes or migrations.
 
 ## Native Phone Camera Capture (November 10, 2026)
 

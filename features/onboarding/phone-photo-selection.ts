@@ -1,4 +1,5 @@
 type FileListLike = Pick<FileList, "item"> | null;
+export type PhonePhotoSource = "library" | "native-camera";
 
 export function selectedPhonePhoto(files: FileListLike) {
   return files?.item(0) ?? null;

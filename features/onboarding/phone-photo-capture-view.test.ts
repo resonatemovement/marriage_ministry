@@ -13,6 +13,7 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
     busy: false,
     canSwitchCamera: false,
     cameraTransitioning: false,
+    mirrorLivePreview: false,
     videoRef: createRef<HTMLVideoElement>(),
     libraryInputRef: createRef<HTMLInputElement>(),
     nativeCameraInputRef: createRef<HTMLInputElement>(),
@@ -57,6 +58,11 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain('type="file" accept="image/*" capture="user"');
     expect(html).toContain('aria-label="Use Phone Camera"');
     expect(html).toContain("safe-area-inset-bottom");
+  });
+
+  it("mirrors the front-camera live preview and leaves the rear preview natural", () => {
+    expect(markup({ stage: "camera_live", mirrorLivePreview: true })).toContain("-scale-x-100");
+    expect(markup({ stage: "camera_live", mirrorLivePreview: false })).toContain("transform-none");
   });
 
   it("keeps the camera switch column without showing Flip when unavailable", () => {

@@ -10,6 +10,7 @@ type PhonePhotoCaptureViewProps = {
   busy: boolean;
   canSwitchCamera: boolean;
   cameraTransitioning: boolean;
+  mirrorLivePreview: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   libraryInputRef: RefObject<HTMLInputElement | null>;
   nativeCameraInputRef: RefObject<HTMLInputElement | null>;
@@ -32,6 +33,7 @@ export function PhonePhotoCaptureView({
   busy,
   canSwitchCamera,
   cameraTransitioning,
+  mirrorLivePreview,
   videoRef,
   libraryInputRef,
   nativeCameraInputRef,
@@ -100,7 +102,7 @@ export function PhonePhotoCaptureView({
             <section className="mt-4 sm:mt-6" aria-label="Camera capture">
               <p className="mb-3 text-center text-sm text-text-muted">Center your face in the frame.</p>
               <div className="relative mx-auto aspect-[3/4] w-full max-h-[min(64svh,36rem)] overflow-hidden rounded-3xl bg-black shadow-lg">
-                <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 size-full transform-none object-contain" />
+                <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 size-full object-contain ${mirrorLivePreview ? "-scale-x-100" : "transform-none"}`} />
                 <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 shadow-[0_0_0_999px_rgb(0_0_0/12%)]" />
               </div>
 
