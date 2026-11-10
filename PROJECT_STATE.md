@@ -1,7 +1,16 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: main
+Current working branch: feature/photo-handoff-camera-ui
 Repository: resonatemovement/marriage_ministry
+
+## Phone Photo Handoff Camera UI (November 10, 2026)
+
+- Reworked the mobile photo-handoff screen into a compact Resonate-branded camera flow: a small “Profile Photo” header, a Back control mapped to the existing camera-cancel behavior, face-centering guidance, a rounded portrait preview, and a responsive three-column Photo Library / shutter / Flip Camera control row. A CSS-only positioning guide overlays the live video and is not part of the captured frame.
+- The captured-photo state now displays a large preview with Retake and Use Photo actions; the existing validation/upload route and completion messaging remain in place. The library button uses the existing file input and validation listener. When a library image is selected from the live-camera state, that live stream is stopped before previewing the selected photo. Added an immediate upload ref guard against duplicate submissions.
+- Camera constraints, default front-facing selection, camera switching/recovery, capture resolution/processing, handoff token/QR generation, desktop polling, storage permissions, and onboarding rules were not changed. No database or migration changes.
+- Added focused server-rendered UI tests for live view, capture controls, unavailable camera switching, transition/loading states, captured preview, disabled upload actions, error handling, library fallback, and completion. All onboarding tests pass (49 tests across 14 files); typecheck, lint, production build, and `git diff --check` pass. Browser/device testing on iOS Safari, Android, and desktop has not been performed.
+- The dedicated Vercel DEV project was read-only verified as `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), with the linked Git source `resonatemovement/marriage_ministry`. Its current Vercel target is labeled `production` within that DEV project. No deployment has been made yet; actual Resonate PROD was not accessed.
+- Current work is on `feature/photo-handoff-camera-ui`, branched from clean `main` at `27be9b4`. All seven stashes remain preserved. Next: commit the focused implementation, fast-forward merge to main, push only after reconfirming the dedicated DEV target, and verify the exact-SHA DEV deployment reaches READY.
 
 ## Phone Handoff QR URL Rooting (November 10, 2026)
 

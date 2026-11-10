@@ -1,7 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- QR data URLs and local blob previews cannot use the Next image optimizer. */
 import QRCode from "qrcode";
-import { SwitchCamera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPhotoHandoff, photoHandoffStatus } from "./handoff-actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -9,6 +8,7 @@ import { profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contr
 import { phonePhotoStageIsBusy, type PhonePhotoStage } from "./phone-photo-state";
 import { attachNativePhotoChangeListener, isSupportedPhonePhoto } from "./phone-photo-selection";
 import { cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, stopCameraStream, switchCameraStream, type CameraFacingMode } from "./phone-camera";
+import { PhonePhotoCaptureView } from "./phone-photo-capture-view";
 
 type HandoffProps = { profileId: string; onCompleted: (url: string) => void };
 
@@ -23,12 +23,12 @@ export function PhotoHandoff({ profileId, onCompleted }: HandoffProps) {
 export function PhonePhotoUpload({ token }: { token: string }) {
   const [image, setImage] = useState<Blob | null>(null); const [preview, setPreview] = useState(""); const [message, setMessage] = useState(""); const [stage, setStage] = useState<PhonePhotoStage>("initial");
   const [cameraFacingMode, setCameraFacingMode] = useState<CameraFacingMode>("user"); const [canSwitchCamera, setCanSwitchCamera] = useState(false); const [cameraTransitioning, setCameraTransitioning] = useState(false); const [cameraSession, setCameraSession] = useState(0);
-  const video = useRef<HTMLVideoElement>(null); const stream = useRef<MediaStream | null>(null); const libraryInput = useRef<HTMLInputElement>(null); const cameraRequest = useRef(false); const mounted = useRef(false);
+  const video = useRef<HTMLVideoElement>(null); const stream = useRef<MediaStream | null>(null); const libraryInput = useRef<HTMLInputElement>(null); const cameraRequest = useRef(false); const uploadInProgress = useRef(false); const mounted = useRef(false);
   const stopCamera = useCallback(() => { stopCameraStream(stream.current); stream.current = null; }, []);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; stopCamera(); }; }, [stopCamera]);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   const prepare = useCallback((file: File) => { const sourceError = profilePhotoSourceError(file); if (sourceError) { setStage("error"); setMessage(sourceError); return; } setStage("processing"); setMessage(""); const nextPreview = URL.createObjectURL(file); setImage(file); setPreview((current) => { if (current) URL.revokeObjectURL(current); return nextPreview; }); setStage("preview"); }, []);
-  const receiveLibraryFile = useCallback((file: File | null) => { if (!file) return; if (libraryInput.current) libraryInput.current.value = ""; if (!isSupportedPhonePhoto(file)) { setStage("error"); setMessage("Choose a photo from your camera or library."); return; } prepare(file); }, [prepare]);
+  const receiveLibraryFile = useCallback((file: File | null) => { if (!file) return; if (libraryInput.current) libraryInput.current.value = ""; if (!isSupportedPhonePhoto(file)) { setStage("error"); setMessage("Choose a photo from your camera or library."); return; } stopCamera(); setCanSwitchCamera(false); prepare(file); }, [prepare, stopCamera]);
   useEffect(() => { const input = libraryInput.current; return input ? attachNativePhotoChangeListener(input, receiveLibraryFile) : undefined; }, [receiveLibraryFile]);
   useEffect(() => { if (stage !== "camera_live" || !video.current || !stream.current) return; video.current.srcObject = stream.current; void video.current.play(); }, [stage, cameraSession]);
   async function startCamera() {
@@ -58,10 +58,36 @@ export function PhonePhotoUpload({ token }: { token: string }) {
     finally { cameraRequest.current = false; if (mounted.current) setCameraTransitioning(false); }
   }
   async function takeCameraPhoto() { if (!video.current || cameraRequest.current) return; setStage("processing"); setCanSwitchCamera(false); try { const frame = await captureCameraFrame(video.current); stopCamera(); prepare(new File([frame], "camera.webp", { type: "image/webp" })); } catch (error) { stopCamera(); setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be captured. Please try again."); } }
-  async function upload() { if (!image) return; setStage("uploading"); setMessage(""); try { const response = await fetch(`/api/onboarding/photo-handoff/${encodeURIComponent(token)}`, { method: "POST", headers: { "content-type": image.type }, body: image }); const result = await response.json() as { success: boolean; error?: string }; if (result.success) { stopCamera(); setStage("completed"); } else { setStage("error"); setMessage(result.error ?? "The photo could not be uploaded. Please try again."); } } catch { setStage("error"); setMessage("The photo could not be uploaded. Please try again."); } }
+  async function upload() {
+    if (!image || uploadInProgress.current || stage === "completed") return;
+    uploadInProgress.current = true;
+    setStage("uploading"); setMessage("");
+    try {
+      const response = await fetch(`/api/onboarding/photo-handoff/${encodeURIComponent(token)}`, { method: "POST", headers: { "content-type": image.type }, body: image });
+      const result = await response.json() as { success: boolean; error?: string };
+      if (result.success) { stopCamera(); setStage("completed"); }
+      else { setStage("error"); setMessage(result.error ?? "The photo could not be uploaded. Please try again."); }
+    } catch { setStage("error"); setMessage("The photo could not be uploaded. Please try again."); }
+    finally { uploadInProgress.current = false; }
+  }
   function cancelCamera() { stopCamera(); setCanSwitchCamera(false); setStage("initial"); }
   function clearPreview() { setImage(null); setPreview(""); }
   const busy = phonePhotoStageIsBusy(stage) || stage === "requesting_camera" || cameraTransitioning;
-  const pickerClass = `inline-flex h-11 items-center justify-center rounded-md px-4 text-sm font-bold ${busy ? "pointer-events-none opacity-60" : ""}`;
-  return <main className="mx-auto min-h-screen max-w-md p-6"><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Resonate</p><h1 className="font-heading mt-2 text-2xl font-bold text-text-primary">Add your profile photo</h1>{stage === "completed" ? <p role="status" className="mt-5 text-sm leading-6 text-success-strong">Photo added successfully.<br />You can return to your computer.</p> : <><p className="mt-2 text-sm text-text-muted">Take a photo or choose one from your library.</p><input id="phone-library-input" ref={libraryInput} className="sr-only" type="file" accept="image/*" disabled={busy}/>{stage === "camera_live" ? <div className="mt-6"><video ref={video} autoPlay playsInline muted className="aspect-[3/4] w-full rounded-md bg-black object-cover"/><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={takeCameraPhoto} disabled={busy} className="h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">Take Photo</button>{canSwitchCamera ? <button type="button" onClick={flipCamera} disabled={busy} aria-label="Flip camera between front and rear cameras" title="Flip Camera" className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-bold text-brand-primary focus-visible:bg-brand-primary focus-visible:text-white disabled:opacity-60"><SwitchCamera aria-hidden="true" size={18}/>Flip Camera</button> : null}<button type="button" onClick={cancelCamera} disabled={busy} className="h-11 rounded-md border border-border bg-white px-4 text-sm font-bold text-brand-primary disabled:opacity-60">Cancel</button></div>{cameraTransitioning ? <p role="status" className="mt-3 text-sm text-text-muted">Switching cameras...</p> : null}</div> : <div className="mt-6 flex flex-wrap gap-2"><button type="button" onClick={startCamera} disabled={busy} className="h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">Take Photo</button><label htmlFor="phone-library-input" aria-disabled={busy} className={`${pickerClass} border border-border bg-white text-brand-primary`}>Choose from Library</label></div>}{stage === "processing" ? <p role="status" className="mt-5 text-sm text-text-muted">Preparing your photo...</p> : null}{preview ? <div className="mt-5"><img src={preview} alt="Selected profile photo preview" className="size-40 rounded-full object-cover"/><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={upload} disabled={busy} className="h-11 rounded-md bg-sidebar-active px-4 text-sm font-bold text-white disabled:opacity-60">{stage === "uploading" ? "Uploading..." : "Use this photo"}</button><button type="button" onClick={() => { clearPreview(); void startCamera(); }} disabled={busy} className="h-11 rounded-md border border-border bg-white px-4 text-sm font-bold text-brand-primary">Retake</button><label htmlFor="phone-library-input" onClick={clearPreview} aria-disabled={busy} className={`${pickerClass} border border-border bg-white text-brand-primary`}>Choose another</label></div></div> : null}{message ? <p role="alert" className="mt-5 text-sm text-danger-strong">{message}</p> : null}</>}</main>;
+  return <PhonePhotoCaptureView
+    stage={stage}
+    preview={preview}
+    message={message}
+    busy={busy}
+    canSwitchCamera={canSwitchCamera}
+    cameraTransitioning={cameraTransitioning}
+    videoRef={video}
+    libraryInputRef={libraryInput}
+    onStartCamera={startCamera}
+    onTakePhoto={takeCameraPhoto}
+    onFlipCamera={flipCamera}
+    onCancelCamera={cancelCamera}
+    onChoosePhoto={() => libraryInput.current?.click()}
+    onRetake={() => { clearPreview(); void startCamera(); }}
+    onUpload={upload}
+  />;
 }
