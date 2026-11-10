@@ -24,4 +24,17 @@ describe("Supabase recovery email template", () => {
     expect(html).toContain("style=");
     expect(html).not.toMatch(/<script\b|<form\b/i);
   });
+
+  it("applies the system sans-serif stack inline to all text-bearing email elements", async () => {
+    const html = await readFile(templatePath, "utf8");
+    const fontStack = "font-family:Arial,Helvetica,sans-serif";
+
+    for (const element of ["body", "table", "td", "h1", "p", "a"]) {
+      const tags = [...html.matchAll(new RegExp(`<${element}\\b[^>]*style="([^"]*)"[^>]*>`, "g"))];
+      expect(tags.length, `${element} inline styles`).toBeGreaterThan(0);
+      expect(tags.every((tag) => tag[1]?.includes(fontStack)), `${element} font stack`).toBe(true);
+    }
+
+    expect(html).not.toMatch(/@font-face|fonts\.googleapis\.com/i);
+  });
 });
