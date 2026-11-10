@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/photo-handoff-camera-ui
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Phone Photo Handoff Camera UI (November 10, 2026)
@@ -9,8 +9,8 @@ Repository: resonatemovement/marriage_ministry
 - The captured-photo state now displays a large preview with Retake and Use Photo actions; the existing validation/upload route and completion messaging remain in place. The library button uses the existing file input and validation listener. When a library image is selected from the live-camera state, that live stream is stopped before previewing the selected photo. Added an immediate upload ref guard against duplicate submissions.
 - Camera constraints, default front-facing selection, camera switching/recovery, capture resolution/processing, handoff token/QR generation, desktop polling, storage permissions, and onboarding rules were not changed. No database or migration changes.
 - Added focused server-rendered UI tests for live view, capture controls, unavailable camera switching, transition/loading states, captured preview, disabled upload actions, error handling, library fallback, and completion. All onboarding tests pass (49 tests across 14 files); typecheck, lint, production build, and `git diff --check` pass. Browser/device testing on iOS Safari, Android, and desktop has not been performed.
-- The dedicated Vercel DEV project was read-only verified as `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), with the linked Git source `resonatemovement/marriage_ministry`. Its current Vercel target is labeled `production` within that DEV project. No deployment has been made yet; actual Resonate PROD was not accessed.
-- Current work is on `feature/photo-handoff-camera-ui`, branched from clean `main` at `27be9b4`. All seven stashes remain preserved. Next: commit the focused implementation, fast-forward merge to main, push only after reconfirming the dedicated DEV target, and verify the exact-SHA DEV deployment reaches READY.
+- The dedicated Vercel DEV project was read-only verified as `marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), with Git source `resonatemovement/marriage_ministry`. Its Vercel target is labeled `production` within this dedicated DEV project. Feature commit `7396dca000ddc614138aae2ef1140f5c116d3f8c` was fast-forward merged and pushed to `origin/main`; its Git-triggered DEV deployment `dpl_AZuV96pK4NCutRbJamViQ98gFFY5` reached READY with metadata matching the exact implementation SHA and `main` branch. Actual Resonate PROD was not accessed.
+- The merged feature branch was deleted normally. The worktree is on `main` synchronized with `origin/main`; all seven stashes are preserved. Browser/device verification on iOS Safari, Android, and desktop remains outstanding.
 
 ## Phone Handoff QR URL Rooting (November 10, 2026)
 
