@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: main
+Current working branch: feature/auth-email-branding
 Repository: resonatemovement/marriage_ministry
+
+## Account Activation Email Branding (November 10, 2026)
+
+- Added a version-controlled responsive Supabase Auth recovery template and subject in `supabase/templates/auth-recovery.html` and `supabase/templates/auth-recovery.subject.txt`. It reuses the public Resonate email logo, inline email-safe styling, a password setup/reset message, a Set Password action, a security note, and a simple footer.
+- The shared Supabase `recovery` template is used by the app's `resetPasswordForEmail` invitation activation flow (`features/people/invitation-delivery.ts`). The app's `/auth/activate` page expects the existing `token_hash` plus `type=recovery` query contract and verifies it with `verifyOtp`; the template preserves the existing `{{ .RedirectTo }}` and `{{ .TokenHash }}` variables and recovery type. There is no separate template distinction for new activation vs. password recovery. No email was sent and no authentication code, redirect, expiration, transport, schema, or RLS behavior changed.
+- Verified only Supabase DEV ref `lctkqjjkhpyootwvttvj` via the configured project hostname and the Supabase Management API. The original DEV recovery subject and HTML were backed up before modification in the local restricted directory `/Users/rodrozin/.codex-marriage-ministry/secure-backups/resonate-dev-auth-recovery-2026-11-10/` (directory mode 700, files mode 600). Updated only `mailer_subjects_recovery` and `mailer_templates_recovery_content`; a subsequent API read confirmed the active fields match the repository template. The template is shared by password-reset requests using the recovery flow; no standalone password-reset email was sent.
+- The official logo URL `https://marriage-ministry-dev.vercel.app/images/logo-email.png` returned HTTP 200 with image/png. Focused template and activation-link tests passed (4 tests); typecheck, lint, and `git diff --check` passed. No email-client or delivered-email rendering test was performed.
+- This work is on `feature/auth-email-branding`. The dedicated Vercel DEV project was verified as `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`); no application deployment has yet been made for this task. Commit, merge, push, and final Git status remain pending.
 
 ## Pending Invitation Partner Ordering (November 10, 2026)
 
