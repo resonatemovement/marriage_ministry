@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CAMERA_CROP_ZOOM, CAMERA_PREVIEW_ASPECT_RATIO, cameraConstraints, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, centeredCameraCrop, frontCameraConstraints, nextCameraFacingMode, stopCameraStream, switchCameraStream } from "./phone-camera";
+import { CAMERA_DEFAULT_ZOOM, CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CAMERA_PREVIEW_ASPECT_RATIO, CAMERA_ZOOM_STEP, cameraConstraints, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, centeredCameraCrop, frontCameraConstraints, nextCameraFacingMode, stopCameraStream, switchCameraStream } from "./phone-camera";
 
 describe("phone camera", () => {
+  it("defines the accessible zoom range and 1.2x default", () => {
+    expect(CAMERA_DEFAULT_ZOOM).toBe(1.2);
+    expect(CAMERA_MIN_ZOOM).toBe(1);
+    expect(CAMERA_MAX_ZOOM).toBe(1.5);
+    expect(CAMERA_ZOOM_STEP).toBe(0.1);
+  });
   it("requests a front-facing video stream without audio", () => {
     expect(frontCameraConstraints).toEqual({ audio: false, video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1440 } } });
   });
@@ -19,8 +25,23 @@ describe("phone camera", () => {
     expect(crop.x).toBeCloseTo((1920 - crop.width) / 2);
     expect(crop.y).toBeCloseTo((1440 - crop.height) / 2);
     expect(crop.width / crop.height).toBeCloseTo(CAMERA_PREVIEW_ASPECT_RATIO);
-    expect(crop.width).toBeCloseTo((1440 * CAMERA_PREVIEW_ASPECT_RATIO) / CAMERA_CROP_ZOOM);
-    expect(crop.height).toBeCloseTo(1440 / CAMERA_CROP_ZOOM);
+    expect(crop.width).toBeCloseTo((1440 * CAMERA_PREVIEW_ASPECT_RATIO) / CAMERA_DEFAULT_ZOOM);
+    expect(crop.height).toBeCloseTo(1440 / CAMERA_DEFAULT_ZOOM);
+  });
+
+  it("uses selected zoom for a proportional centered capture crop", async () => {
+    const drawImage = vi.fn();
+    const canvas = { width: 0, height: 0, getContext: () => ({ drawImage, setTransform: vi.fn() }), toBlob: (callback: BlobCallback) => callback(new Blob(["photo"], { type: "image/webp" })) };
+    vi.stubGlobal("document", { createElement: vi.fn(() => canvas) });
+    const video = { videoWidth: 1920, videoHeight: 1440 } as HTMLVideoElement;
+    const crop = centeredCameraCrop(video.videoWidth, video.videoHeight, CAMERA_PREVIEW_ASPECT_RATIO, 1.4);
+
+    await captureCameraFrame(video, false, 1.4);
+
+    expect(crop.width / crop.height).toBeCloseTo(CAMERA_PREVIEW_ASPECT_RATIO);
+    expect(canvas.width / canvas.height).toBeCloseTo(CAMERA_PREVIEW_ASPECT_RATIO);
+    expect(drawImage).toHaveBeenCalledWith(video, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
+    vi.unstubAllGlobals();
   });
 
   it("keeps the centered portrait crop inside a portrait-oriented camera frame", () => {
@@ -87,9 +108,9 @@ describe("phone camera", () => {
     vi.stubGlobal("document", { createElement: vi.fn(() => canvas) });
     const video = { videoWidth: 1280, videoHeight: 720 } as HTMLVideoElement;
 
-    const result = await captureCameraFrame(video, true);
+    const result = await captureCameraFrame(video, true, 1.3);
 
-    const crop = centeredCameraCrop(1280, 720);
+    const crop = centeredCameraCrop(1280, 720, CAMERA_PREVIEW_ASPECT_RATIO, 1.3);
     expect(canvas.width).toBe(Math.round(crop.width));
     expect(canvas.height).toBe(Math.round(crop.height));
     expect(setTransform).toHaveBeenCalledOnce();

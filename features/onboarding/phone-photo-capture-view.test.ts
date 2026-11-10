@@ -14,12 +14,13 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
     canSwitchCamera: false,
     cameraTransitioning: false,
     mirrorLivePreview: false,
-    cameraCropZoom: 1.1,
+    zoom: 1.2,
     videoRef: createRef<HTMLVideoElement>(),
     libraryInputRef: createRef<HTMLInputElement>(),
     onStartCamera: vi.fn(),
     onTakePhoto: vi.fn(),
     onFlipCamera: vi.fn(),
+    onZoomChange: vi.fn(),
     onCancelCamera: vi.fn(),
     onChoosePhoto: vi.fn(),
     onRetake: vi.fn(),
@@ -48,7 +49,11 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain('aria-label="Back"');
     expect(html).toContain('playsInline=""');
     expect(html).toContain("object-cover");
-    expect(html).toContain('style="transform:scaleX(-1) scale(1.1)"');
+    expect(html).toContain('style="transform:scaleX(-1) scale(1.2)"');
+    expect(html).toContain('id="phone-camera-zoom"');
+    expect(html).toContain('min="1" max="1.5" step="0.1"');
+    expect(html).toContain('aria-valuetext="1.2x"');
+    expect(html).toContain("Zoom");
     expect(html).toContain("aspect-[3/4]");
     expect(html).toContain("max-w-[min(100%,48svh,27rem)]");
     expect(html).toContain('aria-label="Take photo"');
@@ -58,8 +63,13 @@ describe("phone photo capture presentation", () => {
   });
 
   it("uses centered zoom framing and keeps front/rear preview orientation correct", () => {
-    expect(markup({ stage: "camera_live", mirrorLivePreview: true })).toContain('style="transform:scaleX(-1) scale(1.1)"');
-    expect(markup({ stage: "camera_live", mirrorLivePreview: false })).toContain('style="transform:scale(1.1)"');
+    expect(markup({ stage: "camera_live", mirrorLivePreview: true, zoom: 1.3 })).toContain('style="transform:scaleX(-1) scale(1.3)"');
+    expect(markup({ stage: "camera_live", mirrorLivePreview: false, zoom: 1.3 })).toContain('style="transform:scale(1.3)"');
+  });
+
+  it("disables zoom whenever the camera is not ready or is busy", () => {
+    expect(markup({ stage: "camera_live", busy: true })).toMatch(/id="phone-camera-zoom"[^>]*disabled=""/);
+    expect(markup({ stage: "initial" })).not.toContain('id="phone-camera-zoom"');
   });
 
   it("keeps the camera switch column without showing Flip when unavailable", () => {

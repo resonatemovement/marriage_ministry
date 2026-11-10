@@ -7,7 +7,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contract";
 import { canStartPhonePhotoUpload, phonePhotoStageIsBusy, type PhonePhotoStage } from "./phone-photo-state";
 import { attachPhotoChangeListener, isSupportedPhonePhoto } from "./phone-photo-selection";
-import { CAMERA_CROP_ZOOM, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, stopCameraStream, switchCameraStream, type CameraFacingMode } from "./phone-camera";
+import { CAMERA_DEFAULT_ZOOM, CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CAMERA_ZOOM_STEP, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, stopCameraStream, switchCameraStream, type CameraFacingMode } from "./phone-camera";
 import { PhonePhotoCaptureView } from "./phone-photo-capture-view";
 
 type HandoffProps = { profileId: string; onCompleted: (url: string) => void };
@@ -23,6 +23,8 @@ export function PhotoHandoff({ profileId, onCompleted }: HandoffProps) {
 export function PhonePhotoUpload({ token }: { token: string }) {
   const [image, setImage] = useState<Blob | null>(null); const [preview, setPreview] = useState(""); const [message, setMessage] = useState(""); const [stage, setStage] = useState<PhonePhotoStage>("initial");
   const [cameraFacingMode, setCameraFacingMode] = useState<CameraFacingMode>("user"); const [canSwitchCamera, setCanSwitchCamera] = useState(false); const [cameraTransitioning, setCameraTransitioning] = useState(false); const [cameraSession, setCameraSession] = useState(0);
+  const [zoomState, setZoomState] = useState({ token, zoom: CAMERA_DEFAULT_ZOOM });
+  const zoom = zoomState.token === token ? zoomState.zoom : CAMERA_DEFAULT_ZOOM;
   const video = useRef<HTMLVideoElement>(null); const stream = useRef<MediaStream | null>(null); const libraryInput = useRef<HTMLInputElement>(null); const cameraRequest = useRef(false); const uploadInProgress = useRef(false); const mounted = useRef(false);
   const stopCamera = useCallback(() => { stopCameraStream(stream.current); stream.current = null; }, []);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; stopCamera(); }; }, [stopCamera]);
@@ -64,7 +66,7 @@ export function PhonePhotoUpload({ token }: { token: string }) {
     } catch { if (mounted.current) { setCanSwitchCamera(false); setStage("error"); setMessage(cameraUnavailableMessage(true, true)); } }
     finally { cameraRequest.current = false; if (mounted.current) setCameraTransitioning(false); }
   }
-  async function takeCameraPhoto() { if (!video.current || cameraRequest.current) return; setStage("processing"); setCanSwitchCamera(false); try { const frame = await captureCameraFrame(video.current, cameraFacingMode === "user"); stopCamera(); prepare(new File([frame], "camera.webp", { type: "image/webp" })); } catch (error) { stopCamera(); setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be captured. Please try again."); } }
+  async function takeCameraPhoto() { if (!video.current || cameraRequest.current) return; setStage("processing"); setCanSwitchCamera(false); try { const frame = await captureCameraFrame(video.current, cameraFacingMode === "user", zoom); stopCamera(); prepare(new File([frame], "camera.webp", { type: "image/webp" })); } catch (error) { stopCamera(); setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be captured. Please try again."); } }
   async function upload() {
     if (!image || !canStartPhonePhotoUpload(true, uploadInProgress.current, stage)) return;
     uploadInProgress.current = true;
@@ -88,12 +90,13 @@ export function PhonePhotoUpload({ token }: { token: string }) {
     canSwitchCamera={canSwitchCamera}
     cameraTransitioning={cameraTransitioning}
     mirrorLivePreview={cameraFacingMode === "user"}
-    cameraCropZoom={CAMERA_CROP_ZOOM}
+    zoom={zoom}
     videoRef={video}
     libraryInputRef={libraryInput}
     onStartCamera={startCamera}
     onTakePhoto={takeCameraPhoto}
     onFlipCamera={flipCamera}
+    onZoomChange={(nextZoom) => setZoomState({ token, zoom: Math.min(CAMERA_MAX_ZOOM, Math.max(CAMERA_MIN_ZOOM, Math.round(nextZoom / CAMERA_ZOOM_STEP) * CAMERA_ZOOM_STEP)) })}
     onCancelCamera={cancelCamera}
     onChoosePhoto={() => libraryInput.current?.click()}
     onRetake={() => { clearPreview(); void startCamera(); }}

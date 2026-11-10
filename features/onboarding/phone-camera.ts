@@ -1,6 +1,9 @@
 export type CameraFacingMode = "user" | "environment";
 export const CAMERA_PREVIEW_ASPECT_RATIO = 3 / 4;
-export const CAMERA_CROP_ZOOM = 1.1;
+export const CAMERA_DEFAULT_ZOOM = 1.2;
+export const CAMERA_MIN_ZOOM = 1;
+export const CAMERA_MAX_ZOOM = 1.5;
+export const CAMERA_ZOOM_STEP = 0.1;
 
 export type CameraCrop = { x: number; y: number; width: number; height: number };
 
@@ -8,9 +11,9 @@ export function centeredCameraCrop(
   sourceWidth: number,
   sourceHeight: number,
   targetAspect = CAMERA_PREVIEW_ASPECT_RATIO,
-  zoom = CAMERA_CROP_ZOOM,
+  zoom = CAMERA_DEFAULT_ZOOM,
 ): CameraCrop {
-  if (sourceWidth <= 0 || sourceHeight <= 0 || targetAspect <= 0 || zoom < 1) {
+  if (sourceWidth <= 0 || sourceHeight <= 0 || targetAspect <= 0 || zoom < CAMERA_MIN_ZOOM) {
     throw new Error("The camera image dimensions are unavailable.");
   }
 
@@ -80,9 +83,9 @@ export async function switchCameraStream(
   }
 }
 
-export async function captureCameraFrame(video: HTMLVideoElement, mirror = false) {
+export async function captureCameraFrame(video: HTMLVideoElement, mirror = false, zoom = CAMERA_DEFAULT_ZOOM) {
   if (!video.videoWidth || !video.videoHeight) throw new Error("The camera is still starting. Try again in a moment.");
-  const crop = centeredCameraCrop(video.videoWidth, video.videoHeight);
+  const crop = centeredCameraCrop(video.videoWidth, video.videoHeight, CAMERA_PREVIEW_ASPECT_RATIO, zoom);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(crop.width);
   canvas.height = Math.round(crop.height);

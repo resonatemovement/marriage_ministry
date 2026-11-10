@@ -2,6 +2,7 @@
 import { ArrowLeft, Image as ImageIcon, SwitchCamera } from "lucide-react";
 import type { RefObject } from "react";
 import type { PhonePhotoStage } from "./phone-photo-state";
+import { CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CAMERA_ZOOM_STEP } from "./phone-camera";
 
 type PhonePhotoCaptureViewProps = {
   stage: PhonePhotoStage;
@@ -11,12 +12,13 @@ type PhonePhotoCaptureViewProps = {
   canSwitchCamera: boolean;
   cameraTransitioning: boolean;
   mirrorLivePreview: boolean;
-  cameraCropZoom: number;
+  zoom: number;
   videoRef: RefObject<HTMLVideoElement | null>;
   libraryInputRef: RefObject<HTMLInputElement | null>;
   onStartCamera: () => void;
   onTakePhoto: () => void;
   onFlipCamera: () => void;
+  onZoomChange: (zoom: number) => void;
   onCancelCamera: () => void;
   onChoosePhoto: () => void;
   onRetake: () => void;
@@ -33,12 +35,13 @@ export function PhonePhotoCaptureView({
   canSwitchCamera,
   cameraTransitioning,
   mirrorLivePreview,
-  cameraCropZoom,
+  zoom,
   videoRef,
   libraryInputRef,
   onStartCamera,
   onTakePhoto,
   onFlipCamera,
+  onZoomChange,
   onCancelCamera,
   onChoosePhoto,
   onRetake,
@@ -88,8 +91,28 @@ export function PhonePhotoCaptureView({
             <section className="mt-4 sm:mt-6" aria-label="Camera capture">
               <p className="mb-3 text-center text-sm text-text-muted">Center your face in the frame.</p>
               <div className="relative mx-auto aspect-[3/4] w-full max-w-[min(100%,48svh,27rem)] overflow-hidden rounded-3xl bg-black shadow-lg">
-                <video ref={videoRef} autoPlay playsInline muted style={{ transform: `${mirrorLivePreview ? "scaleX(-1) " : ""}scale(${cameraCropZoom})` }} className="absolute inset-0 size-full object-cover" />
+                <video ref={videoRef} autoPlay playsInline muted style={{ transform: `${mirrorLivePreview ? "scaleX(-1) " : ""}scale(${zoom})` }} className="absolute inset-0 size-full object-cover" />
                 <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 shadow-[0_0_0_999px_rgb(0_0_0/12%)]" />
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <label htmlFor="phone-camera-zoom" className="font-medium text-text-primary">Zoom</label>
+                  <span aria-hidden="true" className="tabular-nums text-text-muted">{zoom.toFixed(1)}x</span>
+                </div>
+                <input
+                  id="phone-camera-zoom"
+                  type="range"
+                  min={CAMERA_MIN_ZOOM}
+                  max={CAMERA_MAX_ZOOM}
+                  step={CAMERA_ZOOM_STEP}
+                  value={zoom}
+                  disabled={!isLive || busy || cameraTransitioning}
+                  aria-label="Zoom"
+                  aria-valuetext={`${zoom.toFixed(1)}x`}
+                  onChange={(event) => onZoomChange(Number(event.currentTarget.value))}
+                  className="h-11 w-full cursor-pointer accent-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
+                />
               </div>
 
               <div className="relative mt-4 flex items-center justify-between">
