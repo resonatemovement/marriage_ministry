@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/photo-handoff-adjustable-zoom
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Adjustable Phone Camera Zoom (November 10, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - On `feature/photo-handoff-adjustable-zoom`, replaced the fixed 1.1× browser-camera crop with a compact, accessible Zoom range control: default 1.2×, minimum 1.0×, maximum 1.5×, and 0.1× steps. It appears below the live preview and above the camera controls, shows the selected value, updates preview scaling immediately, and is disabled outside the ready live-camera state.
 - Preview and capture use matching centered 3:4 framing. The selected zoom is passed to the canvas crop calculation (one crop, no additional canvas scaling); crop/output preserve aspect ratio and use crop-native dimensions. Front-facing preview and captured pixels remain mirrored once; rear-facing remains natural. Zoom persists through Retake and front/rear switching, and a different handoff token initializes to 1.2×. Photo Library, validation, upload, handoff, and desktop synchronization paths are unchanged.
 - Focused onboarding validation passed: 61 tests across 14 files, including zoom defaults/range/step, selected crop geometry, proportional canvas output, mirrored front capture, natural rear capture, live preview values, disabled/inactive control state, existing Retake/library/upload presentation, and camera switching. `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` passed. No database changes or migrations.
-- Automated markup and crop tests passed; no browser, iOS Safari, Android, or physical-device verification was performed. Release commit, merge, push, and dedicated DEV deployment verification are pending. Seven existing stashes remain preserved; actual Resonate PROD was not accessed.
+- Automated markup and crop tests passed; no browser, iOS Safari, Android, or physical-device verification was performed. Implementation commit `29b4e0d006329857e163c0b0e7746422294615b3` was fast-forward merged and pushed to `main`. The verified dedicated Vercel project is `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`; deployment `dpl_EKQZTx9aM4C51vcmAzTF5LAsT8q7` reached `READY` at that exact SHA on `main`. Vercel labels the target `production` within this dedicated DEV project; actual Resonate PROD was not accessed. The implementation feature branch is merged and awaiting normal local deletion after the documentation follow-up. Seven existing stashes remain preserved.
 
 ## Remove Native Phone Camera Option (November 10, 2026)
 
