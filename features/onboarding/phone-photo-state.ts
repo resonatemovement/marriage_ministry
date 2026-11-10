@@ -11,3 +11,7 @@ export function nextPhonePhotoStage(event: "select" | "prepared" | "failed" | "u
 export function phonePhotoStageIsBusy(stage: PhonePhotoStage) {
   return stage === "processing" || stage === "uploading";
 }
+
+export function canStartPhonePhotoUpload(hasImage: boolean, uploadInProgress: boolean, stage: PhonePhotoStage) {
+  return hasImage && !uploadInProgress && stage !== "completed";
+}

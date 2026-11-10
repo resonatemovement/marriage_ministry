@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPhotoHandoff, photoHandoffStatus } from "./handoff-actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contract";
-import { phonePhotoStageIsBusy, type PhonePhotoStage } from "./phone-photo-state";
+import { canStartPhonePhotoUpload, phonePhotoStageIsBusy, type PhonePhotoStage } from "./phone-photo-state";
 import { attachNativePhotoChangeListener, isSupportedPhonePhoto } from "./phone-photo-selection";
 import { cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, stopCameraStream, switchCameraStream, type CameraFacingMode } from "./phone-camera";
 import { PhonePhotoCaptureView } from "./phone-photo-capture-view";
@@ -23,13 +23,14 @@ export function PhotoHandoff({ profileId, onCompleted }: HandoffProps) {
 export function PhonePhotoUpload({ token }: { token: string }) {
   const [image, setImage] = useState<Blob | null>(null); const [preview, setPreview] = useState(""); const [message, setMessage] = useState(""); const [stage, setStage] = useState<PhonePhotoStage>("initial");
   const [cameraFacingMode, setCameraFacingMode] = useState<CameraFacingMode>("user"); const [canSwitchCamera, setCanSwitchCamera] = useState(false); const [cameraTransitioning, setCameraTransitioning] = useState(false); const [cameraSession, setCameraSession] = useState(0);
-  const video = useRef<HTMLVideoElement>(null); const stream = useRef<MediaStream | null>(null); const libraryInput = useRef<HTMLInputElement>(null); const cameraRequest = useRef(false); const uploadInProgress = useRef(false); const mounted = useRef(false);
+  const video = useRef<HTMLVideoElement>(null); const stream = useRef<MediaStream | null>(null); const libraryInput = useRef<HTMLInputElement>(null); const nativeCameraInput = useRef<HTMLInputElement>(null); const cameraRequest = useRef(false); const uploadInProgress = useRef(false); const mounted = useRef(false);
   const stopCamera = useCallback(() => { stopCameraStream(stream.current); stream.current = null; }, []);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; stopCamera(); }; }, [stopCamera]);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   const prepare = useCallback((file: File) => { const sourceError = profilePhotoSourceError(file); if (sourceError) { setStage("error"); setMessage(sourceError); return; } setStage("processing"); setMessage(""); const nextPreview = URL.createObjectURL(file); setImage(file); setPreview((current) => { if (current) URL.revokeObjectURL(current); return nextPreview; }); setStage("preview"); }, []);
-  const receiveLibraryFile = useCallback((file: File | null) => { if (!file) return; if (libraryInput.current) libraryInput.current.value = ""; if (!isSupportedPhonePhoto(file)) { setStage("error"); setMessage("Choose a photo from your camera or library."); return; } stopCamera(); setCanSwitchCamera(false); prepare(file); }, [prepare, stopCamera]);
-  useEffect(() => { const input = libraryInput.current; return input ? attachNativePhotoChangeListener(input, receiveLibraryFile) : undefined; }, [receiveLibraryFile]);
+  const receivePhotoFile = useCallback((file: File | null) => { if (!file) return; if (!isSupportedPhonePhoto(file)) { stopCamera(); setCanSwitchCamera(false); setStage("error"); setMessage("Choose a photo from your camera or library."); return; } stopCamera(); setCanSwitchCamera(false); prepare(file); }, [prepare, stopCamera]);
+  useEffect(() => { const input = libraryInput.current; return input ? attachNativePhotoChangeListener(input, receivePhotoFile) : undefined; }, [receivePhotoFile]);
+  useEffect(() => { const input = nativeCameraInput.current; return input ? attachNativePhotoChangeListener(input, receivePhotoFile) : undefined; }, [receivePhotoFile]);
   useEffect(() => { if (stage !== "camera_live" || !video.current || !stream.current) return; video.current.srcObject = stream.current; void video.current.play(); }, [stage, cameraSession]);
   async function startCamera() {
     if (cameraRequest.current) return;
@@ -59,7 +60,7 @@ export function PhonePhotoUpload({ token }: { token: string }) {
   }
   async function takeCameraPhoto() { if (!video.current || cameraRequest.current) return; setStage("processing"); setCanSwitchCamera(false); try { const frame = await captureCameraFrame(video.current); stopCamera(); prepare(new File([frame], "camera.webp", { type: "image/webp" })); } catch (error) { stopCamera(); setStage("error"); setMessage(error instanceof Error ? error.message : "The photo could not be captured. Please try again."); } }
   async function upload() {
-    if (!image || uploadInProgress.current || stage === "completed") return;
+    if (!image || !canStartPhonePhotoUpload(true, uploadInProgress.current, stage)) return;
     uploadInProgress.current = true;
     setStage("uploading"); setMessage("");
     try {
@@ -72,6 +73,7 @@ export function PhonePhotoUpload({ token }: { token: string }) {
   }
   function cancelCamera() { stopCamera(); setCanSwitchCamera(false); setStage("initial"); }
   function clearPreview() { setImage(null); setPreview(""); }
+  function usePhoneCamera() { stopCamera(); setCanSwitchCamera(false); setMessage(""); setStage("initial"); nativeCameraInput.current?.click(); }
   const busy = phonePhotoStageIsBusy(stage) || stage === "requesting_camera" || cameraTransitioning;
   return <PhonePhotoCaptureView
     stage={stage}
@@ -82,11 +84,13 @@ export function PhonePhotoUpload({ token }: { token: string }) {
     cameraTransitioning={cameraTransitioning}
     videoRef={video}
     libraryInputRef={libraryInput}
+    nativeCameraInputRef={nativeCameraInput}
     onStartCamera={startCamera}
     onTakePhoto={takeCameraPhoto}
     onFlipCamera={flipCamera}
     onCancelCamera={cancelCamera}
     onChoosePhoto={() => libraryInput.current?.click()}
+    onUsePhoneCamera={usePhoneCamera}
     onRetake={() => { clearPreview(); void startCamera(); }}
     onUpload={upload}
   />;

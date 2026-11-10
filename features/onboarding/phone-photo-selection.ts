@@ -8,8 +8,12 @@ export function isSupportedPhonePhoto(file: Pick<File, "name" | "type" | "size">
   return file.size > 0 && (file.type.startsWith("image/") || /\.(avif|heic|heif|jpe?g|png|webp)$/i.test(file.name));
 }
 
-export function attachNativePhotoChangeListener(input: Pick<HTMLInputElement, "addEventListener" | "removeEventListener" | "files">, onFile: (file: File | null) => void) {
-  const listener = () => onFile(input.files?.item(0) ?? null);
+export function attachNativePhotoChangeListener(input: Pick<HTMLInputElement, "addEventListener" | "removeEventListener" | "files" | "value">, onFile: (file: File | null) => void) {
+  const listener = () => {
+    const file = input.files?.item(0) ?? null;
+    input.value = "";
+    onFile(file);
+  };
   input.addEventListener("change", listener);
   return () => input.removeEventListener("change", listener);
 }

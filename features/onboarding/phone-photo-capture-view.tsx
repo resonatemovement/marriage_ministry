@@ -12,11 +12,13 @@ type PhonePhotoCaptureViewProps = {
   cameraTransitioning: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   libraryInputRef: RefObject<HTMLInputElement | null>;
+  nativeCameraInputRef: RefObject<HTMLInputElement | null>;
   onStartCamera: () => void;
   onTakePhoto: () => void;
   onFlipCamera: () => void;
   onCancelCamera: () => void;
   onChoosePhoto: () => void;
+  onUsePhoneCamera: () => void;
   onRetake: () => void;
   onUpload: () => void;
 };
@@ -32,11 +34,13 @@ export function PhonePhotoCaptureView({
   cameraTransitioning,
   videoRef,
   libraryInputRef,
+  nativeCameraInputRef,
   onStartCamera,
   onTakePhoto,
   onFlipCamera,
   onCancelCamera,
   onChoosePhoto,
+  onUsePhoneCamera,
   onRetake,
   onUpload,
 }: PhonePhotoCaptureViewProps) {
@@ -76,6 +80,17 @@ export function PhonePhotoCaptureView({
             className="sr-only"
             type="file"
             accept="image/*"
+            aria-hidden="true"
+            tabIndex={-1}
+            disabled={busy}
+          />
+          <input
+            id="phone-native-camera-input"
+            ref={nativeCameraInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            capture="user"
             aria-hidden="true"
             tabIndex={-1}
             disabled={busy}
@@ -125,6 +140,9 @@ export function PhonePhotoCaptureView({
                   <span aria-hidden="true" className="col-start-3 size-12" />
                 )}
               </div>
+              <button type="button" onClick={onUsePhoneCamera} disabled={busy} aria-label="Use Phone Camera" className={`${pickerClass} mx-auto mt-1 w-fit disabled:pointer-events-none disabled:opacity-60`}>
+                Use Phone Camera
+              </button>
               {cameraTransitioning ? <p role="status" className="mt-3 text-center text-sm text-text-muted">Switching cameras...</p> : null}
             </section>
           ) : hasPreview ? (
@@ -149,12 +167,18 @@ export function PhonePhotoCaptureView({
                 <ImageIcon size={18} aria-hidden="true" />
                 Choose another photo
               </button>
+              <button type="button" onClick={onUsePhoneCamera} disabled={busy} className={`${pickerClass} mt-1 w-full disabled:pointer-events-none disabled:opacity-60`}>
+                Use Phone Camera
+              </button>
             </section>
           ) : (
             <section className="mt-6 flex flex-1 flex-col justify-center gap-3 pb-4" aria-label="Choose a profile photo">
               <p className="text-sm text-text-muted">Take a photo or choose one from your library.</p>
               <button type="button" onClick={onStartCamera} disabled={busy} className="min-h-12 rounded-lg bg-brand-primary px-4 text-sm font-bold text-white transition-colors hover:bg-brand-secondary focus-visible:bg-brand-secondary disabled:opacity-60">
                 Take Photo
+              </button>
+              <button type="button" onClick={onUsePhoneCamera} disabled={busy} className="min-h-12 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:bg-sidebar-accent disabled:opacity-60">
+                Use Phone Camera
               </button>
               <button
                 type="button"

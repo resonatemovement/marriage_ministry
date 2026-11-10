@@ -12,6 +12,7 @@ describe("profile photo pipeline", () => {
     expect(profilePhotoSourceError(null)).toBe("Choose a profile photo before uploading.");
     expect(profilePhotoSourceError(new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" }))).toBe("Choose an image smaller than 5 MB.");
     expect(profilePhotoSourceError(new File(["text"], "profile.txt", { type: "text/plain" }))).toBe("Choose a JPG, PNG, WebP, or AVIF image.");
+    expect(profilePhotoSourceError(new File(["heic"], "camera.heic", { type: "image/heic" }))).toBe("Choose a JPG, PNG, WebP, or AVIF image.");
   });
 
   it("uses AVIF as the canonical destination without a browser intermediate", () => {

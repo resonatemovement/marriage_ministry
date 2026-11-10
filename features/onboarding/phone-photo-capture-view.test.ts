@@ -15,11 +15,13 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
     cameraTransitioning: false,
     videoRef: createRef<HTMLVideoElement>(),
     libraryInputRef: createRef<HTMLInputElement>(),
+    nativeCameraInputRef: createRef<HTMLInputElement>(),
     onStartCamera: vi.fn(),
     onTakePhoto: vi.fn(),
     onFlipCamera: vi.fn(),
     onCancelCamera: vi.fn(),
     onChoosePhoto: vi.fn(),
+    onUsePhoneCamera: vi.fn(),
     onRetake: vi.fn(),
     onUpload: vi.fn(),
     ...overrides,
@@ -29,6 +31,16 @@ function markup(overrides: Partial<Parameters<typeof PhonePhotoCaptureView>[0]> 
 }
 
 describe("phone photo capture presentation", () => {
+  it("offers browser camera, native camera, and library fallback from the ready state", () => {
+    const html = markup();
+
+    expect(html).toContain(">Take Photo</button>");
+    expect(html).toContain(">Use Phone Camera</button>");
+    expect(html).toContain(">Photo Library</button>");
+    expect(html).toContain('id="phone-native-camera-input"');
+    expect(html).toContain('capture="user"');
+  });
+
   it("shows the live camera, guidance, accessible controls, and responsive viewport", () => {
     const html = markup({ stage: "camera_live", canSwitchCamera: true });
 
@@ -42,6 +54,8 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain('aria-label="Take photo"');
     expect(html).toContain('aria-label="Flip camera between front and rear cameras"');
     expect(html).toContain("Photo Library");
+    expect(html).toContain('type="file" accept="image/*" capture="user"');
+    expect(html).toContain('aria-label="Use Phone Camera"');
     expect(html).toContain("safe-area-inset-bottom");
   });
 
@@ -68,6 +82,7 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain(">Retake</button>");
     expect(html).toContain(">Use Photo</button>");
     expect(html).toContain("Choose another photo");
+    expect(html).toContain(">Use Phone Camera</button>");
   });
 
   it("disables preview actions while uploading and shows upload progress", () => {
@@ -91,6 +106,7 @@ describe("phone photo capture presentation", () => {
     expect(html).toContain('role="alert"');
     expect(html).toContain("Camera permission was not granted.");
     expect(html).toContain(">Photo Library</button>");
+    expect(html).toContain(">Use Phone Camera</button>");
     expect(html).toContain('aria-hidden="true"');
   });
 

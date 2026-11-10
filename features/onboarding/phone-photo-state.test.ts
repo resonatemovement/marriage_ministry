@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { nextPhonePhotoStage, phonePhotoStageIsBusy } from "./phone-photo-state";
+import { canStartPhonePhotoUpload, nextPhonePhotoStage, phonePhotoStageIsBusy } from "./phone-photo-state";
 
 describe("phone photo selection states", () => {
   it("moves a selected camera or library file into preview before upload", () => {
@@ -18,5 +18,12 @@ describe("phone photo selection states", () => {
     expect(phonePhotoStageIsBusy("uploading")).toBe(true);
     expect(phonePhotoStageIsBusy("preview")).toBe(false);
     expect(phonePhotoStageIsBusy("completed")).toBe(false);
+  });
+
+  it("allows one confirmed upload and blocks missing-photo, duplicate, or completed uploads", () => {
+    expect(canStartPhonePhotoUpload(true, false, "preview")).toBe(true);
+    expect(canStartPhonePhotoUpload(true, true, "uploading")).toBe(false);
+    expect(canStartPhonePhotoUpload(false, false, "preview")).toBe(false);
+    expect(canStartPhonePhotoUpload(true, false, "completed")).toBe(false);
   });
 });
