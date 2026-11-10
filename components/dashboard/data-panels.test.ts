@@ -6,19 +6,19 @@ import { AssignmentQueuePanel } from "./assignment-queue-panel";
 import { AttentionPanel } from "./attention-panel";
 import { TeamAvailabilityCarousel } from "./team-availability-carousel";
 import { MetricCard } from "./metric-card";
-import { UpcomingPanel } from "./upcoming-panel";
 import { WorkflowPanel } from "./workflow-panel";
 import { dashboardMetrics } from "@/features/dashboard/data";
 
 describe("Admin dashboard live-data presentation", () => {
-  it("shows explicit unavailable states instead of fictional queue or activity data", () => {
+  it("shows explicit unavailable queue states instead of fictional operational data", () => {
     const markup = renderToStaticMarkup(createElement("div", null,
-      createElement(AttentionPanel, { items: [] }), createElement(TeamAvailabilityCarousel, { teams: [], error: false }), createElement(AssignmentQueuePanel), createElement(UpcomingPanel),
+      createElement(AttentionPanel, { items: [] }), createElement(TeamAvailabilityCarousel, { teams: [], error: false }), createElement(AssignmentQueuePanel),
     ));
-    expect(markup.match(/Not yet available\./g)).toHaveLength(1);
     expect(markup).toContain("Team Availability");
     expect(markup).not.toContain("Team Capacity");
     expect(markup).toContain("Assignment queue details are not yet available.");
+    expect(markup).not.toContain("Upcoming Activity");
+    expect(markup).not.toContain("Next operational checkpoints");
     expect(markup).not.toContain("Maya &amp; Jordan");
     expect(markup).not.toContain("AUG 19");
     expect(markup).not.toContain("63%");

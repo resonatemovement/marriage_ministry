@@ -1,7 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: main
+Current working branch: feature/remove-upcoming-activity
 Repository: resonatemovement/marriage_ministry
+
+## Remove Upcoming Activity from Dashboard (November 10, 2026)
+
+- Removed the Upcoming Activity placeholder and its dashboard-only component. The remaining Assignment Queue placeholder is preserved in a single-column row, avoiding a vacant second grid column. Summary metrics, Needs Attention, Team Availability, Ministry Progression, Counseling Sessions, and Workspace routes are unchanged.
+- Added a Dashboard composition regression test and updated the panel test to ensure Upcoming Activity copy is absent while existing dashboard sections remain. Focused tests (6 across 3 files), typecheck, lint, production build, and `git diff --check` pass. Browser-based responsive visual verification has not been performed; the markup confirms the former two-column placeholder row is removed.
+- Current branch: `feature/remove-upcoming-activity`; changes are not yet committed, merged, or deployed. No database or authorization changes. All seven stashes are preserved. Next: verify the dedicated `marriage-ministry-dev` Vercel target, commit the focused changes and this state update, merge/push to `main`, confirm the exact deployment reaches READY, delete the merged feature branch normally, and verify clean synchronized `main`.
 
 ## Other Outcomes Grid Layout (November 10, 2026)
 

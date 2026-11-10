@@ -3,7 +3,6 @@ import { AssignmentQueuePanel } from "@/components/dashboard/assignment-queue-pa
 import { TeamAvailabilityCarousel } from "@/components/dashboard/team-availability-carousel";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { UpcomingPanel } from "@/components/dashboard/upcoming-panel";
 import { WorkflowPanel } from "@/components/dashboard/workflow-panel";
 import { dashboardMetrics } from "@/features/dashboard/data";
 import { filterDashboardAvailabilityTeams } from "@/features/dashboard/team-availability";
@@ -39,10 +38,7 @@ export async function DashboardPage({ identity }: { identity: AuthenticatedIdent
         <WorkflowPanel progression={progressionResult.error ? null : progressionResult.progression} canNavigate={isAdmin} />
       </div>
 
-      <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.55fr)_minmax(21rem,0.85fr)]">
-        <AssignmentQueuePanel />
-        <UpcomingPanel />
-      </div>
+      <div className="mt-7"><AssignmentQueuePanel /></div>
       {!isAdmin ? <p className="mt-4 text-xs text-text-muted">Couple identities and Case details are available through your authorized Workspace, not from campus-wide Dashboard aggregates.</p> : null}
     </main>
   </>;
