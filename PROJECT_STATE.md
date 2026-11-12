@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 10, 2026
-Current working branch: feature/branded-error-pages
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Branded 404 and Photo Handoff Error Pages (November 12, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - Added the root App Router `app/not-found.tsx` with Resonate branding, the approved missing-page message, responsive styling, and a “Return to Resonate” link to `/` (the existing public landing route; no login redirect loop). Unknown paths retain Next.js 404 behavior.
 - Replaced the unbranded unavailable state on `/onboarding/photo-handoff/[token]` with a branded mobile-first `PhotoHandoffUnavailable` presentation. Expired, invalid, completed, and replaced links receive the same helpful guidance to generate a new desktop QR code. The error component never receives the token, provides no retry/login action, and the existing server-side validator remains unchanged. Valid links still render the existing `PhonePhotoUpload` interface.
 - Focused tests passed (8 tests): branded 404 and safe route, handoff expired/completed/invalid-or-replaced unavailable guidance, synthetic-token non-disclosure in error markup, no sign-in requirement/action, responsive classes, and unchanged valid camera component rendering. `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` passed. A local production-server request to a nonexistent path returned HTTP 404 and the branded page. Browser/device testing was not performed. No real handoff tokens were created or consumed, and no database changes were made.
-- Work is on `feature/branded-error-pages`; commit, merge/push, and verified dedicated DEV deployment are pending. All seven stashes remain preserved; actual Resonate PROD was not accessed.
+- Implementation commit `7221b2ac62f79f2a8405bb3887af8559319568b9` was fast-forward merged and pushed to `main`. Vercel Git integration did not create a deployment for the pushed SHA, so after re-verifying dedicated DEV project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) and its repository link, a CLI deployment was created with that explicit project ID from clean `main` at this implementation SHA. Deployment `dpl_6X1KRoq2v5ZLLy1GhsxXskpoKYvq` reached `READY` with the correct project ID; Vercel labels the target `production` within this dedicated DEV project and the CLI deployment metadata does not expose a Git SHA. All seven stashes remain preserved; actual Resonate PROD was not accessed.
 
 ## Account Activation Email Branding (November 10, 2026)
 
