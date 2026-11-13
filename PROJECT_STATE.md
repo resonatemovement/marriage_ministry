@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 13, 2026
-Current working branch: feature/404-button-label
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Branded 404 and Photo Handoff Error Pages (November 12, 2026)
@@ -13,7 +13,7 @@ Repository: resonatemovement/marriage_ministry
 ## 404 Button Label (November 13, 2026)
 
 - Changed only the global 404 link's visible label to “Return to Marriage Ministry”; its Resonate branding, accessible label, `/` destination, styling, responsive layout, 404 behavior, and photo-handoff unavailable page are unchanged. Updated the focused global not-found test assertion.
-- Focused not-found tests pass (2 tests); `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` pass. Browser/manual verification was not performed. The dedicated Vercel project was verified as `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), linked to `resonatemovement/marriage_ministry` with production branch `main`. Commit, merge, push, and deployment verification are pending. All seven existing stashes are preserved; actual Resonate PROD was not accessed.
+- Focused not-found tests pass (2 tests); `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` pass. Browser/manual verification was not performed. Feature commit `0d636a6c6e3b23155a14892b71ab8e10e2fd7f46` was fast-forward merged and pushed to `origin/main`. Dedicated Vercel project `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`) is linked to `resonatemovement/marriage_ministry` with production branch `main`; deployment `dpl_AUvJAFFpfWa2eww2Hofxb5QuiNph` reached `READY`, with deployment metadata confirming the exact commit SHA and branch. Vercel labels the target `production` within this dedicated DEV project; actual Resonate PROD was not accessed. The merged feature branch is pending cleanup; all seven existing stashes are preserved.
 
 ## Account Activation Email Branding (November 10, 2026)
 
