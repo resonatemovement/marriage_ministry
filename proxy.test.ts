@@ -35,4 +35,16 @@ describe("proxy cron routing", () => {
     expect(createSupabaseServerClient).toHaveBeenCalledOnce();
     expect(getClaims).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    "/onboarding/photo-handoff/synthetic-token",
+    "/api/onboarding/photo-handoff/synthetic-token",
+  ])("prevents caching and referrer leakage for handoff routes (%s)", async (path) => {
+    createSupabaseServerClient.mockReturnValue({ auth: { getClaims } });
+
+    const response = await proxy(request(path));
+
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+  });
 });

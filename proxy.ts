@@ -9,11 +9,11 @@ export function bypassesSessionProxy(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  if (bypassesSessionProxy(request.nextUrl.pathname)) {
-    return NextResponse.next({ request });
-  }
-
   let response = NextResponse.next({ request });
+
+  if (bypassesSessionProxy(request.nextUrl.pathname)) {
+    return response;
+  }
 
   const supabase = createSupabaseServerClient({
     getAll: () => request.cookies.getAll(),
@@ -29,6 +29,11 @@ export async function proxy(request: NextRequest) {
   });
 
   await supabase.auth.getClaims();
+
+  if (request.nextUrl.pathname.startsWith("/onboarding/photo-handoff/") || request.nextUrl.pathname.startsWith("/api/onboarding/photo-handoff/")) {
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("Referrer-Policy", "no-referrer");
+  }
 
   return response;
 }

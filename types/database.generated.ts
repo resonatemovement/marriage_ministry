@@ -2545,6 +2545,10 @@ export type Database = {
           id: string
           profile_id: string
           token_hash: string
+          upload_attempt_id: string | null
+          upload_claimed_at: string | null
+          upload_object_path: string | null
+          upload_previous_photo_path: string | null
         }
         Insert: {
           completed_at?: string | null
@@ -2553,6 +2557,10 @@ export type Database = {
           id?: string
           profile_id: string
           token_hash: string
+          upload_attempt_id?: string | null
+          upload_claimed_at?: string | null
+          upload_object_path?: string | null
+          upload_previous_photo_path?: string | null
         }
         Update: {
           completed_at?: string | null
@@ -2561,6 +2569,10 @@ export type Database = {
           id?: string
           profile_id?: string
           token_hash?: string
+          upload_attempt_id?: string | null
+          upload_claimed_at?: string | null
+          upload_object_path?: string | null
+          upload_previous_photo_path?: string | null
         }
         Relationships: [
           {
@@ -3158,6 +3170,10 @@ export type Database = {
           recipient_email: string
         }[]
       }
+      claim_profile_photo_handoff_upload: {
+        Args: { target_attempt_id: string; target_token_hash: string }
+        Returns: Json
+      }
       cleanup_intake_permanent_delete_verifier_artifacts: {
         Args: { target_group_ids: string[] }
         Returns: Json
@@ -3255,6 +3271,10 @@ export type Database = {
       }
       enter_onboarding: { Args: never; Returns: undefined }
       expire_resource_uploads: { Args: never; Returns: number }
+      finalize_profile_photo_handoff_upload: {
+        Args: { target_attempt_id: string; target_token_hash: string }
+        Returns: boolean
+      }
       finalize_resource_upload: {
         Args: { target_upload_id: string }
         Returns: {
@@ -3574,6 +3594,10 @@ export type Database = {
         Returns: boolean
       }
       record_onboarding_photo: { Args: never; Returns: undefined }
+      release_profile_photo_handoff_upload: {
+        Args: { target_attempt_id: string; target_token_hash: string }
+        Returns: Json
+      }
       reopen_participant_homework: {
         Args: { target_case_id: string; target_progress_id: string }
         Returns: string

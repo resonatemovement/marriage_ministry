@@ -5,6 +5,10 @@ export function profilePhotoPath(profileId: string) {
   return `profiles/${profileId}/avatar.avif`;
 }
 
+export function profilePhotoHandoffPath(profileId: string, attemptId: string) {
+  return `profiles/${profileId}/handoffs/${attemptId}.avif`;
+}
+
 export function profilePhotoSourceError(file: Pick<File, "name" | "size" | "type"> | null) {
   if (!file || file.size === 0) return "Choose a profile photo before uploading.";
   if (file.size > PROFILE_PHOTO_MAX_SOURCE_SIZE) return "Choose an image smaller than 5 MB.";

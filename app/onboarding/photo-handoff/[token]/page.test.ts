@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import PhotoHandoffPage from "./page";
+import PhotoHandoffPage, { metadata } from "./page";
 import { validatePhotoHandoff } from "@/features/onboarding/handoff-actions";
 
 vi.mock("@/features/onboarding/handoff-actions", () => ({ validatePhotoHandoff: vi.fn() }));
@@ -14,6 +14,11 @@ const testToken = "synthetic-handoff-test-token";
 
 describe("photo handoff route", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("prevents indexing and token referrer propagation", () => {
+    expect(metadata.referrer).toBe("no-referrer");
+    expect(metadata.robots).toEqual({ index: false, follow: false });
+  });
 
   it.each([
     ["expired", "This photo handoff has expired."],

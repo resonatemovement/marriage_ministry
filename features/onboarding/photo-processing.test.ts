@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PROFILE_PHOTO_CONTENT_TYPE, profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contract";
+import { PROFILE_PHOTO_CONTENT_TYPE, profilePhotoHandoffPath, profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contract";
 
 describe("profile photo pipeline", () => {
   it("accepts a valid image larger than 1 MB and smaller than 5 MB", () => {
@@ -18,5 +18,9 @@ describe("profile photo pipeline", () => {
   it("uses AVIF as the canonical destination without a browser intermediate", () => {
     expect(PROFILE_PHOTO_CONTENT_TYPE).toBe("image/avif");
     expect(profilePhotoPath("profile-id")).toBe("profiles/profile-id/avatar.avif");
+  });
+
+  it("uses a unique, profile-scoped object path for each phone upload attempt", () => {
+    expect(profilePhotoHandoffPath("profile-id", "attempt-id")).toBe("profiles/profile-id/handoffs/attempt-id.avif");
   });
 });

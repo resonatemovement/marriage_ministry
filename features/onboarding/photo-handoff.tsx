@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPhotoHandoff, photoHandoffStatus } from "./handoff-actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { profilePhotoPath, profilePhotoSourceError } from "./profile-photo-contract";
+import { profilePhotoSourceError } from "./profile-photo-contract";
 import { canStartPhonePhotoUpload, phonePhotoStageIsBusy, type PhonePhotoStage } from "./phone-photo-state";
 import { attachPhotoChangeListener, isSupportedPhonePhoto } from "./phone-photo-selection";
 import { CAMERA_DEFAULT_ZOOM, CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CAMERA_ZOOM_STEP, cameraUnavailableMessage, canFlipCamera, captureCameraFrame, frontCameraConstraints, stopCameraStream, switchCameraStream, type CameraFacingMode } from "./phone-camera";
@@ -15,7 +15,7 @@ type HandoffProps = { profileId: string; onCompleted: (url: string) => void };
 export function PhotoHandoff({ profileId, onCompleted }: HandoffProps) {
   const [qr, setQr] = useState(""); const [token, setToken] = useState(""); const [error, setError] = useState(""); const [expired, setExpired] = useState(false);
   async function start() { setError(""); setExpired(false); const result = await createPhotoHandoff(); if (!result.success) return setError(result.error); setToken(result.token); setQr(await QRCode.toDataURL(result.url)); }
-  const refreshPhoto = useCallback(async () => { const { data } = await createBrowserSupabaseClient().storage.from("profile-photos").createSignedUrl(profilePhotoPath(profileId), 3600); if (data?.signedUrl) onCompleted(data.signedUrl); }, [onCompleted, profileId]);
+  const refreshPhoto = useCallback(async () => { const client = createBrowserSupabaseClient(); const { data: profile } = await client.from("profiles").select("photo_path").eq("id", profileId).maybeSingle(); if (!profile?.photo_path) return; const { data } = await client.storage.from("profile-photos").createSignedUrl(profile.photo_path, 3600); if (data?.signedUrl) onCompleted(data.signedUrl); }, [onCompleted, profileId]);
   useEffect(() => { if (!token) return; const timer = setInterval(async () => { const result = await photoHandoffStatus(token); if (result.state === "completed") { clearInterval(timer); setToken(""); setQr(""); await refreshPhoto(); } else if (result.state !== "active") { clearInterval(timer); setToken(""); setQr(""); setExpired(true); } }, 5000); return () => clearInterval(timer); }, [refreshPhoto, token]);
   return <div className="mt-3"><button type="button" onClick={start} className="h-10 rounded-md bg-white px-3 text-sm font-semibold text-brand-primary ring-1 ring-border">{qr ? "Start a new phone handoff" : "Take photo on phone"}</button>{qr ? <div className="mt-3"><img src={qr} alt="Scan to take your profile photo on your phone" className="size-44"/><p className="mt-2 text-xs text-text-muted">Scan this code with your phone. This secure link expires in 10 minutes.</p><button type="button" onClick={refreshPhoto} className="mt-2 text-xs font-semibold text-brand-primary underline">Refresh photo status</button></div> : null}{expired ? <p role="status" className="mt-3 text-sm text-text-muted">This phone handoff expired. Start a new one to continue.</p> : null}{error ? <p role="alert" className="mt-3 text-sm text-danger-strong">{error}</p> : null}</div>;
 }
