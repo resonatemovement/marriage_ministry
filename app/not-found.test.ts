@@ -19,7 +19,7 @@ describe("global not-found page", () => {
     const markup = renderToStaticMarkup(createElement(NotFound));
 
     expect(markup).toContain('href="/"');
-    expect(markup).toContain("Return to Resonate");
+    expect(markup).toContain("Return to Marriage Ministry");
     expect(markup).not.toContain('href="/login"');
   });
 });

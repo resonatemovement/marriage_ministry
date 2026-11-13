@@ -11,7 +11,7 @@ export default function NotFound() {
           <h1 id="not-found-heading" className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">Page not found</h1>
           <p className="mt-4 text-base leading-7 text-text-muted">We couldn&apos;t find the page you&apos;re looking for. The link may be incorrect or no longer available.</p>
           <Link href="/" aria-label="Return to Resonate home" className="mt-7 inline-flex min-h-11 items-center justify-center rounded-md bg-brand-primary px-5 text-sm font-bold text-white transition hover:bg-brand-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
-            Return to Resonate
+            Return to Marriage Ministry
           </Link>
         </div>
       </section>
