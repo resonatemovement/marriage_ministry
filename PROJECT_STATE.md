@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 13, 2026
-Current working branch: main
+Current working branch: feature/hide-mobile-phone-handoff
 Repository: resonatemovement/marriage_ministry
+
+## Hide Phone Handoff on Mobile (November 13, 2026)
+
+- Added a CSS primary-pointer capability rule that hides only the onboarding phone-handoff/QR entry block on coarse-pointer devices such as phones and tablets. It does not use viewport width, user-agent sniffing, client-side device state, or JavaScript detection, avoiding hydration mismatches and post-hydration visibility flashes. Desktop/pointer-fine devices retain the existing handoff button and QR behavior; hidden markup collapses completely with no gap.
+- The onboarding `ProfilePhotoField` remains unchanged for direct photo capture/library selection and upload. The separate `/onboarding/photo-handoff/[token]` route still validates and renders the phone camera interface normally when reached from a previously generated desktop QR code; no handoff route, token, camera, upload, polling, concurrency-security, authorization, or database behavior changed.
+- New focused tests cover desktop-default visibility, coarse-pointer hiding without viewport-width logic, absence of client-side device detection, intact direct photo controls, and the unchanged scanned-QR destination. Existing phone camera presentation, QR URL, and valid-handoff page tests pass. Typecheck, lint, and `git diff --check` passed; production build is still running. Browser/physical-device verification was not performed; Android device testing remains deferred. The prior concurrency implementation and DEV security verification remain documented below; mobile handoff-button removal is intentionally limited to the onboarding entry block.
+- This change is on `feature/hide-mobile-phone-handoff`; commit, merge, push, and dedicated DEV deployment verification are pending. All seven stashes are preserved; actual Resonate PROD was not accessed.
 
 ## Secure Photo Handoff Upload Concurrency (November 13, 2026)
 
