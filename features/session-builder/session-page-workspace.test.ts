@@ -45,7 +45,9 @@ describe("saved Session workspace wiring", () => {
 
   it("constructs Homework only for the selected saved-Session workspace", async () => {
     const page = await SessionDetailPage({ params: Promise.resolve({ sessionId: "session-id" }), searchParams: Promise.resolve({ workspace: "homework" }) });
-    expect(findEditor(page)?.props.homework).toBeDefined();
+    const homework = findEditor(page)?.props.homework as ReactElement | undefined;
+    expect(homework).toBeDefined();
+    expect(homework?.key).toBe("homework-session-id");
   });
 
   it("places Published beside the page title with the positive lifecycle treatment", async () => {
