@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync("supabase/migrations/20261117100000_homework_side_by_side_responses.sql", "utf8");
+const migration = readFileSync("supabase/migrations/20261116110000_homework_side_by_side_responses.sql", "utf8");
 
 describe("Side-by-Side Homework migration", () => {
   it("reuses the versioned Long Answer and per-block answer schema without table, RLS, or grant broadening", () => {
