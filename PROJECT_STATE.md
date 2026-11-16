@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 16, 2026
-Current working branch: main
+Current working branch: feature/mobile-form-zoom-prevention
 Repository: resonatemovement/marriage_ministry
+
+## Mobile Form Focus Zoom Prevention (November 16, 2026)
+
+- Added a global 16px minimum font size for text-entry inputs, textareas, selects, comboboxes, searchboxes, textboxes, and editable content on coarse-pointer/touch-primary devices. Desktop typography is unchanged; controls explicitly using larger Tailwind text-size utilities are excluded from the override. Non-text inputs (checkboxes, radios, buttons, file, range, and hidden fields) are not targeted.
+- Documented the mobile/touch-primary form typography standard in `AGENTS.md`. Existing shared Input and SelectTrigger defaults remain `text-sm` on desktop and receive the centralized mobile safeguard. No page-specific styling, validation, authentication, form behavior, handoff behavior, or database configuration changed.
+- Source-level regression coverage passes for the global control selector, touch-primary scope, desktop preservation, explicit larger-size exemptions, and absence of viewport zoom restrictions or pinch-zoom interception. Relevant auth/onboarding tests pass (85 tests across 23 files), as do the typography tests (3 tests), typecheck, lint, production build, and `git diff --check`. No browser automation configuration/dependency is present in the repository; computed-style browser verification and physical iPhone Safari behavior have not been tested. Password-reset flow verification remains pending and Android device testing remains deferred; the mobile phone-handoff entry visibility rule remains unchanged and is still pending browser/device confirmation.
+- Implementation is on `feature/mobile-form-zoom-prevention`; commit, merge, push, and dedicated DEV deployment verification are pending. All seven stashes are preserved; actual Resonate PROD was not accessed.
 
 ## Shared Onboarding Completion Validation (November 16, 2026)
 

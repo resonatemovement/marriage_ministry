@@ -22,6 +22,7 @@ Prefer extracting a small shared primitive over creating parallel feature-specif
 - Preserve the current Resonate visual system and avoid unrelated redesign during functional work.
 - Button/action controls should avoid decorative outlines or rings; keyboard focus must remain visible through a non-outline state. This does not broadly change form-field focus styling.
 - Accessible labels, focus states, keyboard behavior, and field-level error states are required.
+- On mobile and touch-primary devices, editable form controls must have a computed font size of at least 16px to prevent automatic focus zoom in iOS Safari. Preserve larger control typography and all desktop font sizes; do not disable intentional browser zoom.
 - Numeric fields must follow project-wide numeric input conventions when introduced. Use AVIF by default for application image assets unless compatibility requires another format.
 
 ## Auth, Roles, and Workspaces

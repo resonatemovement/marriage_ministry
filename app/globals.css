@@ -103,6 +103,30 @@ body {
   .onboarding-phone-handoff {
     display: none;
   }
+
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="search"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="email"],
+    input[type="password"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="month"],
+    input[type="week"],
+    input[type="number"],
+    textarea,
+    select,
+    [role="combobox"],
+    [role="searchbox"],
+    [role="textbox"],
+    [contenteditable="true"]
+  ):not(.text-lg):not(.text-xl):not(.text-2xl):not(.text-3xl):not(.text-4xl):not(.text-5xl):not(.text-6xl):not(.text-7xl):not(.text-8xl):not(.text-9xl) {
+    font-size: 16px;
+  }
 }
 
 h1,
