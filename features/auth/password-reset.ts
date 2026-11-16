@@ -1,18 +1,11 @@
 import { passwordError } from "./password-validation";
+import { isValidEmail, normalizeEmail } from "./email-validation";
 
 export const PASSWORD_RESET_CONFIRMATION =
   "If an account exists with that email address, you'll receive a link to reset your password. Please check your inbox.";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function normalizeResetEmail(value: string) {
-  return value.trim().toLowerCase();
-}
-
-export function isValidResetEmail(value: string) {
-  const email = normalizeResetEmail(value);
-  return email.length <= 254 && EMAIL_PATTERN.test(email);
-}
+export const normalizeResetEmail = normalizeEmail;
+export const isValidResetEmail = isValidEmail;
 
 export function passwordResetRedirect(appUrl: string | undefined) {
   if (!appUrl) throw new Error("Password reset origin is not configured.");

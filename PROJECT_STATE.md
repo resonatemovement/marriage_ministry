@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 16, 2026
-Current working branch: main (final post-merge state)
+Current working branch: feature/sign-in-form-validation
 Repository: resonatemovement/marriage_ministry
+
+## Sign In Form Validation (November 16, 2026)
+
+- Sign In is disabled unless the email is valid, the password is nonempty, and authentication is not in progress. Email/password values remain controlled with the standard `email` and `current-password` autocomplete hints; field edits and autofill input events update React state. The submit handler repeats validation and uses a synchronous in-flight ref to prevent invalid Enter submissions and rapid duplicate requests. Authentication errors remain generic and failed requests restore the form. Login does not apply the new-password minimum length; the existing auth call, Forgot Password link, show/hide control, and role-based `/auth/entry` navigation are preserved.
+- Extracted the shared email normalization/validation used by Sign In and Forgot Password without changing reset behavior. Mobile 16px form styling remains supplied by the existing global touch-control rule; desktop typography is unchanged.
+- The auth suite passed (27 tests across 7 files); `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` passed. Tests cover empty/partial/invalid/valid values, clearing either value, nonempty short existing passwords, loading disablement, autocomplete and hydration-time autofill synchronization, duplicate-submit guard, and existing auth/reset control contracts. Autofill compatibility is verified by code/test contracts, not by a real browser password manager; no browser/device test was run.
+- The user subsequently confirmed successful password-reset use. This is recorded as a user-confirmed result, not independent end-to-end verification by this agent. The previously user-confirmed iPhone verification for mobile form focus-zoom prevention and mobile handoff visibility remains in force; Android physical-device testing remains deferred.
+- Current release status: implementation and documentation are on this feature branch; validation is complete. Merge, push, and dedicated DEV deployment verification are pending.
 
 ## Forgot Password Implementation (November 16, 2026)
 

@@ -1,10 +1,11 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { canSubmitLogin } from "./login-validation";
 
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
@@ -13,28 +14,46 @@ export function LoginForm({ next }: { next?: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInProgress = useRef(false);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Sync values filled by the browser before React hydrated the form.
+    if (emailInput.current?.value) setEmail(emailInput.current.value);
+    if (passwordInput.current?.value) setPassword(passwordInput.current.value);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email || !password) {
+    if (!canSubmitLogin(email, password, isSubmitting)) {
       setError("Enter your email address and password.");
       return;
     }
+    if (submissionInProgress.current) return;
 
     setError("");
+    submissionInProgress.current = true;
     setIsSubmitting(true);
-    const supabase = createBrowserSupabaseClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (signInError) {
+      if (signInError) {
+        setError("Unable to sign in with those credentials.");
+        submissionInProgress.current = false;
+        setIsSubmitting(false);
+        return;
+      }
+
+      const entry = next ? `/auth/entry?next=${encodeURIComponent(next)}` : "/auth/entry";
+      router.replace(entry);
+      router.refresh();
+    } catch {
       setError("Unable to sign in with those credentials.");
+      submissionInProgress.current = false;
       setIsSubmitting(false);
-      return;
     }
-
-    const entry = next ? `/auth/entry?next=${encodeURIComponent(next)}` : "/auth/entry";
-    router.replace(entry);
-    router.refresh();
   }
 
   return (
@@ -46,6 +65,7 @@ export function LoginForm({ next }: { next?: string }) {
           name="email"
           type="email"
           autoComplete="email"
+          ref={emailInput}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-text-primary outline-none transition placeholder:text-text-muted focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20"
@@ -63,6 +83,7 @@ export function LoginForm({ next }: { next?: string }) {
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
+            ref={passwordInput}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="h-11 w-full rounded-md border border-border bg-white px-3 pr-11 text-sm text-text-primary outline-none transition placeholder:text-text-muted focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20"
@@ -81,7 +102,7 @@ export function LoginForm({ next }: { next?: string }) {
       {error ? <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">{error}</p> : null}
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={!canSubmitLogin(email, password, isSubmitting)}
         className="h-11 w-full rounded-md bg-brand-primary px-4 text-sm font-bold text-white transition hover:bg-sidebar-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary disabled:opacity-70"
       >
         {isSubmitting ? "Signing in..." : "Sign in"}
