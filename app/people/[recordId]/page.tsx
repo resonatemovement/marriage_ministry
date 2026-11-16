@@ -11,17 +11,37 @@ import { getAdminPrepareEnrichDocuments } from "@/features/prepare-enrich/server
 import { getCounselingOversightProgress } from "@/features/counseling-sessions/oversight-queries";
 import { getOversightCounselorNodes } from "@/features/counseling-sessions/oversight-rail-queries";
 import { validateTeamAvailabilityReturnTo } from "@/features/dashboard/team-availability";
+import { getAdminOnboardingReadiness } from "@/features/onboarding/admin-readiness";
 import type { PeopleBreadcrumb } from "@/features/people/breadcrumbs";
+import type { PeopleDetailMember } from "@/features/people/detail-model";
+
+async function withAdminOnboardingReadiness(member: PeopleDetailMember): Promise<PeopleDetailMember> {
+  if (member.pending || member.accountAccessState !== "active_account" || member.onboardingComplete) return member;
+  const readiness = await getAdminOnboardingReadiness(member.id);
+  if (!readiness) return { ...member, onboardingReadinessVerified: false };
+  return {
+    ...member,
+    onboardingMissing: readiness.missing,
+    onboardingReadinessVerified: true,
+    onboardingStateEligible: readiness.stateEligible,
+    onboardingCompletionEligible: readiness.eligible,
+  };
+}
 
 export default async function PeopleDetailRoute({ params, searchParams }: { params: Promise<{ recordId: string }>; searchParams: Promise<{ trail?: string; returnTo?: string; from?: string }> }) {
   const { recordId } = await params;
   const { trail: rawTrail, returnTo, from } = await searchParams;
   const identity = await requireOneOfWorkspaces(["admin", "campus_lead"], `/people/${recordId}`);
-  const detail = await getPeopleDetail(recordId);
+  let detail = await getPeopleDetail(recordId);
   if (!detail) notFound();
+  const isAdmin = identity.workspaces.includes("admin");
+  if (isAdmin) {
+    detail = detail.kind === "profile"
+      ? { ...detail, member: await withAdminOnboardingReadiness(detail.member) }
+      : { ...detail, members: await Promise.all(detail.members.map(withAdminOnboardingReadiness)) };
+  }
   const trail = parsePeopleTrail(rawTrail, recordId);
   const parents = (await Promise.all(trail.map((id) => getPeopleDetail(id)))).filter((parent): parent is NonNullable<typeof parent> => Boolean(parent));
-  const isAdmin = identity.workspaces.includes("admin");
   const [context, hierarchy, prepareEnrich, oversightProgress, oversightChildren] = await Promise.all([
     isAdmin ? getPeopleDetailActionContext(detail) : identity.workspaces.includes("campus_lead") ? getPeopleDetailActionContext(detail, "campus_lead") : null,
     isAdmin && detail.kind === "group" && ["campus_leads", "coaches", "counselors"].includes(detail.type) ? getOperationalHierarchy() : null,

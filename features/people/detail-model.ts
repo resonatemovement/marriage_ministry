@@ -25,6 +25,9 @@ export interface PeopleDetailMember {
   onboardingStatus: string;
   onboardingComplete: boolean;
   onboardingMissing?: string[];
+  onboardingReadinessVerified?: boolean;
+  onboardingStateEligible?: boolean;
+  onboardingCompletionEligible?: boolean;
   photoUrl: string | null;
   lifecycleStatus?: InvitationLifecycleStatus;
   deliveryStatus?: InvitationDeliveryStatus;

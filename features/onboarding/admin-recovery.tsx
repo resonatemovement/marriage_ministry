@@ -12,9 +12,9 @@ import { profilePhotoSourceError } from "./profile-photo-contract";
 import { photoSelectionFeedback, photoUploadFailed, photoUploadStarted, photoUploadSucceeded, PHOTO_UPLOAD_SUCCESS } from "./photo-feedback";
 
 type Campus = { id: string; name: string; active: boolean };
-type Props = { profileId: string; firstName: string; lastName: string; phone: string | null; campusId: string | null; email: string | null; missing: string[]; campuses: Campus[] };
+type Props = { profileId: string; firstName: string; lastName: string; phone: string | null; campusId: string | null; email: string | null; missing: string[]; readinessVerified: boolean; stateEligible: boolean; completionEligible: boolean; campuses: Campus[] };
 
-export function AdminOnboardingRecovery({ profileId, firstName, lastName, phone, campusId, email, missing, campuses }: Props) {
+export function AdminOnboardingRecovery({ profileId, firstName, lastName, phone, campusId, email, missing, readinessVerified, stateEligible, completionEligible, campuses }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +25,7 @@ export function AdminOnboardingRecovery({ profileId, firstName, lastName, phone,
   const [phoneValue, setPhoneValue] = useState(formatPhoneInput(phone ?? ""));
   const photoInput = useRef<HTMLInputElement>(null);
 
-  const requirementsComplete = missing.length === 0;
+  const requirementsComplete = readinessVerified && completionEligible;
 
   function selectPhoto(file: File | null) {
     setSelectedPhoto(file);
@@ -58,8 +58,8 @@ export function AdminOnboardingRecovery({ profileId, firstName, lastName, phone,
 
   return <section className="mt-5 min-w-0 rounded-md border border-warning-strong/25 bg-warning-soft p-4">
     <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0"><p className="text-sm font-semibold text-text-primary">{requirementsComplete ? "Onboarding ready to complete" : "Onboarding incomplete"}</p>{requirementsComplete ? <p className="mt-1 text-sm text-text-muted">All required onboarding fields are present.</p> : <p className="mt-1 text-sm text-text-muted">Missing: {missing.join(", ")}</p>}<p className="mt-1 text-xs text-text-muted">Email is read-only: {email ?? "Not provided"}</p></div>
-      {!requirementsComplete ? <button type="button" onClick={() => setOpen((value) => !value)} className="min-h-9 rounded-md bg-brand-primary px-3 py-1.5 text-sm font-semibold text-white">{open ? "Close" : "Recover onboarding"}</button> : null}
+      <div className="min-w-0"><p className="text-sm font-semibold text-text-primary">{!readinessVerified ? "Unable to verify onboarding readiness" : requirementsComplete ? "Onboarding ready to complete" : "Onboarding incomplete"}</p>{!readinessVerified ? <p className="mt-1 text-sm text-text-muted">Refresh this page and try again. Completion is unavailable until requirements can be verified.</p> : requirementsComplete ? <p className="mt-1 text-sm text-text-muted">All required onboarding fields are present.</p> : <p className="mt-1 text-sm text-text-muted">Missing: {missing.join(", ")}</p>}<p className="mt-1 text-xs text-text-muted">Email is read-only: {email ?? "Not provided"}</p></div>
+      {readinessVerified && !requirementsComplete && stateEligible ? <button type="button" onClick={() => setOpen((value) => !value)} className="min-h-9 rounded-md bg-brand-primary px-3 py-1.5 text-sm font-semibold text-white">{open ? "Close" : "Recover onboarding"}</button> : null}
     </div>
     {open && !requirementsComplete ? <>
       <form className="mt-4 grid min-w-0 gap-3" onSubmit={(event) => { event.preventDefault(); setError(""); const data = new FormData(event.currentTarget); startTransition(async () => { const result = await recoverIncompleteProfile(data); if ("error" in result) return setError(result.error); setError("Details saved. Supply the required photo, then complete onboarding."); }); }}>
@@ -79,7 +79,7 @@ export function AdminOnboardingRecovery({ profileId, firstName, lastName, phone,
         <button type="submit" disabled={pending} className="min-h-10 w-full rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{pending ? "Saving..." : "Save recovery fields"}</button>
       </form>
     </> : null}
-    <button type="button" disabled={pending || !requirementsComplete} onClick={() => startTransition(async () => { const result = await completeIncompleteProfile(profileId); setError("error" in result ? result.error : "Onboarding completed."); if (!("error" in result)) router.refresh(); })} className="mt-3 w-full rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary disabled:opacity-60 sm:w-auto">{requirementsComplete ? "Complete onboarding" : "Complete onboarding after required fields are present"}</button>
+    {requirementsComplete && stateEligible ? <button type="button" disabled={pending} onClick={() => startTransition(async () => { const result = await completeIncompleteProfile(profileId); setError("error" in result ? result.error : "Onboarding completed."); if (!("error" in result)) router.refresh(); })} className="mt-3 w-full rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary disabled:opacity-60 sm:w-auto">Complete onboarding</button> : null}
     {error && !open ? <p role="alert" className="mt-3 text-sm text-danger-strong">{error}</p> : null}
   </section>;
 }

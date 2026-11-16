@@ -1,7 +1,17 @@
 Project State Document — Resonate Marriage Ministry
-Last updated: November 13, 2026
-Current working branch: main
+Last updated: November 16, 2026
+Current working branch: feature/shared-onboarding-validation
 Repository: resonatemovement/marriage_ministry
+
+## Shared Onboarding Completion Validation (November 16, 2026)
+
+- Corrected the Admin onboarding recovery readiness mismatch: the Admin detail UI now reads a narrow server-authorized readiness RPC instead of treating any nonempty `photo_path` as sufficient. A missing/unavailable readiness result fails closed, and the completion action is shown only when the target is still in the onboarding state and meets every shared requirement.
+- Added migration `20261116100000_shared_onboarding_completion_validation.sql`. A private shared validator now checks onboarding eligibility, required profile fields, normalized US phone validity, and the existing saved-photo validator (canonical saved avatar or a completed published handoff photo). Both user and Admin/Super Admin completion RPCs lock and revalidate the target, then atomically transition only an eligible onboarding profile. Admin readiness returns only eligibility flags and missing requirement labels. No RLS policy was changed.
+- Applied only this migration to positively verified Supabase DEV `lctkqjjkhpyootwvttvj`; linked migration history confirms it is present remotely. Authenticated DEV verification covered user and Admin completion with canonical photos, completed secure handoff photos, missing/invalid fields, missing/deleted/cross-profile/unpublished photo objects, inactive/already-completed accounts, Admin/Super Admin success, Coach/Counselor/Author/Couple/anonymous denials, and concurrent duplicate completion (exactly one success). The isolated synthetic profiles, auth users, handoff rows, and storage objects were cleaned and verified by the script.
+- Ann's profile was checked read-only through the Admin readiness RPC after migration. It remains `onboarding` with no completion timestamp; readiness now reports eligible with no missing requirements. No action was taken to complete or otherwise modify her profile.
+- Added `npm run verify:onboarding-completion`, focused UI/migration tests, and regenerated Supabase types. Onboarding and People suites passed (259 tests across 48 files), as did typecheck (rerun after the parallel build), lint, production build, linked DB lint, and `git diff --check`. Manual browser verification was not performed. No password reset/email or physical-device test was needed for this shared-validation change.
+- DEV Vercel target was positively verified as `resonate-movement/marriage-ministry-dev`, project ID `prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`, connected in Vercel to `resonatemovement/marriage_ministry`; its latest pre-change deployment is `READY` at the prior `main` SHA. No application deployment has yet been made for this change. Actual Resonate PROD was not accessed.
+- Current work is uncommitted on `feature/shared-onboarding-validation`, based on latest clean `main`/`origin/main` at `2a0d44444a07904734fe32b3ce88d481e6e396a7`. All seven stashes remain preserved. Next: review final diff, commit on this feature branch, fast-forward merge to main after validation, push to the verified dedicated DEV project, confirm the deployment is READY at the release SHA, delete the merged feature branch normally, and confirm clean synchronized main with all seven stashes intact.
 
 ## Hide Phone Handoff on Mobile (November 13, 2026)
 

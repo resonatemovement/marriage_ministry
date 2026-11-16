@@ -20,6 +20,7 @@
     "verify:invitation-acceptance": "node --experimental-strip-types --env-file=.env.local scripts/verify-invitation-acceptance.ts",
     "verify:onboarding": "node --experimental-strip-types --env-file=.env.local scripts/verify-onboarding.ts",
     "verify:onboarding-photo": "node --experimental-strip-types --env-file=.env.local scripts/verify-onboarding-photo.ts",
+    "verify:onboarding-completion": "node --experimental-strip-types --env-file=.env.local scripts/verify-onboarding-completion.ts",
     "verify:photo-handoff": "node --experimental-strip-types --env-file=.env.local scripts/verify-photo-handoff.ts",
     "verify:account-activation": "node --experimental-strip-types --env-file=.env.local scripts/verify-account-activation.ts",
     "verify:account-setup-recovery": "node --experimental-strip-types --env-file=.env.local scripts/verify-account-setup-recovery.ts",

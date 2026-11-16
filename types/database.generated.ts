@@ -3078,6 +3078,10 @@ export type Database = {
         Args: { target_profile_id: string }
         Returns: undefined
       }
+      admin_get_onboarding_readiness: {
+        Args: { target_profile_id: string }
+        Returns: Json
+      }
       admin_set_profile_photo: {
         Args: { target_profile_id: string }
         Returns: undefined
