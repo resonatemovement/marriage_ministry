@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 16, 2026
-Current working branch: feature/sign-in-form-validation
+Current working branch: main (final post-merge state)
 Repository: resonatemovement/marriage_ministry
 
 ## Sign In Form Validation (November 16, 2026)
@@ -9,7 +9,7 @@ Repository: resonatemovement/marriage_ministry
 - Extracted the shared email normalization/validation used by Sign In and Forgot Password without changing reset behavior. Mobile 16px form styling remains supplied by the existing global touch-control rule; desktop typography is unchanged.
 - The auth suite passed (27 tests across 7 files); `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` passed. Tests cover empty/partial/invalid/valid values, clearing either value, nonempty short existing passwords, loading disablement, autocomplete and hydration-time autofill synchronization, duplicate-submit guard, and existing auth/reset control contracts. Autofill compatibility is verified by code/test contracts, not by a real browser password manager; no browser/device test was run.
 - The user subsequently confirmed successful password-reset use. This is recorded as a user-confirmed result, not independent end-to-end verification by this agent. The previously user-confirmed iPhone verification for mobile form focus-zoom prevention and mobile handoff visibility remains in force; Android physical-device testing remains deferred.
-- Current release status: implementation and documentation are on this feature branch; validation is complete. Merge, push, and dedicated DEV deployment verification are pending.
+- Implementation commit `cfdc582bac158adad2500622b9950636b21f3302` was fast-forward merged and pushed to `main`. The verified dedicated Vercel project is `resonate-movement/marriage-ministry-dev` (`prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`), connected to `resonatemovement/marriage_ministry`; deployment `dpl_8DxEgDNQi4Nar5e4Dv5rhihwB7nj` reached `READY` at that exact implementation SHA. Vercel labels this target `production` within the dedicated DEV project; actual Resonate PROD was not accessed. The feature branch is merged and will be removed after documentation closeout; all seven stashes are preserved.
 
 ## Forgot Password Implementation (November 16, 2026)
 
