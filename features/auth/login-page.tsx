@@ -5,7 +5,7 @@ import { ResonateBrand } from "@/components/navigation/resonate-brand";
 import { selectLoginImage } from "./login-images";
 import { LoginForm } from "./login-form";
 
-export function LoginPage({ error, next }: { error?: string; next?: string }) {
+export function LoginPage({ error, next, passwordReset }: { error?: string; next?: string; passwordReset?: boolean }) {
   const image = selectLoginImage();
 
   return (
@@ -17,6 +17,7 @@ export function LoginPage({ error, next }: { error?: string; next?: string }) {
             <p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Welcome back</p>
             <h1 className="font-heading mt-2 text-3xl font-bold text-text-primary">Sign in to Resonate</h1>
             <p className="mt-3 text-sm leading-6 text-text-muted">Continue caring for marriages with your Resonate workspace.</p>
+            {passwordReset ? <p role="status" className="mt-5 rounded-md bg-success-soft px-3 py-2 text-sm leading-6 text-success-strong">Your password has been updated. Sign in with your new password.</p> : null}
             {error === "access" ? <p role="alert" className="mt-5 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">Your account is not configured for workspace access.</p> : null}
             <LoginForm next={next} />
             <p className="mt-6 text-sm leading-6 text-text-muted">Resonate workspaces are available by invitation. Contact your ministry administrator if you need access.</p>

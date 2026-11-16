@@ -7,7 +7,7 @@ import { getAuthenticatedIdentity } from "@/lib/auth/session";
 export default async function LoginRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; passwordReset?: string }>;
 }) {
   const [identity, params] = await Promise.all([getAuthenticatedIdentity(), searchParams]);
   const destination = identity && defaultWorkspaceDestination(identity.workspaces);
@@ -16,5 +16,5 @@ export default async function LoginRoute({
   if (identity?.accountStage === "onboarding") redirect("/onboarding");
   if (destination) redirect(destination);
 
-  return <LoginPage error={params.error} next={params.next} />;
+  return <LoginPage error={params.error} next={params.next} passwordReset={params.passwordReset === "success"} />;
 }
