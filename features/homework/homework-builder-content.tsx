@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Circle, FileText, GripVertical, Link2, MoreHorizontal, Plus, Square, TextCursorInput, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Circle, Columns2, FileText, GripVertical, Link2, MoreHorizontal, Plus, Square, TextCursorInput, Trash2 } from "lucide-react";
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 import type { Json } from "@/types/database.generated";
 import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkMoveTarget } from "./homework-editor-model";
+import type { SideBySideResponseConfig } from "./side-by-side-response";
 import { useHomeworkEditorState } from "./homework-editor-state";
 import { isValidHomeworkVideoUrl } from "./homework-url";
 import type { HomeworkDraftLoadResult } from "./queries";
@@ -74,6 +75,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
 
   function finishEditing() {
     if (!editing) return;
+    if (editing.blockType === "side_by_side_response" && (!editing.sideBySideConfig?.leftHeading.trim() || !editing.sideBySideConfig.rightHeading.trim())) return;
     if (editing.blockType === "rich_text" && !richTextBlockIsComplete(editing.title, editing.richTextContent)) return;
     if (editing.blockType === "long_answer" && !richTextBlockIsComplete(null, editing.richTextContent, false)) return;
     if (editing.blockType === "video_link" && !videoLinkIsComplete({ title: editing.title ?? "", url: editing.url ?? "", description: editing.description ?? "" }, isValidHomeworkVideoUrl)) {
@@ -114,7 +116,25 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
       {blocks.length === 0 ? <div className="rounded-md border border-dashed border-border p-6"><h3 className="font-heading text-base font-bold text-text-primary">No homework content yet.</h3><p className="mt-2 text-sm text-text-muted">Add readings, videos, and questions to this Homework.</p></div> : null}
       {editing ? <div className="mt-5 grid gap-4 rounded-md border border-border bg-white p-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(editing.blockType)}</p>
-        {editing.blockType === "video_link" ? <><VideoLinkFields title={editing.title ?? ""} url={editing.url ?? ""} description={editing.description ?? ""}
+        {editing.blockType === "side_by_side_response" && editing.sideBySideConfig ? <>
+          <label className="grid gap-1.5 text-sm font-medium text-text-primary">Instructions <span className="font-normal text-text-muted">Optional</span>
+            <textarea rows={3} maxLength={4000} value={editing.sideBySideConfig.instructions} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, instructions: event.currentTarget.value } })} className="min-h-20 resize-y rounded-md border border-border bg-white px-3 py-2 text-base" />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-medium text-text-primary">Left column heading
+              <Input required maxLength={180} value={editing.sideBySideConfig.leftHeading} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, leftHeading: event.currentTarget.value } })} />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-text-primary">Right column heading
+              <Input required maxLength={180} value={editing.sideBySideConfig.rightHeading} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, rightHeading: event.currentTarget.value } })} />
+            </label>
+          </div>
+          <label htmlFor={`homework-side-by-side-required-${editing.key}`} className="flex min-h-10 items-center gap-2 text-sm font-medium text-text-primary">
+            <Checkbox id={`homework-side-by-side-required-${editing.key}`} checked={editing.sideBySideConfig.bothRequired} onCheckedChange={(checked) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, bothRequired: checked === true } })} />
+            Both responses required
+          </label>
+          <SideBySidePreview config={editing.sideBySideConfig} />
+          <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!editing.sideBySideConfig.leftHeading.trim() || !editing.sideBySideConfig.rightHeading.trim()} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
+        </> : editing.blockType === "video_link" ? <><VideoLinkFields title={editing.title ?? ""} url={editing.url ?? ""} description={editing.description ?? ""}
           onTitleChange={(title) => patchEditing({ title: title || null })} onUrlChange={(url) => patchEditing({ url })}
           onDescriptionChange={(description) => patchEditing({ description: description || null })} urlError={urlMessage} />
         <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!videoLinkIsComplete({ title: editing.title ?? "", url: editing.url ?? "", description: editing.description ?? "" }, isValidHomeworkVideoUrl)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div></>
@@ -200,6 +220,7 @@ function HomeworkRow({ block, blocks, reorder, edit, duplicate, requestDelete }:
     <div className="min-w-0 flex-1">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(block.blockType)}</p>
       {block.blockType === "rich_text" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Rich Text block" />
+        : block.blockType === "side_by_side_response" && block.sideBySideConfig ? <><div className="mt-2 grid gap-2 sm:grid-cols-2"><p className="break-words font-semibold text-text-primary">{block.sideBySideConfig.leftHeading}</p><p className="break-words font-semibold text-text-primary">{block.sideBySideConfig.rightHeading}</p></div><p className="mt-2 text-xs text-text-muted">{block.sideBySideConfig.bothRequired ? "Both responses required" : "Responses optional"}</p></>
         : block.blockType === "long_answer" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Long Answer prompt" />
           : (block.blockType === "checkbox_question" || block.blockType === "radio_question") && isRichTextContent(block.richTextContent) ? <><RichTextSummary content={block.richTextContent} title={null} emptyText="Empty question" /><p className="mt-2 text-xs text-text-muted">{block.questionChoices.length} choices · {block.isRequired ? "Required" : "Optional"}</p></>
           : block.blockType === "video_link" ? <><h4 className="mt-1 truncate text-sm font-semibold text-text-primary">{block.title || "Untitled Video / Link"}</h4><div className="mt-3 grid gap-1 text-sm text-text-muted">{block.url ? <p className="break-all">{block.url}</p> : <p>Video / Link URL not set</p>}{block.description ? <p>{block.description}</p> : null}</div></>
@@ -216,6 +237,7 @@ function HomeworkRow({ block, blocks, reorder, edit, duplicate, requestDelete }:
 }
 
 function blockTypeLabel(blockType: string) {
+  if (blockType === "side_by_side_response") return "Side-by-Side Response";
   if (blockType === "rich_text") return "Rich Text";
   if (blockType === "video_link") return "Video / Link";
   if (blockType === "long_answer") return "Long Answer";
@@ -225,11 +247,21 @@ function blockTypeLabel(blockType: string) {
 }
 
 function blockTypeIcon(blockType: string) {
+  if (blockType === "side_by_side_response") return <Columns2 className="size-5 text-brand-primary" aria-hidden="true" />;
   if (blockType === "rich_text") return <FileText className="size-5 text-brand-primary" aria-hidden="true" />;
   if (blockType === "video_link") return <Link2 className="size-5 text-brand-primary" aria-hidden="true" />;
   if (blockType === "checkbox_question") return <Square className="size-5 text-brand-primary" aria-hidden="true" />;
   if (blockType === "radio_question") return <Circle className="size-5 text-brand-primary" aria-hidden="true" />;
   return <TextCursorInput className="size-5 text-brand-primary" aria-hidden="true" />;
+}
+
+function SideBySidePreview({ config }: { config: Omit<SideBySideResponseConfig, "groupId" | "side"> }) {
+  return <div className="rounded-md border border-border bg-surface-muted p-4">
+    {config.instructions.trim() ? <p className="mb-3 whitespace-pre-wrap text-sm text-text-secondary">{config.instructions}</p> : null}
+    <div className="grid gap-3 md:grid-cols-2">
+      {[config.leftHeading, config.rightHeading].map((heading, index) => <div key={index} className="min-w-0"><p className="mb-2 break-words text-sm font-semibold text-text-primary">{heading || "Column heading"}</p><textarea disabled rows={3} placeholder="Your response" className="min-h-24 w-full resize-none rounded-md border border-border bg-white px-3 py-2 text-base" /></div>)}
+    </div>
+  </div>;
 }
 
 function isRichTextContent(value: unknown): value is Record<string, unknown> {

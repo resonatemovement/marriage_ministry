@@ -83,6 +83,7 @@ Current verification commands:
 ## Git and Task Discipline
 
 - Stay on the branch specified by the task. Do not create, merge, delete, commit, push, deploy, or touch PROD unless explicitly asked.
+- Default feature approval workflow: start implementation on a focused feature branch from clean, current `main`; keep the feature branch active and wait for user testing/approval before merging or releasing unless the task explicitly authorizes those steps. A request to implement or preview a feature alone is not merge approval. Deploy previews only when explicitly authorized and after verifying the target project and its data environment. Never deploy actual PROD unless explicitly instructed.
 - Keep each task narrowly scoped. Do not make extra UX or product decisions beyond the approved request.
 - If configuration, permissions, or external state blocks safe progress, stop and report the blocker instead of guessing.
 

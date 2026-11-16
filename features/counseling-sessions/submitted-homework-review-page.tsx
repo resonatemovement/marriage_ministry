@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import type { Json } from "@/types/database.generated";
 
-import { homeworkReviewAnswer, type SubmittedHomeworkQuestion, type SubmittedHomeworkReview } from "./submitted-homework-review";
+import { groupSubmittedHomeworkQuestions, homeworkReviewAnswer, type SubmittedHomeworkQuestion, type SubmittedHomeworkReview } from "./submitted-homework-review";
 
 function isRichTextContent(value: SubmittedHomeworkQuestion["content"]): value is { [key: string]: Json | undefined } {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -19,6 +19,22 @@ function ReviewQuestion({ question }: { question: SubmittedHomeworkQuestion }) {
       {answers.length === 0 ? <p className="mt-2 text-sm italic text-text-muted">No answer provided</p> : question.type === "long_answer"
         ? <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-text-primary">{answers[0]}</p>
         : <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-text-primary">{answers.map((answer, index) => <li key={`${question.blockId}-${index}`}>{answer}</li>)}</ul>}
+    </div>
+  </Card>;
+}
+
+function ReviewSideBySide({ config, left, right }: { config: Omit<import("@/features/homework/side-by-side-response").SideBySideResponseConfig, "side">; left: SubmittedHomeworkQuestion; right: SubmittedHomeworkQuestion }) {
+  return <Card className="p-5 sm:p-7">
+    {config.instructions.trim() ? <p className="mb-5 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{config.instructions}</p> : null}
+    <div className="grid gap-5 md:grid-cols-2">
+      {([left, right] as const).map((question, index) => <section key={question.blockId} className="min-w-0">
+        <h2 className="break-words font-heading text-base font-bold text-text-primary">{index === 0 ? config.leftHeading : config.rightHeading}</h2>
+        <div className="mt-3 border-t border-border pt-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Submitted answer</h3>
+          {homeworkReviewAnswer(question).length === 0 ? <p className="mt-2 text-sm italic text-text-muted">No answer provided</p>
+            : <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-text-primary">{homeworkReviewAnswer(question)[0]}</p>}
+        </div>
+      </section>)}
     </div>
   </Card>;
 }
@@ -40,7 +56,9 @@ export function SubmittedHomeworkReviewPage({ review, partnerName }: { review: S
       <p className="mt-1 text-sm text-text-muted">Submitted {submittedDate}</p>
     </header>
     {review.questions.length ? <section aria-label={`${partnerName}'s submitted answers`} className="grid gap-4">
-      {review.questions.map((question) => <ReviewQuestion key={question.blockId} question={question} />)}
+      {groupSubmittedHomeworkQuestions(review.questions).map((item) => item.kind === "side_by_side"
+        ? <ReviewSideBySide key={item.config.groupId} config={item.config} left={item.left} right={item.right} />
+        : <ReviewQuestion key={item.question.blockId} question={item.question} />)}
     </section> : <Card className="p-5"><p className="text-sm text-text-muted">This Homework assignment has no questions to review.</p></Card>}
   </main>;
 }

@@ -4,6 +4,7 @@ import type { HomeworkDraftBlock } from "./queries";
 import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "./selection-question";
 import { reorderedBlockIds } from "@/features/session-builder/model";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
+import { groupSideBySideRows, type SideBySideResponseConfig, type SideBySideResponseIds } from "./side-by-side-response";
 
 export type StagedHomeworkBlock = {
   key: string;
@@ -17,6 +18,8 @@ export type StagedHomeworkBlock = {
   description: string | null;
   questionChoices: HomeworkAnswerChoice[];
   isRequired: boolean;
+  sideBySideConfig?: Omit<SideBySideResponseConfig, "side"> | null;
+  sideBySideResponseIds?: SideBySideResponseIds | null;
 };
 
 export type { HomeworkAnswerChoice } from "./selection-question";
@@ -29,30 +32,56 @@ export type HomeworkEditorState = {
   editingKey: string | null;
 };
 
-export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question"] as const;
+export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question", "side_by_side_response"] as const;
 
 export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDraftBlock[], versionStatus: "draft" | "published" = "draft"): HomeworkEditorState {
-  const blocks = rows.map((row) => ({
-    key: row.id,
-    persistedId: row.id,
-    homeworkBlockId: row.homeworkBlockId,
-    blockType: row.blockType,
-    position: row.position,
-    title: row.title,
-    richTextContent: row.richTextContent,
-    url: row.url,
-    description: row.description,
-    questionChoices: homeworkAnswerChoicesFromJson(row.questionChoices ?? null),
-    isRequired: row.isRequired ?? true,
-  }));
-  return { versionId, versionStatus, blocks, baseline: structuredClone(blocks), editingKey: null };
+  const blocks = groupSideBySideRows(rows.map((row) => ({ ...row, type: row.blockType }))).map((group) => {
+    if (group.kind === "pair") return {
+      key: group.config.groupId,
+      persistedId: group.left.id,
+      homeworkBlockId: group.left.homeworkBlockId,
+      blockType: "side_by_side_response",
+      position: Math.min(group.left.position, group.right.position),
+      title: null,
+      richTextContent: null,
+      url: null,
+      description: null,
+      questionChoices: [],
+      isRequired: group.config.bothRequired,
+      sideBySideConfig: group.config,
+      sideBySideResponseIds: {
+        left: { snapshotId: group.left.id, homeworkBlockId: group.left.homeworkBlockId },
+        right: { snapshotId: group.right.id, homeworkBlockId: group.right.homeworkBlockId },
+      },
+    };
+    const row = group.row;
+    return {
+      key: row.id,
+      persistedId: row.id,
+      homeworkBlockId: row.homeworkBlockId,
+      blockType: row.blockType,
+      position: row.position,
+      title: row.title,
+      richTextContent: row.richTextContent,
+      url: row.url,
+      description: row.description,
+      questionChoices: homeworkAnswerChoicesFromJson(row.questionChoices ?? null),
+      isRequired: row.isRequired ?? true,
+      sideBySideConfig: null,
+      sideBySideResponseIds: null,
+    };
+  });
+  const normalizedBlocks = normalizeHomeworkBlockPositions(blocks);
+  return { versionId, versionStatus, blocks: normalizedBlocks, baseline: structuredClone(normalizedBlocks), editingKey: null };
 }
 
 export function persistHomeworkEditorState(state: HomeworkEditorState, rows: HomeworkDraftBlock[], versionId: string, versionStatus: "draft" | "published"): HomeworkEditorState {
   const next = homeworkEditorStateFromRows(versionId, rows, versionStatus);
-  const blocks = next.blocks.map((block, index) => {
-    const clientId = rows[index]?.clientId;
+  const blocks = next.blocks.map((block) => {
+    const clientId = rows.find((row) => row.id === block.persistedId)?.clientId;
     const match = state.blocks.find((current) => current.persistedId === block.persistedId)
+      ?? state.blocks.find((current) => current.sideBySideResponseIds?.left.snapshotId === block.persistedId)
+      ?? state.blocks.find((current) => current.sideBySideConfig?.groupId === block.sideBySideConfig?.groupId)
       ?? state.blocks.find((current) => current.persistedId === null && current.key === clientId);
     return match ? { ...block, key: match.key } : block;
   });
@@ -79,6 +108,14 @@ export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPE
       ? [{ id: crypto.randomUUID(), label: "" }, { id: crypto.randomUUID(), label: "" }]
       : [],
     isRequired: true,
+    sideBySideConfig: blockType === "side_by_side_response" ? {
+      groupId: crypto.randomUUID(),
+      instructions: "",
+      leftHeading: "Recognize and Renounce",
+      rightHeading: "Replace and Renew",
+      bothRequired: true,
+    } : null,
+    sideBySideResponseIds: null,
   };
 }
 
@@ -115,6 +152,8 @@ export function duplicateHomeworkBlock(blocks: StagedHomeworkBlock[], key: strin
     position: index + 1,
     richTextContent: source.richTextContent ? structuredClone(source.richTextContent) : null,
     questionChoices: source.questionChoices.map((choice) => ({ ...choice, id: crypto.randomUUID() })),
+    sideBySideConfig: source.sideBySideConfig ? { ...source.sideBySideConfig, groupId: crypto.randomUUID() } : null,
+    sideBySideResponseIds: null,
   };
   return { blocks: normalizeHomeworkBlockPositions([...blocks.slice(0, index + 1), duplicate, ...blocks.slice(index + 1)]), editingKey: duplicate.key };
 }
@@ -175,6 +214,8 @@ function comparable(block: StagedHomeworkBlock) {
     description: block.description,
     questionChoices: block.questionChoices,
     isRequired: block.isRequired,
+    sideBySideConfig: block.sideBySideConfig,
+    sideBySideResponseIds: block.sideBySideResponseIds,
   };
 }
 

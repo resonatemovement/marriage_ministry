@@ -9,6 +9,7 @@ vi.mock("@/lib/supabase/server", () => ({ createServerSupabaseClient: vi.fn(asyn
 vi.mock("./access", () => ({ requireSessionBuilderAccess: requireAccess }));
 
 import { saveSessionBuilderState } from "./save-session-state";
+import { sideBySideResponseMetadata } from "@/features/homework/side-by-side-response";
 import type { SessionEditorState } from "./editor-model";
 import { deleteHomeworkBlock, duplicateHomeworkBlock, homeworkEditorStateFromRows, newHomeworkBlock, addHomeworkBlock, reorderHomeworkBlocks, updateHomeworkBlock } from "@/features/homework/homework-editor-model";
 
@@ -135,6 +136,30 @@ describe("atomic Session and Homework RPC adapter", () => {
         question_choices: choices, is_required: false }],
     }));
     expect(result).toMatchObject({ homework: { blocks: [{ questionChoices: choices, isRequired: false, clientId: question.key }] } });
+  });
+
+  it("serializes Side-by-Side as separate versioned Long Answer identities with non-heading response keys", async () => {
+    const initial = newHomeworkBlock("side_by_side_response", 0);
+    const config = { ...initial.sideBySideConfig!, instructions: "Reflect on your next step." };
+    const staged = updateHomeworkBlock(addHomeworkBlock(emptyHomework, initial), initial.key, { sideBySideConfig: config });
+    rpc.mockResolvedValue({ data: { session: null, homework: { version_id: "draft-id", status: "draft", version_number: null, blocks: [
+      ...(["left", "right"] as const).map((side, position) => ({
+        id: `${side}-snapshot`, homework_block_id: `${side}-logical`, client_id: `side-by-side:${config.groupId}:${side}`,
+        block_type: "long_answer", position, title: side === "left" ? config.leftHeading : config.rightHeading,
+        rich_text_content: { type: "doc", content: [] }, url: null,
+        description: sideBySideResponseMetadata({ ...config, side }),
+      })),
+    ] } }, error: null });
+
+    await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+      target_homework_blocks: (["left", "right"] as const).map((side) => ({
+        client_id: `side-by-side:${config.groupId}:${side}`, block_type: "long_answer",
+        title: side === "left" ? config.leftHeading : config.rightHeading,
+        rich_text_content: { type: "doc", content: [] }, url: null,
+        description: sideBySideResponseMetadata({ ...config, side }),
+      })),
+    }));
   });
 
   it("surfaces the database's authoritative selection-question publish validation", async () => {

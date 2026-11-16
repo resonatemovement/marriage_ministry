@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 import { HomeworkBuilderContent } from "./homework-builder-content";
 import { HomeworkBuilderLoading } from "./homework-builder-loading";
 import { HomeworkEditorProvider } from "./homework-editor-state";
+import { sideBySideResponseMetadata } from "./side-by-side-response";
 
 const emptyDraft = { id: "draft-id", status: "draft" as const, basedOnVersionNumber: 1, blocks: [] };
 
@@ -74,6 +75,23 @@ describe("Homework Builder shell", () => {
     expect(markup).not.toContain(">Edit</button>");
     expect(markup).not.toContain("Actions for future_type");
     expect(markup).not.toContain("Reorder future_type");
+  });
+
+  it("restores a saved Side-by-Side pair as one editable and reorderable builder block", () => {
+    const config = { groupId: "pair-id", instructions: "Think it through.", leftHeading: "Recognize", rightHeading: "Renew", bothRequired: false };
+    const loadedDraft = { ...emptyDraft, blocks: (["left", "right"] as const).map((side, position) => ({
+      id: `${side}-snapshot`, homeworkBlockId: `${side}-logical`, blockType: "long_answer", position,
+      title: side === "left" ? config.leftHeading : config.rightHeading,
+      richTextContent: { type: "doc", content: [] }, url: null,
+      description: sideBySideResponseMetadata({ ...config, side }),
+    })) };
+    const markup = renderToStaticMarkup(createElement(HomeworkEditorProvider, { initialDraft: loadedDraft }, createElement(HomeworkBuilderContent, { result: { draft: loadedDraft } })));
+    expect(markup).toContain("Side-by-Side Response");
+    expect(markup).toContain("Recognize");
+    expect(markup).toContain("Renew");
+    expect(markup).toContain("Responses optional");
+    expect(markup.match(/Actions for Side-by-Side Response block/g)).toHaveLength(1);
+    expect(markup.match(/Reorder Side-by-Side Response block/g)).toHaveLength(1);
   });
 
   it("shows stable retryable failures and does not offer retry for withdrawn Homework", () => {

@@ -2,6 +2,7 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Json } from "@/types/database.generated";
+import { sideBySideResponseMetadata } from "@/features/homework/side-by-side-response";
 
 vi.mock("next/link", () => ({ default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => createElement("a", props, children) }));
 vi.mock("@/features/session-builder/rich-text-editor", () => ({ RichTextReadOnly: ({ content }: { content: Record<string, unknown> }) => createElement("div", { "data-rich-text": true }, JSON.stringify(content)) }));
@@ -55,5 +56,21 @@ describe("submitted Homework review presentation", () => {
     expect(markup).not.toMatch(/<(form|textarea|input|button)\b/);
     expect(markup).not.toContain("Grade");
     expect(markup).not.toContain("Feedback");
+  });
+
+  it("reviews each response under its published heading in responsive read-only columns", () => {
+    const config = { groupId: "stable-pair", instructions: "Use the prompts to reflect.", leftHeading: "Recognize and Renounce", rightHeading: "Replace and Renew", bothRequired: true };
+    const sideBySideQuestions = [
+      { blockId: "left-id", type: "long_answer" as const, position: 4, title: config.leftHeading, content: { type: "doc", content: [] }, choices: null, isRequired: true, answerText: "Name what happened.\nThen what it affected.", answerValue: null, description: sideBySideResponseMetadata({ ...config, side: "left" as const }) },
+      { blockId: "right-id", type: "long_answer" as const, position: 5, title: config.rightHeading, content: { type: "doc", content: [] }, choices: null, isRequired: true, answerText: "I will listen more.", answerValue: null, description: sideBySideResponseMetadata({ ...config, side: "right" as const }) },
+    ];
+    const markup = renderToStaticMarkup(createElement(SubmittedHomeworkReviewPage, { review: { ...review, questions: [...review.questions, ...sideBySideQuestions] }, partnerName: "Partner A" }));
+    expect(markup).toContain("Recognize and Renounce");
+    expect(markup).toContain("Replace and Renew");
+    expect(markup).toContain("Name what happened.\nThen what it affected.");
+    expect(markup).toContain("I will listen more.");
+    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).not.toMatch(/<(textarea|input|button)\b/);
+    expect(markup.indexOf("Recognize and Renounce")).toBeLessThan(markup.indexOf("Replace and Renew"));
   });
 });

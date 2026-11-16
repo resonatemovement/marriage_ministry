@@ -110,6 +110,23 @@ describe("Homework Preview content", () => {
     expect(markup).not.toContain("name=");
   });
 
+  it("previews the configured Side-by-Side headings and responsive response areas", () => {
+    const block = {
+      key: "side-group", persistedId: null, homeworkBlockId: null, blockType: "side_by_side_response", position: 0,
+      title: null, richTextContent: null, url: null, description: null, questionChoices: [], isRequired: true,
+      sideBySideConfig: { groupId: "side-group", instructions: "Consider both prompts.", leftHeading: "Recognize and Renounce", rightHeading: "Replace and Renew", bothRequired: false },
+      sideBySideResponseIds: null,
+    } satisfies StagedHomeworkBlock;
+    const markup = render([block]);
+    expect(markup).toContain("Consider both prompts.");
+    expect(markup).toContain("Recognize and Renounce");
+    expect(markup).toContain("Replace and Renew");
+    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).toContain("Responses optional");
+    expect(markup).toContain('readOnly=""');
+    expect(markup).not.toMatch(/<form/);
+  });
+
   it("renders a safe empty state and author-facing placeholders for incomplete or unknown blocks", () => {
     expect(render([])).toContain("This Session does not currently include homework content.");
 

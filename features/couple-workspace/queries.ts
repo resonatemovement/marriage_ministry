@@ -6,6 +6,7 @@ import { orderCouplePartners } from "@/features/people/partner-order";
 import type { StagedMaterialBlock } from "@/features/session-builder/editor-model";
 import { participantHomeworkTitle, type HomeworkProgressStatus } from "@/features/homework/presentation";
 import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "@/features/homework/selection-question";
+import { groupSideBySideRows } from "@/features/homework/side-by-side-response";
 import { getCurrentCoupleCounselor } from "@/features/counseling-contacts/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { signedResourceAccess } from "@/features/resource-library/server";
@@ -227,25 +228,43 @@ async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof creat
   const { data: answers, error: answersError } = await supabase.from("homework_answers").select("homework_version_block_id,answer_text,answer_value").eq("participant_progress_id", progress.id);
   if (answersError) throw new Error("Homework responses are unavailable.");
   const answerMap = new Map((answers ?? []).map((answer) => [answer.homework_version_block_id, answer]));
+  const rows = content.map((block) => {
+    const questionChoices = homeworkAnswerChoicesFromJson(block.question_choices);
+    return {
+      id: block.id,
+      type: block.block_type,
+      position: block.position,
+      title: block.title,
+      content: block.rich_text_content,
+      url: block.url,
+      description: block.description,
+      answer: participantAnswerFromRow(block.block_type, answerMap.get(block.id), questionChoices),
+      questionChoices,
+      isRequired: block.is_required,
+    };
+  });
+  const groupedBlocks = groupSideBySideRows(rows).map((group) => group.kind === "pair" ? {
+    id: group.config.groupId,
+    type: "side_by_side_response",
+    title: null,
+    content: null,
+    url: null,
+    description: group.config.instructions,
+    answer: {
+      left: typeof group.left.answer === "string" ? group.left.answer : "",
+      right: typeof group.right.answer === "string" ? group.right.answer : "",
+    },
+    questionChoices: [],
+    isRequired: group.config.bothRequired,
+    sideBySideConfig: group.config,
+    sideBySideResponseIds: { left: group.left.id, right: group.right.id },
+  } : { ...group.row, sideBySideConfig: null, sideBySideResponseIds: null });
   return {
     title,
     status: progress.status,
     progressId: progress.id,
     revisionId: revision.id,
-    blocks: content.map((block) => {
-      const questionChoices = homeworkAnswerChoicesFromJson(block.question_choices);
-      return {
-        id: block.id,
-        type: block.block_type,
-        title: block.title,
-        content: block.rich_text_content,
-        url: block.url,
-        description: block.description,
-        answer: participantAnswerFromRow(block.block_type, answerMap.get(block.id), questionChoices),
-        questionChoices,
-        isRequired: block.is_required,
-      };
-    }),
+    blocks: groupedBlocks,
   };
 }
 

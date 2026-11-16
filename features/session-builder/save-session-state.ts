@@ -8,6 +8,7 @@ import { requireSessionBuilderAccess } from "./access";
 import { materialForRpc, sessionStateFromRpc, type PersistedResult, type SessionEditorState } from "./editor-model";
 import type { HomeworkEditorState } from "@/features/homework/homework-editor-model";
 import type { HomeworkDraftBlock } from "@/features/homework/queries";
+import { sideBySideResponseMetadata, type SideBySideResponseSide } from "@/features/homework/side-by-side-response";
 
 type AuthoringIntent = "save" | "publish" | "publish_changes";
 type SavedHomeworkResult = {
@@ -63,6 +64,7 @@ const userFacingRpcErrors = new Set([
   "Invalid or duplicate Homework client ID",
   "Invalid Homework selection question",
   "Complete each selection question before publishing",
+  "Complete each Side-by-Side Response before publishing",
 ]);
 
 function errorMessage(error: unknown) {
@@ -82,8 +84,24 @@ function operationFailure(intent: AuthoringIntent) {
   return { error: "Changes could not be saved. Please try again.", errorKind: "operation" as const };
 }
 
-function serializeHomeworkBlocks(editor: HomeworkEditorState) {
-  return editor.blocks.map((block) => ({
+function serializeHomeworkBlocks(editor: HomeworkEditorState): Record<string, unknown>[] {
+  return editor.blocks.flatMap((block): Record<string, unknown>[] => {
+    if (block.blockType === "side_by_side_response" && block.sideBySideConfig) {
+      const config = block.sideBySideConfig;
+      const blankPrompt = { type: "doc", content: [] };
+      return (["left", "right"] as const).map((side: SideBySideResponseSide) => {
+        const ids = block.sideBySideResponseIds?.[side];
+        return {
+          ...(ids ? { id: ids.snapshotId, homework_block_id: ids.homeworkBlockId } : { client_id: `side-by-side:${config.groupId}:${side}` }),
+          block_type: "long_answer",
+          title: side === "left" ? config.leftHeading : config.rightHeading,
+          rich_text_content: blankPrompt,
+          url: null,
+          description: sideBySideResponseMetadata({ ...config, side }),
+        };
+      });
+    }
+    return [{
     ...(block.persistedId ? { id: block.persistedId } : { client_id: block.key }),
     ...(block.homeworkBlockId ? { homework_block_id: block.homeworkBlockId } : {}),
     block_type: block.blockType,
@@ -94,7 +112,8 @@ function serializeHomeworkBlocks(editor: HomeworkEditorState) {
     ...(block.blockType === "checkbox_question" || block.blockType === "radio_question"
       ? { question_choices: block.questionChoices, is_required: block.isRequired }
       : {}),
-  }));
+    }];
+  });
 }
 
 function parseHomeworkResult(value: unknown): SavedHomeworkResult | null {

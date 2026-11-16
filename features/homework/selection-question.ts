@@ -1,7 +1,7 @@
 import type { Json } from "@/types/database.generated";
 
 export type HomeworkAnswerChoice = { id: string; label: string };
-export type HomeworkResponseValue = string | string[];
+export type HomeworkResponseValue = string | string[] | { left: string; right: string };
 
 export function homeworkAnswerChoicesFromJson(value: Json | null): HomeworkAnswerChoice[] {
   if (!Array.isArray(value)) return [];

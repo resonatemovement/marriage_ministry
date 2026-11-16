@@ -133,6 +133,35 @@ describe("participant Homework presentation", () => {
     })).toEqual({});
   });
 
+  it("stores each side independently, requires both nonblank only when configured, and renders responsive columns", () => {
+    const sideBySide = block({
+      id: "group", type: "side_by_side_response", content: null,
+      description: "Optional instructions", isRequired: true,
+      sideBySideConfig: { groupId: "group", instructions: "Optional instructions", leftHeading: "Recognize", rightHeading: "Renew", bothRequired: true },
+      sideBySideResponseIds: { left: "stable-left-id", right: "stable-right-id" },
+      answer: { left: "Left saved", right: "" },
+    });
+    const assignment = homework([sideBySide]);
+    expect(participantAnswerValues(assignment)).toEqual({ "stable-left-id": "Left saved", "stable-right-id": "" });
+    expect(participantRequiredAnswerErrors(assignment, participantAnswerValues(assignment))).toEqual({ "stable-right-id": "A response is required." });
+    expect(participantRequiredAnswerErrors(assignment, { "stable-left-id": "Left saved", "stable-right-id": "Right saved" })).toEqual({});
+    expect(participantRequiredAnswerErrors(homework([{ ...sideBySide, sideBySideConfig: { ...sideBySide.sideBySideConfig!, bothRequired: false } }]), { "stable-left-id": "", "stable-right-id": "" })).toEqual({});
+    const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: assignment }));
+    expect(markup).toContain("Recognize");
+    expect(markup).toContain("Renew");
+    expect(markup).toContain('name="answer-stable-left-id"');
+    expect(markup).toContain('name="answer-stable-right-id"');
+    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).toContain("text-base");
+    expect(markup).toContain("Left saved");
+    expect(markup).toContain("(required)");
+    expect(markup).toMatch(/>Submit Homework<\/button>/);
+    expect(markup).toMatch(/disabled=""[^>]*>Submit Homework<\/button>/);
+    const optionalMarkup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: homework([{ ...sideBySide, sideBySideConfig: { ...sideBySide.sideBySideConfig!, bothRequired: false } }]) }));
+    expect(optionalMarkup).not.toMatch(/disabled=""[^>]*>Submit Homework<\/button>/);
+    expect(optionalMarkup).toContain("Save Draft");
+  });
+
   it("uses one assignment form and submits the latest shared typed answer state", () => {
     const rendered = renderToStaticMarkup(createElement(ParticipantHomeworkContent, {
       homework: homework([
