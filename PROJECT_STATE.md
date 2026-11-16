@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 16, 2026
-Current working branch: feature/shared-onboarding-validation
+Current working branch: main
 Repository: resonatemovement/marriage_ministry
 
 ## Shared Onboarding Completion Validation (November 16, 2026)
@@ -11,7 +11,7 @@ Repository: resonatemovement/marriage_ministry
 - Ann's profile was checked read-only through the Admin readiness RPC after migration. It remains `onboarding` with no completion timestamp; readiness now reports eligible with no missing requirements. No action was taken to complete or otherwise modify her profile.
 - Added `npm run verify:onboarding-completion`, focused UI/migration tests, and regenerated Supabase types. Onboarding and People suites passed (259 tests across 48 files), as did typecheck (rerun after the parallel build), lint, production build, linked DB lint, and `git diff --check`. Manual browser verification was not performed. No password reset/email or physical-device test was needed for this shared-validation change.
 - The dedicated Vercel target was positively verified as `resonate-movement/marriage-ministry-dev`, project ID `prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt`, connected to `resonatemovement/marriage_ministry`. Implementation commit `4e8ad4821ead3103b1b2573d10205259794040a5` was pushed to `main`; deployment `dpl_CPrunTPfj5TP6yn2KQLnUUKwvCca` reached `READY` at that exact SHA. Vercel labels the target `production` within this dedicated DEV project; actual Resonate PROD was not accessed.
-- Implementation commit `4e8ad48` was created on `feature/shared-onboarding-validation`, then fast-forward merged and pushed to `main`. Final documentation synchronization is being committed on the same feature branch and will be fast-forwarded/pushed after the implementation deployment was verified. All seven stashes remain preserved; the feature branch is pending normal deletion after documentation deployment verification. Final target: clean `main` synced with `origin/main`.
+- Implementation commit `4e8ad4821ead3103b1b2573d10205259794040a5` was created on `feature/shared-onboarding-validation`, fast-forward merged to `main`, pushed to `origin/main`, and verified READY in the dedicated DEV Vercel project as deployment `dpl_CPrunTPfj5TP6yn2KQLnUUKwvCca`. The release documentation is committed and pushed on `main`; the merged feature branch is deleted normally after verification. Final Git state: clean `main` synchronized with `origin/main`; all seven stashes remain preserved. Actual Resonate PROD was not accessed.
 
 ## Hide Phone Handoff on Mobile (November 13, 2026)
 
