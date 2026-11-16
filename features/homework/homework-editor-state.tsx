@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import type { HomeworkDraftBlock } from "./queries";
-import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorIsDirty, homeworkEditorStateFromRows, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorIsDirty, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
 import type { HOMEWORK_AUTHORING_BLOCK_TYPES } from "./homework-editor-model";
 
 type HomeworkAuthoringBlockType = typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number];
@@ -11,6 +11,7 @@ type HomeworkAuthoringBlockType = typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number];
 type HomeworkEditorContextValue = {
   state: HomeworkEditorState;
   dirty: boolean;
+  sideBySideHeadingsValid: boolean;
   initialize: (versionId: string, blocks: HomeworkDraftBlock[], status: "draft" | "published") => void;
   addBlock: (blockType: HomeworkAuthoringBlockType) => void;
   updateBlock: (key: string, update: Partial<StagedHomeworkBlock>) => void;
@@ -64,7 +65,7 @@ export function HomeworkEditorProvider({ children, initialDraft }: { children?: 
   const acceptPersisted = useCallback((versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published") => {
     setState((current) => persistHomeworkEditorState(current, rows, versionId, status));
   }, []);
-  const value = useMemo(() => ({ state, dirty: homeworkEditorIsDirty(state), initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, discard, acceptPersisted }), [state, initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, discard, acceptPersisted]);
+  const value = useMemo(() => ({ state, dirty: homeworkEditorIsDirty(state), sideBySideHeadingsValid: homeworkSideBySideHeadingsAreValid(state), initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, discard, acceptPersisted }), [state, initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, discard, acceptPersisted]);
   return <HomeworkEditorContext.Provider value={value}>{children}</HomeworkEditorContext.Provider>;
 }
 

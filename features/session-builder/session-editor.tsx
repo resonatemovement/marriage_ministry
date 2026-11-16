@@ -37,7 +37,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
 }) {
   const router = useRouter();
   const homeworkEditor = useHomeworkEditorState();
-  const { dirty: homeworkDirty } = homeworkEditor;
+  const { dirty: homeworkDirty, sideBySideHeadingsValid } = homeworkEditor;
   const [editor, setEditor] = useState<SessionEditorState>(() => initialSessionEditorState(session, blocks));
   const [baseline, setBaseline] = useState<SessionEditorState>(() => initialSessionEditorState(session, blocks));
   const [pending, startTransition] = useTransition();
@@ -110,6 +110,10 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
 
   function save(intent: "save" | "publish" | "publish_changes") {
     if (pendingRef.current || archived) return;
+    if (homeworkDirty && !sideBySideHeadingsValid) {
+      setPublishActionError("Enter both Side-by-Side column headings before saving.");
+      return;
+    }
     const validation = intent === "publish" ? publishError : intent === "publish_changes" || (!dirty && !firstSave) ? null : saveError;
     if (validation) { setPublishActionError(validation); return; }
     setPublishActionError(null);
@@ -196,10 +200,10 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
       {pageDirty ? <span role="status" className="mr-auto text-xs font-medium text-text-muted">Unsaved changes</span> : null}
       {firstSave ? <button type="button" onClick={() => router.push("/session-builder")} className="min-h-10 rounded-md px-3 py-2 text-sm font-semibold text-text-muted transition hover:bg-surface-muted hover:text-text-primary">Cancel</button> : <button type="button" onClick={() => { discardLocalChanges(); homeworkEditor.discard(); }} disabled={!pageDirty || pending} className="min-h-10 rounded-md px-3 py-2 text-sm font-semibold text-text-muted transition hover:bg-surface-muted hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Discard Changes</button>}
       {!archived ? <>
-        <button type="button" onClick={() => save("save")} disabled={pending || Boolean((dirty || firstSave) && saveError) || (!firstSave && !pageDirty)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primary/90 disabled:opacity-60">
+        <button type="button" onClick={() => save("save")} disabled={pending || homeworkDirty && !sideBySideHeadingsValid || Boolean((dirty || firstSave) && saveError) || (!firstSave && !pageDirty)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primary/90 disabled:opacity-60">
           {pending ? "Saving..." : firstSave ? "Save Draft" : "Save Changes"}
         </button>
-        {editor.status === "draft" ? <button type="button" onClick={() => save("publish")} disabled={pending || Boolean(publishError)} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Session</button> : homeworkEditor.state.versionStatus === "draft" && homeworkEditor.state.baseline.length > 0 ? <button type="button" onClick={() => save("publish_changes")} disabled={pending} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Changes</button> : null}
+        {editor.status === "draft" ? <button type="button" onClick={() => save("publish")} disabled={pending || homeworkDirty && !sideBySideHeadingsValid || Boolean(publishError)} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Session</button> : homeworkEditor.state.versionStatus === "draft" && homeworkEditor.state.baseline.length > 0 ? <button type="button" onClick={() => save("publish_changes")} disabled={pending || homeworkDirty && !sideBySideHeadingsValid} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Changes</button> : null}
         {editor.status === "draft" && publishMessage || editor.status !== "draft" && publishActionError ? <p role="status" className="basis-full text-right text-xs text-text-muted">{editor.status === "draft" ? publishMessage : publishActionError}</p> : null}
       </> : null}
     </div>

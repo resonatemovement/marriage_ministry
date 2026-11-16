@@ -111,9 +111,10 @@ export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPE
     sideBySideConfig: blockType === "side_by_side_response" ? {
       groupId: crypto.randomUUID(),
       instructions: "",
-      leftHeading: "Recognize and Renounce",
-      rightHeading: "Replace and Renew",
+      leftHeading: "",
+      rightHeading: "",
       bothRequired: true,
+      responseMode: "paired_rows_v1",
     } : null,
     sideBySideResponseIds: null,
   };
@@ -221,6 +222,14 @@ function comparable(block: StagedHomeworkBlock) {
 
 export function homeworkEditorIsDirty(state: HomeworkEditorState) {
   return JSON.stringify(state.blocks.map(comparable)) !== JSON.stringify(state.baseline.map(comparable));
+}
+
+export function sideBySideHeadingsAreValid(config: StagedHomeworkBlock["sideBySideConfig"]) {
+  return Boolean(config?.leftHeading.trim() && config.rightHeading.trim());
+}
+
+export function homeworkSideBySideHeadingsAreValid(state: HomeworkEditorState) {
+  return state.blocks.every((block) => block.blockType !== "side_by_side_response" || sideBySideHeadingsAreValid(block.sideBySideConfig));
 }
 
 export function restoreHomeworkEditorState(state: HomeworkEditorState) {

@@ -39,7 +39,7 @@ export async function persistParticipantHomework(input: ParticipantHomeworkActio
   });
   if (error) {
     const readOnly = error.message.includes("read-only");
-    const incomplete = error.message.includes("meaningful answer");
+    const incomplete = error.message.includes("meaningful answer") || error.message.includes("required Side-by-Side response pair");
     return {
       success: false,
       error: readOnly ? "Submitted Homework is read-only." : incomplete ? "Please complete each required response before submitting." : input.intent === "save" ? "Your draft could not be saved." : "Homework could not be submitted.",

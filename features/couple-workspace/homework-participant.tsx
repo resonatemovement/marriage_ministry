@@ -12,7 +12,8 @@ import { eligibleInternalNavigation } from "@/features/session-builder/navigatio
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import type { Json } from "@/types/database.generated";
-import type { SideBySideResponseConfig } from "@/features/homework/side-by-side-response";
+import { sideBySideAnswerColumn, sideBySideAnswerRows, type SideBySideAnswerRow, type SideBySideResponseConfig, type SideBySideResponseSide } from "@/features/homework/side-by-side-response";
+import { SideBySideResponseFields } from "@/features/homework/side-by-side-response-fields";
 
 import { persistParticipantHomework, type ParticipantHomeworkIntent } from "./homework-participant-actions";
 import { HomeworkProgressRealtime } from "@/features/counseling-sessions/homework-progress-realtime";
@@ -31,6 +32,7 @@ export type ParticipantHomeworkBlock = {
   isRequired: boolean;
   sideBySideConfig?: Omit<SideBySideResponseConfig, "side"> | null;
   sideBySideResponseIds?: { left: string; right: string } | null;
+  sideBySideRows?: SideBySideAnswerRow[] | null;
 };
 
 export type ParticipantHomework = {
@@ -49,8 +51,14 @@ function cloneAnswers(answers: ParticipantHomeworkAnswers): ParticipantHomeworkA
 
 export function participantAnswerValues(homework: ParticipantHomework): ParticipantHomeworkAnswers {
   return Object.fromEntries(homework.blocks.flatMap((block) => {
-    if (block.type === "side_by_side_response" && block.sideBySideResponseIds && typeof block.answer === "object" && !Array.isArray(block.answer)) {
-      return [[block.sideBySideResponseIds.left, block.answer.left], [block.sideBySideResponseIds.right, block.answer.right]];
+    if (block.type === "side_by_side_response" && block.sideBySideResponseIds) {
+      const legacyAnswer = typeof block.answer === "object" && !Array.isArray(block.answer) ? block.answer : null;
+      const rows = block.sideBySideRows ?? [{ id: block.sideBySideConfig?.groupId ?? block.id,
+        left: legacyAnswer?.left ?? "", right: legacyAnswer?.right ?? "" }];
+      return [
+        [block.sideBySideResponseIds.left, sideBySideAnswerColumn(rows, "left")],
+        [block.sideBySideResponseIds.right, sideBySideAnswerColumn(rows, "right")],
+      ];
     }
     if (!responseBlockTypes.has(block.type)) return [];
     return [[block.id, Array.isArray(block.answer) ? [...block.answer] : block.answer as string]];
@@ -66,11 +74,17 @@ export function participantRequiredAnswerErrors(homework: ParticipantHomework, a
   return Object.fromEntries(homework.blocks.flatMap((block) => {
     if (block.type === "side_by_side_response" && block.sideBySideResponseIds) {
       if (!block.sideBySideConfig?.bothRequired) return [];
-      const errors: [string, string][] = [];
-      for (const id of [block.sideBySideResponseIds.left, block.sideBySideResponseIds.right]) {
-        const answer = answers[id];
-        if (typeof answer !== "string" || !answer.trim()) errors.push([id, "A response is required."]);
-      }
+      const rows = sideBySideAnswerRows(
+        typeof answers[block.sideBySideResponseIds.left] === "string" ? answers[block.sideBySideResponseIds.left] as string : "",
+        typeof answers[block.sideBySideResponseIds.right] === "string" ? answers[block.sideBySideResponseIds.right] as string : "",
+        block.sideBySideConfig.groupId,
+      );
+      const invalid = rows.some((row) => Boolean(row.left.trim() || row.right.trim()) && !(row.left.trim() && row.right.trim()))
+        || !rows.some((row) => Boolean(row.left.trim() && row.right.trim()));
+      const errors: [string, string][] = invalid ? [
+        [block.sideBySideResponseIds.left, "Complete both responses in each started pair. At least one complete pair is required."],
+        [block.sideBySideResponseIds.right, "Complete both responses in each started pair. At least one complete pair is required."],
+      ] : [];
       return errors;
     }
     const required = block.type === "long_answer" || ((block.type === "checkbox_question" || block.type === "radio_question") && block.isRequired);
@@ -139,19 +153,27 @@ function HomeworkBlockContent({ block, answers, errors, locked, updateAnswer }: 
   updateAnswer: (blockId: string, answer: ParticipantHomeworkAnswer) => void;
 }) {
   if (block.type === "side_by_side_response" && block.sideBySideConfig && block.sideBySideResponseIds) {
+    const rows = sideBySideAnswerRows(
+      typeof answers[block.sideBySideResponseIds.left] === "string" ? answers[block.sideBySideResponseIds.left] as string : "",
+      typeof answers[block.sideBySideResponseIds.right] === "string" ? answers[block.sideBySideResponseIds.right] as string : "",
+      block.sideBySideConfig.groupId,
+    );
+    function updateRow(rowId: string, side: SideBySideResponseSide, value: string) {
+      const nextRows = rows.map((row) => row.id === rowId ? { ...row, [side]: value } : row);
+      updateAnswer(block.sideBySideResponseIds!.left, sideBySideAnswerColumn(nextRows, "left"));
+      updateAnswer(block.sideBySideResponseIds!.right, sideBySideAnswerColumn(nextRows, "right"));
+    }
+    function addRow() {
+      const nextRows = [...rows, { id: crypto.randomUUID(), left: "", right: "" }];
+      updateAnswer(block.sideBySideResponseIds!.left, sideBySideAnswerColumn(nextRows, "left"));
+      updateAnswer(block.sideBySideResponseIds!.right, sideBySideAnswerColumn(nextRows, "right"));
+    }
     return <>
       {block.description?.trim() ? <p className="mb-5 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{block.description}</p> : null}
-      <div className="grid gap-5 md:grid-cols-2">
-        {(["left", "right"] as const).map((side) => {
-          const id = block.sideBySideResponseIds![side];
-          const heading = side === "left" ? block.sideBySideConfig!.leftHeading : block.sideBySideConfig!.rightHeading;
-          return <div key={side} className="min-w-0">
-            <label htmlFor={`answer-${id}`} className="text-sm font-semibold text-text-primary">{heading}{block.sideBySideConfig!.bothRequired ? <span className="font-normal text-text-muted"> (required)</span> : <span className="font-normal text-text-muted"> (optional)</span>}</label>
-            <textarea id={`answer-${id}`} name={`answer-${id}`} value={typeof answers[id] === "string" ? String(answers[id]) : ""} onChange={(event) => updateAnswer(id, event.currentTarget.value)} readOnly={locked} rows={5} aria-invalid={Boolean(errors[id])} aria-describedby={errors[id] ? `answer-error-${id}` : undefined} className="mt-2 min-h-32 w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-base text-text-primary read-only:bg-surface-muted" />
-            {errors[id] ? <p id={`answer-error-${id}`} role="alert" className="mt-2 text-sm text-danger">{errors[id]}</p> : null}
-          </div>;
-        })}
-      </div>
+      <p className="mb-3 text-xs text-text-muted">{block.sideBySideConfig.bothRequired ? "At least one complete pair is required. Complete both responses in any pair you start." : "Responses are optional."}</p>
+      <SideBySideResponseFields config={block.sideBySideConfig} rows={rows} readOnly={locked}
+        errors={{ left: errors[block.sideBySideResponseIds.left], right: errors[block.sideBySideResponseIds.right] }}
+        onChange={updateRow} onAdd={addRow} />
     </>;
   }
   if (block.type === "rich_text" && block.content && typeof block.content === "object" && !Array.isArray(block.content)) {

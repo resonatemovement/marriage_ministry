@@ -6,7 +6,7 @@ import { orderCouplePartners } from "@/features/people/partner-order";
 import type { StagedMaterialBlock } from "@/features/session-builder/editor-model";
 import { participantHomeworkTitle, type HomeworkProgressStatus } from "@/features/homework/presentation";
 import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "@/features/homework/selection-question";
-import { groupSideBySideRows } from "@/features/homework/side-by-side-response";
+import { groupSideBySideRows, sideBySideAnswerRows } from "@/features/homework/side-by-side-response";
 import { getCurrentCoupleCounselor } from "@/features/counseling-contacts/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { signedResourceAccess } from "@/features/resource-library/server";
@@ -250,14 +250,16 @@ async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof creat
     content: null,
     url: null,
     description: group.config.instructions,
-    answer: {
-      left: typeof group.left.answer === "string" ? group.left.answer : "",
-      right: typeof group.right.answer === "string" ? group.right.answer : "",
-    },
+    answer: "",
     questionChoices: [],
     isRequired: group.config.bothRequired,
     sideBySideConfig: group.config,
     sideBySideResponseIds: { left: group.left.id, right: group.right.id },
+    sideBySideRows: sideBySideAnswerRows(
+      typeof group.left.answer === "string" ? group.left.answer : "",
+      typeof group.right.answer === "string" ? group.right.answer : "",
+      group.config.groupId,
+    ),
   } : { ...group.row, sideBySideConfig: null, sideBySideResponseIds: null });
   return {
     title,

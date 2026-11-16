@@ -2,6 +2,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Card } from "@/components/ui/card";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import type { Json } from "@/types/database.generated";
+import { sideBySideAnswerRows } from "@/features/homework/side-by-side-response";
 
 import { groupSubmittedHomeworkQuestions, homeworkReviewAnswer, type SubmittedHomeworkQuestion, type SubmittedHomeworkReview } from "./submitted-homework-review";
 
@@ -24,17 +25,20 @@ function ReviewQuestion({ question }: { question: SubmittedHomeworkQuestion }) {
 }
 
 function ReviewSideBySide({ config, left, right }: { config: Omit<import("@/features/homework/side-by-side-response").SideBySideResponseConfig, "side">; left: SubmittedHomeworkQuestion; right: SubmittedHomeworkQuestion }) {
+  const rows = sideBySideAnswerRows(left.answerText, right.answerText, config.groupId);
   return <Card className="p-5 sm:p-7">
     {config.instructions.trim() ? <p className="mb-5 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{config.instructions}</p> : null}
-    <div className="grid gap-5 md:grid-cols-2">
-      {([left, right] as const).map((question, index) => <section key={question.blockId} className="min-w-0">
-        <h2 className="break-words font-heading text-base font-bold text-text-primary">{index === 0 ? config.leftHeading : config.rightHeading}</h2>
-        <div className="mt-3 border-t border-border pt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Submitted answer</h3>
-          {homeworkReviewAnswer(question).length === 0 ? <p className="mt-2 text-sm italic text-text-muted">No answer provided</p>
-            : <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-text-primary">{homeworkReviewAnswer(question)[0]}</p>}
-        </div>
-      </section>)}
+    <div className="mb-2 hidden gap-5 md:grid md:grid-cols-2" aria-hidden="true">
+      {[config.leftHeading, config.rightHeading].map((heading, index) => <h2 key={index} className="break-words font-heading text-base font-bold text-text-primary">{heading}</h2>)}
+    </div>
+    <div className="grid gap-4">
+      {rows.map((row) => <div key={row.id} className="grid min-w-0 gap-4 md:grid-cols-2">
+        {([row.left, row.right] as const).map((answer, index) => <section key={index} className="min-w-0">
+          <h3 className="break-words font-heading text-base font-bold text-text-primary md:sr-only">{index === 0 ? config.leftHeading : config.rightHeading}</h3>
+          {!answer.trim() ? <p className="mt-2 text-sm italic text-text-muted">No answer provided</p>
+            : <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-text-primary">{answer}</p>}
+        </section>)}
+      </div>)}
     </div>
   </Card>;
 }

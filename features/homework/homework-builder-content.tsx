@@ -20,8 +20,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 import type { Json } from "@/types/database.generated";
-import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkMoveTarget } from "./homework-editor-model";
+import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkMoveTarget, sideBySideHeadingsAreValid } from "./homework-editor-model";
 import type { SideBySideResponseConfig } from "./side-by-side-response";
+import { SideBySideResponseFields } from "./side-by-side-response-fields";
 import { useHomeworkEditorState } from "./homework-editor-state";
 import { isValidHomeworkVideoUrl } from "./homework-url";
 import type { HomeworkDraftLoadResult } from "./queries";
@@ -122,10 +123,10 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-medium text-text-primary">Left column heading
-              <Input required maxLength={180} value={editing.sideBySideConfig.leftHeading} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, leftHeading: event.currentTarget.value } })} />
+              <Input required maxLength={180} placeholder="Left column heading" value={editing.sideBySideConfig.leftHeading} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, leftHeading: event.currentTarget.value } })} />
             </label>
             <label className="grid gap-1.5 text-sm font-medium text-text-primary">Right column heading
-              <Input required maxLength={180} value={editing.sideBySideConfig.rightHeading} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, rightHeading: event.currentTarget.value } })} />
+              <Input required maxLength={180} placeholder="Right column heading" value={editing.sideBySideConfig.rightHeading} onChange={(event) => patchEditing({ sideBySideConfig: { ...editing.sideBySideConfig!, rightHeading: event.currentTarget.value } })} />
             </label>
           </div>
           <label htmlFor={`homework-side-by-side-required-${editing.key}`} className="flex min-h-10 items-center gap-2 text-sm font-medium text-text-primary">
@@ -133,7 +134,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
             Both responses required
           </label>
           <SideBySidePreview config={editing.sideBySideConfig} />
-          <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!editing.sideBySideConfig.leftHeading.trim() || !editing.sideBySideConfig.rightHeading.trim()} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
+          <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!sideBySideHeadingsAreValid(editing.sideBySideConfig)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
         </> : editing.blockType === "video_link" ? <><VideoLinkFields title={editing.title ?? ""} url={editing.url ?? ""} description={editing.description ?? ""}
           onTitleChange={(title) => patchEditing({ title: title || null })} onUrlChange={(url) => patchEditing({ url })}
           onDescriptionChange={(description) => patchEditing({ description: description || null })} urlError={urlMessage} />
@@ -255,12 +256,10 @@ function blockTypeIcon(blockType: string) {
   return <TextCursorInput className="size-5 text-brand-primary" aria-hidden="true" />;
 }
 
-function SideBySidePreview({ config }: { config: Omit<SideBySideResponseConfig, "groupId" | "side"> }) {
+function SideBySidePreview({ config }: { config: Omit<SideBySideResponseConfig, "side"> }) {
   return <div className="rounded-md border border-border bg-surface-muted p-4">
     {config.instructions.trim() ? <p className="mb-3 whitespace-pre-wrap text-sm text-text-secondary">{config.instructions}</p> : null}
-    <div className="grid gap-3 md:grid-cols-2">
-      {[config.leftHeading, config.rightHeading].map((heading, index) => <div key={index} className="min-w-0"><p className="mb-2 break-words text-sm font-semibold text-text-primary">{heading || "Column heading"}</p><textarea disabled rows={3} placeholder="Your response" className="min-h-24 w-full resize-none rounded-md border border-border bg-white px-3 py-2 text-base" /></div>)}
-    </div>
+    <SideBySideResponseFields config={config} rows={[{ id: config.groupId, left: "", right: "" }]} readOnly />
   </div>;
 }
 

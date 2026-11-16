@@ -137,29 +137,56 @@ describe("participant Homework presentation", () => {
     const sideBySide = block({
       id: "group", type: "side_by_side_response", content: null,
       description: "Optional instructions", isRequired: true,
-      sideBySideConfig: { groupId: "group", instructions: "Optional instructions", leftHeading: "Recognize", rightHeading: "Renew", bothRequired: true },
+      sideBySideConfig: { groupId: "ab29786c-cc70-4b39-9f75-8640aa0872f7", instructions: "Optional instructions", leftHeading: "Recognize", rightHeading: "Renew", bothRequired: true, responseMode: "paired_rows_v1" },
       sideBySideResponseIds: { left: "stable-left-id", right: "stable-right-id" },
       answer: { left: "Left saved", right: "" },
     });
     const assignment = homework([sideBySide]);
-    expect(participantAnswerValues(assignment)).toEqual({ "stable-left-id": "Left saved", "stable-right-id": "" });
-    expect(participantRequiredAnswerErrors(assignment, participantAnswerValues(assignment))).toEqual({ "stable-right-id": "A response is required." });
-    expect(participantRequiredAnswerErrors(assignment, { "stable-left-id": "Left saved", "stable-right-id": "Right saved" })).toEqual({});
+    expect(participantAnswerValues(assignment)).toEqual({
+      "stable-left-id": JSON.stringify({ version: 1, rows: [{ id: "ab29786c-cc70-4b39-9f75-8640aa0872f7", value: "Left saved" }] }),
+      "stable-right-id": JSON.stringify({ version: 1, rows: [{ id: "ab29786c-cc70-4b39-9f75-8640aa0872f7", value: "" }] }),
+    });
+    expect(participantRequiredAnswerErrors(assignment, participantAnswerValues(assignment))).toEqual({
+      "stable-left-id": "Complete both responses in each started pair. At least one complete pair is required.",
+      "stable-right-id": "Complete both responses in each started pair. At least one complete pair is required.",
+    });
+    expect(participantRequiredAnswerErrors(assignment, {
+      "stable-left-id": JSON.stringify({ version: 1, rows: [{ id: "ab29786c-cc70-4b39-9f75-8640aa0872f7", value: "Left saved" }] }),
+      "stable-right-id": JSON.stringify({ version: 1, rows: [{ id: "ab29786c-cc70-4b39-9f75-8640aa0872f7", value: "Right saved" }] }),
+    })).toEqual({});
     expect(participantRequiredAnswerErrors(homework([{ ...sideBySide, sideBySideConfig: { ...sideBySide.sideBySideConfig!, bothRequired: false } }]), { "stable-left-id": "", "stable-right-id": "" })).toEqual({});
     const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: assignment }));
     expect(markup).toContain("Recognize");
     expect(markup).toContain("Renew");
-    expect(markup).toContain('name="answer-stable-left-id"');
-    expect(markup).toContain('name="answer-stable-right-id"');
+    expect(markup).toContain('id="response-ab29786c-cc70-4b39-9f75-8640aa0872f7:left"');
+    expect(markup).toContain('id="response-ab29786c-cc70-4b39-9f75-8640aa0872f7:right"');
     expect(markup).toContain("md:grid-cols-2");
     expect(markup).toContain("text-base");
     expect(markup).toContain("Left saved");
-    expect(markup).toContain("(required)");
+    expect(markup).toContain("Add response");
+    expect(markup).toContain("At least one complete pair is required");
     expect(markup).toMatch(/>Submit Homework<\/button>/);
     expect(markup).toMatch(/disabled=""[^>]*>Submit Homework<\/button>/);
     const optionalMarkup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: homework([{ ...sideBySide, sideBySideConfig: { ...sideBySide.sideBySideConfig!, bothRequired: false } }]) }));
     expect(optionalMarkup).not.toMatch(/disabled=""[^>]*>Submit Homework<\/button>/);
     expect(optionalMarkup).toContain("Save Draft");
+  });
+
+  it("requires one complete pair, rejects every partially populated pair, and permits incomplete optional responses", () => {
+    const required = block({ id: "paired", type: "side_by_side_response", answer: { left: "", right: "" },
+      sideBySideConfig: { groupId: "ab29786c-cc70-4b39-9f75-8640aa0872f7", instructions: "", leftHeading: "Left", rightHeading: "Right", bothRequired: true },
+      sideBySideResponseIds: { left: "left-block", right: "right-block" } });
+    const assignment = homework([required]);
+    const rows = [
+      { id: "a555f2d8-84ce-44ca-9de8-2d6babaf994e", left: "Complete", right: "Pair" },
+      { id: "b5edf42b-9646-41a9-9fc0-996e2a6833c4", left: "Started", right: "" },
+    ];
+    expect(participantRequiredAnswerErrors(assignment, {
+      "left-block": JSON.stringify({ version: 1, rows: rows.map(({ id, left: value }) => ({ id, value })) }),
+      "right-block": JSON.stringify({ version: 1, rows: rows.map(({ id, right: value }) => ({ id, value })) }),
+    })).toMatchObject({ "left-block": expect.any(String), "right-block": expect.any(String) });
+    const optional = homework([{ ...required, sideBySideConfig: { ...required.sideBySideConfig!, bothRequired: false } }]);
+    expect(participantRequiredAnswerErrors(optional, participantAnswerValues(optional))).toEqual({});
   });
 
   it("uses one assignment form and submits the latest shared typed answer state", () => {

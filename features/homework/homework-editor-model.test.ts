@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
 
-import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
 
 describe("staged Homework Rich Text model", () => {
   it("loads persisted block IDs and retains unsupported future block types", () => {
@@ -21,14 +21,17 @@ describe("staged Homework Rich Text model", () => {
   it("creates, edits, duplicates, and restores Side-by-Side blocks by stable response identities rather than headings", () => {
     const initial = homeworkEditorStateFromRows("draft", []);
     const created = newHomeworkBlock("side_by_side_response", 0);
-    expect(created.sideBySideConfig).toMatchObject({ leftHeading: "Recognize and Renounce", rightHeading: "Replace and Renew", bothRequired: true });
+    expect(created.sideBySideConfig).toMatchObject({ leftHeading: "", rightHeading: "", bothRequired: true, responseMode: "paired_rows_v1" });
+    expect(sideBySideHeadingsAreValid(created.sideBySideConfig)).toBe(false);
+    const valid = updateHomeworkBlock(addHomeworkBlock(initial, created), created.key, { sideBySideConfig: { ...created.sideBySideConfig!, leftHeading: "Left", rightHeading: "Right" } });
+    expect(homeworkSideBySideHeadingsAreValid(valid)).toBe(true);
     const staged = addHomeworkBlock(initial, created);
     const edited = updateHomeworkBlock(staged, created.key, { sideBySideConfig: { ...created.sideBySideConfig!, leftHeading: "Changed heading" } });
     expect(homeworkEditorIsDirty(edited)).toBe(true);
     const duplicate = duplicateHomeworkBlock(edited.blocks, created.key);
     expect(duplicate.blocks[1]?.sideBySideConfig?.groupId).not.toBe(created.sideBySideConfig?.groupId);
 
-    const config = { ...created.sideBySideConfig!, instructions: "Describe your reflection." };
+    const config = { ...created.sideBySideConfig!, instructions: "Describe your reflection.", leftHeading: "Left", rightHeading: "Right" };
     const left = { id: "left-snapshot", homeworkBlockId: "left-logical", blockType: "long_answer", position: 0, title: config.leftHeading, richTextContent: { type: "doc", content: [] }, url: null, description: sideBySideResponseMetadata({ ...config, side: "left" as const }) };
     const right = { id: "right-snapshot", homeworkBlockId: "right-logical", blockType: "long_answer", position: 1, title: config.rightHeading, richTextContent: { type: "doc", content: [] }, url: null, description: sideBySideResponseMetadata({ ...config, side: "right" as const }) };
     const restored = homeworkEditorStateFromRows("draft", [left, right]);

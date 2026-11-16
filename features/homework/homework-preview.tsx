@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
+import { SideBySideResponseFields } from "./side-by-side-response-fields";
 import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
 import type { StagedHomeworkBlock } from "./homework-editor-model";
 import { isValidHomeworkVideoUrl } from "./homework-url";
@@ -63,12 +64,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
     if (!config.leftHeading.trim() || !config.rightHeading.trim()) return <IncompletePreviewBlock />;
     return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
       {config.instructions.trim() ? <p className="mb-5 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{config.instructions}</p> : null}
-      <div className="grid gap-4 md:grid-cols-2">
-        {[config.leftHeading, config.rightHeading].map((heading, index) => <div key={index} className="min-w-0">
-          <label htmlFor={`homework-preview-side-${block.key}-${index}`} className="text-sm font-semibold text-text-primary">{heading}</label>
-          <textarea id={`homework-preview-side-${block.key}-${index}`} readOnly rows={5} placeholder="Your response" className="mt-2 min-h-32 w-full resize-y rounded-md border border-border bg-surface-muted px-3 py-2 text-base text-text-primary" />
-        </div>)}
-      </div>
+      <SideBySideResponseFields config={config} rows={[{ id: config.groupId, left: "", right: "" }]} readOnly />
       <span className="mt-4 inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-text-muted">{config.bothRequired ? "Both responses required" : "Responses optional"}</span>
     </article>;
   }

@@ -2,7 +2,7 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Json } from "@/types/database.generated";
-import { sideBySideResponseMetadata } from "@/features/homework/side-by-side-response";
+import { sideBySideAnswerColumn, sideBySideResponseMetadata } from "@/features/homework/side-by-side-response";
 
 vi.mock("next/link", () => ({ default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => createElement("a", props, children) }));
 vi.mock("@/features/session-builder/rich-text-editor", () => ({ RichTextReadOnly: ({ content }: { content: Record<string, unknown> }) => createElement("div", { "data-rich-text": true }, JSON.stringify(content)) }));
@@ -72,5 +72,27 @@ describe("submitted Homework review presentation", () => {
     expect(markup).toContain("md:grid-cols-2");
     expect(markup).not.toMatch(/<(textarea|input|button)\b/);
     expect(markup.indexOf("Recognize and Renounce")).toBeLessThan(markup.indexOf("Replace and Renew"));
+  });
+
+  it("renders multiple saved answer pairs in aligned responsive columns without row numbering or controls", () => {
+    const config = { groupId: "ab29786c-cc70-4b39-9f75-8640aa0872f7", instructions: "Reflect on both sides.", leftHeading: "Notice", rightHeading: "Choose", bothRequired: true, responseMode: "paired_rows_v1" as const };
+    const rows = [
+      { id: "a555f2d8-84ce-44ca-9de8-2d6babaf994e", left: "First line\nSecond line", right: "Short response" },
+      { id: "b5edf42b-9646-41a9-9fc0-996e2a6833c4", left: "Longer response\nwith another line\nand more context", right: "Second pair" },
+    ];
+    const questions = (["left", "right"] as const).map((side, index) => ({
+      blockId: `paired-${side}`, type: "long_answer" as const, position: 4 + index, title: side === "left" ? config.leftHeading : config.rightHeading,
+      content: { type: "doc", content: [] }, choices: null, isRequired: true, answerText: sideBySideAnswerColumn(rows, side), answerValue: null,
+      description: sideBySideResponseMetadata({ ...config, side }),
+    }));
+    const markup = renderToStaticMarkup(createElement(SubmittedHomeworkReviewPage, { review: { ...review, questions: [...review.questions, ...questions] }, partnerName: "Partner A" }));
+    expect(markup).toContain("First line\nSecond line");
+    expect(markup).toContain("Longer response\nwith another line\nand more context");
+    expect(markup).toContain("Short response");
+    expect(markup).toContain("Second pair");
+    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).not.toMatch(/\b(?:Pair|Row)\s*\d+/);
+    expect(markup).not.toContain("Add response");
+    expect(markup).not.toMatch(/<(textarea|input|button)\b/);
   });
 });

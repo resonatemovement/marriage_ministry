@@ -65,6 +65,7 @@ const userFacingRpcErrors = new Set([
   "Invalid Homework selection question",
   "Complete each selection question before publishing",
   "Complete each Side-by-Side Response before publishing",
+  "Complete both Side-by-Side column headings before saving",
 ]);
 
 function errorMessage(error: unknown) {
