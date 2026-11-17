@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20261116120000_homework_paired_response_rows.sql", "utf8");
+const parserFix = readFileSync("supabase/migrations/20261116130000_homework_paired_response_parser_alias.sql", "utf8");
 
 describe("paired Homework response row migration", () => {
   it("uses forward-compatible versioned Long Answer snapshots and preserves answer/RLS tables", () => {
@@ -33,5 +34,14 @@ describe("paired Homework response row migration", () => {
     expect(migration).toContain("key_count not in (7, 8)");
     expect(migration).toContain("left_column is not null or right_column is not null");
     expect(migration).toContain("private.homework_side_by_side_metadata");
+  });
+
+  it("qualifies JSON-array elements in the forward parser fix without changing its contract", () => {
+    expect(parserFix).toContain("create or replace function private.homework_side_by_side_answer_column(value text)");
+    expect(parserFix).toContain("language plpgsql\nimmutable\nset search_path = ''");
+    expect(parserFix).toContain("from jsonb_array_elements(parsed -> 'rows') as row_entry(element)");
+    expect(parserFix).toContain("select row_entry.element");
+    expect(parserFix).toContain("row_id = any(seen_ids)");
+    expect(parserFix).not.toMatch(/grant\s|revoke\s|security\s+definer/i);
   });
 });

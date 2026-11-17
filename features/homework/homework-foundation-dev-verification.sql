@@ -298,6 +298,7 @@ begin
       raise exception 'Verifier expected invalid answer rejection: %', error_text;
     exception when others then
       if sqlerrm not in ('Answers may only target Long Answer blocks in the assigned version',
+                        'Answer does not target a response question in the assigned version',
                         'Active participant progress is unavailable') then raise; end if;
     end;
   end loop;
@@ -398,7 +399,8 @@ begin
     perform public.save_homework_answer((ctx ->> 'progress_b')::uuid, v2_a, 'Wrong version');
     raise exception 'Verifier expected wrong-version answer rejection';
   exception when others then
-    if sqlerrm <> 'Answers may only target Long Answer blocks in the assigned version' then raise; end if;
+    if sqlerrm not in ('Answers may only target Long Answer blocks in the assigned version',
+                      'Answer does not target a response question in the assigned version') then raise; end if;
   end;
   perform set_config('request.jwt.claim.sub', ctx ->> 'admin', true);
   assert (select rich_text_content =
