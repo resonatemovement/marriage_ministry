@@ -11,6 +11,22 @@ export type IntakeDraft = { you: PersonDraft; partner: PersonDraft; relationship
 
 const emptyPerson = (): PersonDraft => ({ firstName: "", lastName: "", gender: "", phone: "", email: "", city: "", connections: [] });
 export const emptyDraft = (): IntakeDraft => ({ you: emptyPerson(), partner: emptyPerson(), relationshipStatus: "", weddingDate: "", campusId: "", campusOther: "", workingWithCounselor: "", requestedSupport: [], goals: "", questions: "", referralSource: "", referralOther: "" });
+
+export function complementaryGender(gender: IntakeGender | ""): IntakeGender | "" {
+  if (gender === "male") return "female";
+  if (gender === "female") return "male";
+  return "";
+}
+
+export function updateRequesterGender(draft: IntakeDraft, gender: string): IntakeDraft {
+  const requesterGender = gender === "male" || gender === "female" ? gender : "";
+  return {
+    ...draft,
+    you: { ...draft.you, gender: requesterGender },
+    partner: { ...draft.partner, gender: complementaryGender(requesterGender) },
+  };
+}
+
 const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -30,6 +46,11 @@ export function validateStep(step: number, draft: IntakeDraft, activeCampusIds?:
       if (person.gender !== "male" && person.gender !== "female") errors[`${key}.gender`] = "Choose a gender.";
       if (!isValidPhone(person.phone)) errors[`${key}.phone`] = "Enter a valid phone number.";
       if (!email.test(person.email.trim())) errors[`${key}.email`] = "Enter a valid email address.";
+    }
+    if ((draft.you.gender === "male" || draft.you.gender === "female")
+      && (draft.partner.gender === "male" || draft.partner.gender === "female")
+      && draft.partner.gender !== complementaryGender(draft.you.gender)) {
+      errors["partner.gender"] = "Partner gender must complement your gender.";
     }
     const youEmail = draft.you.email.trim().toLowerCase();
     const partnerEmail = draft.partner.email.trim().toLowerCase();

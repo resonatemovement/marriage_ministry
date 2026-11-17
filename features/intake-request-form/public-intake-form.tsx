@@ -23,6 +23,7 @@ import {
   emptyDraft,
   getVisibleStepErrors,
   getVisibleSubmissionErrors,
+  updateRequesterGender,
   type IntakeDraft,
   type PersonDraft,
 } from "./validation";
@@ -105,6 +106,7 @@ function PersonFields({
   prefix,
   person,
   setPerson,
+  genderEditable,
   markTouched,
   errors,
 }: {
@@ -112,6 +114,7 @@ function PersonFields({
   prefix: string;
   person: PersonDraft;
   setPerson: (person: PersonDraft) => void;
+  genderEditable: boolean;
   markTouched: (field: string) => void;
   errors: Errors;
 }) {
@@ -144,6 +147,7 @@ function PersonFields({
           <span>Gender</span>
           <Select
             value={person.gender}
+            disabled={!genderEditable}
             onValueChange={(gender) => update("gender", gender)}
           >
             <SelectTrigger
@@ -446,7 +450,8 @@ export function PublicIntakeForm({ campuses }: { campuses: Campus[] }) {
                 title="You"
                 prefix="you"
                 person={draft.you}
-                setPerson={(you) => setDraft({ ...draft, you })}
+                genderEditable
+                setPerson={(you) => setDraft(updateRequesterGender({ ...draft, you }, you.gender))}
                 markTouched={markTouched}
                 errors={errors}
               />
@@ -454,6 +459,7 @@ export function PublicIntakeForm({ campuses }: { campuses: Campus[] }) {
                 title="Your Partner"
                 prefix="partner"
                 person={draft.partner}
+                genderEditable={false}
                 setPerson={(partner) => setDraft({ ...draft, partner })}
                 markTouched={markTouched}
                 errors={errors}

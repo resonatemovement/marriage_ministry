@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getProfilePhotoUrl } from "@/lib/storage/profile-photo";
 import { createDetailMember, type PeopleDetailMember } from "@/features/people/detail-model";
 import { orderCouplePartners } from "@/features/people/partner-order";
+import { coupleDisplayName } from "@/features/people/types";
 
 export type CounselingContactDetail = {
   id: string;
@@ -36,6 +37,9 @@ export async function getCounselingContactDetail(caseId: string, groupId: string
   const rows = (data ?? []) as unknown as ContactRow[];
   const first = rows[0];
   if (!first) return null;
+  if (rows.some((row) => !Object.prototype.hasOwnProperty.call(row, "onboarding_completed_at"))) {
+    throw new Error("Counseling contact onboarding status is unavailable");
+  }
   const members = await Promise.all(rows.map(async (row) => createDetailMember({
     id: row.member_id,
     firstName: row.first_name,
@@ -49,14 +53,26 @@ export async function getCounselingContactDetail(caseId: string, groupId: string
     status: row.profile_status === "invited" || row.profile_status === "password_required" || row.profile_status === "onboarding" || row.profile_status === "deactivated" ? row.profile_status : "active",
     onboardingCompletedAt: row.onboarding_completed_at,
   })));
+  const kind = first.group_type === "couple" ? "couple" : "team";
+  const orderedMembers = kind === "couple" ? orderCouplePartners(members) : members;
+  const rowsByMemberId = new Map(rows.map((row) => [row.member_id, row]));
+  const name = kind === "couple"
+    ? coupleDisplayName(first.group_name, orderedMembers.map(({ firstName, lastName, email, gender }) => ({ firstName, lastName, email, gender })), [])
+    : first.group_name ?? "Counseling contact";
   return {
     id: first.group_id,
-    name: first.group_name ?? "Counseling contact",
-    kind: first.group_type === "couple" ? "couple" : "team",
+    name: kind === "couple" && name === "Pending Couple invitation" ? "Couple" : name,
+    kind,
     roleLabel: roleLabel(first.assignment_type, first.group_type),
     campus: first.campus_name,
     caseStatus: first.case_status ?? null,
-    members: first.group_type === "couple" ? orderCouplePartners(members) : members,
+    members: orderedMembers.map((member) => {
+      const row = rowsByMemberId.get(member.id);
+      if (row?.onboarding_completed_at) {
+        return { ...member, onboardingStatus: "Onboarding Complete", onboardingComplete: true };
+      }
+      return member;
+    }),
   };
 }
 

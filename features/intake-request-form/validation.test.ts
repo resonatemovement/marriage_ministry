@@ -1,14 +1,42 @@
 import { describe, expect, it } from "vitest";
 
-import { canAdvanceIntakeStep, capitalizeInitials, emptyDraft, getVisibleStepErrors, normalizeDraft, validateStep } from "./validation";
+import { canAdvanceIntakeStep, capitalizeInitials, emptyDraft, getVisibleStepErrors, normalizeDraft, updateRequesterGender, validateStep } from "./validation";
 
 describe("public intake form validation", () => {
+  it("automatically assigns the complementary partner gender when requester gender changes", () => {
+    const draft = emptyDraft();
+
+    const maleRequester = updateRequesterGender(draft, "male");
+    expect(maleRequester.you.gender).toBe("male");
+    expect(maleRequester.partner.gender).toBe("female");
+
+    const femaleRequester = updateRequesterGender(maleRequester, "female");
+    expect(femaleRequester.you.gender).toBe("female");
+    expect(femaleRequester.partner.gender).toBe("male");
+
+    const cleared = updateRequesterGender(femaleRequester, "");
+    expect(cleared.you.gender).toBe("");
+    expect(cleared.partner.gender).toBe("");
+
+    const requesterDetails = updateRequesterGender({ ...draft, you: { ...draft.you, firstName: "Avery" } }, "male");
+    expect(requesterDetails.you.firstName).toBe("Avery");
+    expect(requesterDetails.partner.gender).toBe("female");
+  });
+
   it("requires both people and rejects duplicate email", () => {
     const draft = emptyDraft();
     draft.you.email = "same@example.com";
     draft.partner.email = "same@example.com";
     expect(validateStep(1, draft)["you.firstName"]).toBeTruthy();
     expect(validateStep(1, draft)["partner.email"]).toContain("different");
+  });
+
+  it("rejects matching genders because partner gender must complement the requester", () => {
+    const draft = emptyDraft();
+    draft.you.gender = "male";
+    draft.partner.gender = "male";
+
+    expect(validateStep(1, draft)["partner.gender"]).toBe("Partner gender must complement your gender.");
   });
 
   it("allows blank City values", () => {

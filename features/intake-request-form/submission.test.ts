@@ -66,6 +66,16 @@ describe("intake submission validation and mapping", () => {
     expect("errors" in result && result.errors["partner.gender"]).toBeTruthy();
   });
 
+  it("server-side submission validation rejects missing requester and non-complementary partner genders", () => {
+    const draft = validDraft();
+    draft.you.gender = "";
+    expect(validateIntakeSubmission(draft, [campusId])).toMatchObject({ errors: { "you.gender": "Choose a gender." } });
+
+    draft.you.gender = "male";
+    draft.partner.gender = "male";
+    expect(validateIntakeSubmission(draft, [campusId])).toMatchObject({ errors: { "partner.gender": "Partner gender must complement your gender." } });
+  });
+
   it("rejects unknown relationship, connection, support, and referral values", () => {
     const draft = validDraft();
     draft.relationshipStatus = "dating";
