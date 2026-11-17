@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import type { HomeworkDraftBlock } from "./queries";
-import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorIsDirty, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
 import type { HOMEWORK_AUTHORING_BLOCK_TYPES } from "./homework-editor-model";
 
 type HomeworkAuthoringBlockType = typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number];
@@ -12,6 +12,7 @@ type HomeworkEditorContextValue = {
   state: HomeworkEditorState;
   dirty: boolean;
   sideBySideHeadingsValid: boolean;
+  canCommit: boolean;
   initialize: (versionId: string, blocks: HomeworkDraftBlock[], status: "draft" | "published") => void;
   addBlock: (blockType: HomeworkAuthoringBlockType) => void;
   updateBlock: (key: string, update: Partial<StagedHomeworkBlock>) => void;
@@ -24,6 +25,7 @@ type HomeworkEditorContextValue = {
   deleteBlock: (key: string, confirmation: string) => void;
   setEditingKey: (key: string | null) => void;
   finishEditing: () => void;
+  cancelEditing: () => void;
   discard: () => void;
   acceptPersisted: (versionId: string, blocks: HomeworkDraftBlock[], status: "draft" | "published") => void;
 };
@@ -31,7 +33,7 @@ type HomeworkEditorContextValue = {
 const HomeworkEditorContext = createContext<HomeworkEditorContextValue | null>(null);
 
 export function HomeworkEditorProvider({ children, initialDraft }: { children?: ReactNode; initialDraft?: { id: string; status?: "draft" | "published"; blocks: HomeworkDraftBlock[] } }) {
-  const [state, setState] = useState<HomeworkEditorState>(() => initialDraft ? homeworkEditorStateFromRows(initialDraft.id, initialDraft.blocks, initialDraft.status) : { versionId: null, versionStatus: null, blocks: [], baseline: [], editingKey: null });
+  const [state, setState] = useState<HomeworkEditorState>(() => initialDraft ? homeworkEditorStateFromRows(initialDraft.id, initialDraft.blocks, initialDraft.status) : { versionId: null, versionStatus: null, blocks: [], baseline: [], editingKey: null, editingOriginal: null });
   const initialize = useCallback((versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published") => {
     setState((current) => initializeHomeworkEditorState(current, versionId, rows, status));
   }, []);
@@ -53,19 +55,20 @@ export function HomeworkEditorProvider({ children, initialDraft }: { children?: 
     const duplicateKey = `local:${crypto.randomUUID()}`;
     setState((current) => {
       const duplicated = duplicateHomeworkBlock(current.blocks, key, duplicateKey);
-      return duplicated.editingKey ? { ...current, blocks: duplicated.blocks, editingKey: duplicated.editingKey } : current;
+      return duplicated.editingKey ? { ...current, blocks: duplicated.blocks, editingKey: duplicated.editingKey, editingOriginal: null } : current;
     });
   }, []);
   const deleteBlock = useCallback((key: string, confirmation: string) => {
     setState((current) => ({ ...current, blocks: deleteHomeworkBlock(current.blocks, key, confirmation) }));
   }, []);
-  const setEditingKey = useCallback((key: string | null) => setState((current) => ({ ...current, editingKey: key })), []);
+  const setEditingKey = useCallback((key: string | null) => setState((current) => beginHomeworkBlockEditing(current, key)), []);
   const finishEditing = useCallback(() => setState((current) => finishHomeworkBlockEditing(current)), []);
+  const cancelEditing = useCallback(() => setState((current) => cancelHomeworkBlockEditing(current)), []);
   const discard = useCallback(() => setState((current) => restoreHomeworkEditorState(current)), []);
   const acceptPersisted = useCallback((versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published") => {
     setState((current) => persistHomeworkEditorState(current, rows, versionId, status));
   }, []);
-  const value = useMemo(() => ({ state, dirty: homeworkEditorIsDirty(state), sideBySideHeadingsValid: homeworkSideBySideHeadingsAreValid(state), initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, discard, acceptPersisted }), [state, initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, discard, acceptPersisted]);
+  const value = useMemo(() => ({ state, dirty: homeworkEditorIsDirty(state), sideBySideHeadingsValid: homeworkSideBySideHeadingsAreValid(state), canCommit: homeworkEditorCanCommit(state), initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, cancelEditing, discard, acceptPersisted }), [state, initialize, addBlock, updateBlock, addQuestionChoice, updateQuestionChoice, deleteQuestionChoice, reorderQuestionChoices, reorderBlocks, duplicateBlock, deleteBlock, setEditingKey, finishEditing, cancelEditing, discard, acceptPersisted]);
   return <HomeworkEditorContext.Provider value={value}>{children}</HomeworkEditorContext.Provider>;
 }
 

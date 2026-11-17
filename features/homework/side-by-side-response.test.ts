@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { parseSideBySideAnswerColumn, parseSideBySideResponseMetadata, sideBySideAnswerColumn, sideBySideAnswerRows, sideBySideResponseMetadata } from "./side-by-side-response";
 import { homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, newHomeworkBlock } from "./homework-editor-model";
+import { SideBySideResponseFields } from "./side-by-side-response-fields";
 
 const groupId = "ab29786c-cc70-4b39-9f75-8640aa0872f7";
 const rowA = "a555f2d8-84ce-44ca-9de8-2d6babaf994e";
@@ -17,7 +21,7 @@ describe("Side-by-Side paired responses", () => {
 
   it.each([["", "Right"], ["Left", "   "], ["  ", " "]])("rejects missing or whitespace headings (%j)", (leftHeading, rightHeading) => {
     const block = newHomeworkBlock("side_by_side_response", 0);
-    expect(homeworkSideBySideHeadingsAreValid({ versionId: "draft", versionStatus: "draft", blocks: [{ ...block, sideBySideConfig: { ...block.sideBySideConfig!, leftHeading, rightHeading } }], baseline: [], editingKey: block.key })).toBe(false);
+    expect(homeworkSideBySideHeadingsAreValid({ versionId: "draft", versionStatus: "draft", blocks: [{ ...block, sideBySideConfig: { ...block.sideBySideConfig!, leftHeading, rightHeading } }], baseline: [], editingKey: block.key, editingOriginal: null })).toBe(false);
   });
 
   it("round-trips independently stored columns with stable pair IDs and multiline text", () => {
@@ -50,5 +54,30 @@ describe("Side-by-Side paired responses", () => {
   it("preserves malformed asymmetric stored text instead of silently dropping it", () => {
     const valid = sideBySideAnswerColumn([{ id: rowA, left: "captured text", right: "" }], "left");
     expect(sideBySideAnswerRows(valid, "{broken", groupId)).toEqual([{ id: groupId, left: valid, right: "{broken" }]);
+  });
+
+  it("renders two-line, content-sized response fields with grid-stretched pairs", () => {
+    const markup = renderToStaticMarkup(createElement(SideBySideResponseFields, {
+      config: { groupId, instructions: "", leftHeading: "Left", rightHeading: "Right", bothRequired: false },
+      rows: [{ id: rowA, left: "", right: "" }],
+    }));
+
+    expect(markup.match(/rows="2"/g)).toHaveLength(2);
+    expect(markup.match(/min-h-\[66px\]/g)).toHaveLength(2);
+    expect(markup.match(/homework-side-by-side-response-textarea field-sizing-content/g)).toHaveLength(2);
+    expect(markup).toContain("items-stretch");
+    expect(markup).toContain("grid grid-cols-2 gap-2 sm:gap-4");
+    expect(markup).toContain("min-w-0 break-words px-1 text-sm font-semibold text-text-primary sm:px-3");
+    expect(markup).toContain('class="sr-only"');
+    expect(markup).not.toContain("hidden gap-4 md:grid");
+    expect(markup).toContain("flex min-w-0 flex-col");
+    expect(markup).toContain("px-2 py-2 text-base leading-6");
+    expect(markup).toContain("w-full flex-auto resize-none");
+    expect(markup).toContain("resize-none");
+    expect(markup).not.toContain("style=");
+
+    const globalStyles = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(globalStyles).toContain("@supports not (field-sizing: content)");
+    expect(globalStyles).toMatch(/\.homework-side-by-side-response-textarea\s*\{\s*height:\s*66px;\s*overflow-y:\s*auto;/);
   });
 });

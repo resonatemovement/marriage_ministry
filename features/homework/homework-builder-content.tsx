@@ -13,14 +13,14 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { AuthoringSectionHeader } from "@/components/shared/authoring-section-header";
 import { RichTextSummary } from "@/components/shared/rich-text-summary";
 import { VideoLinkFields } from "@/components/shared/video-link-fields";
-import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
+import { videoLinkIsComplete } from "@/components/shared/authoring-completion";
 import { RichTextBlockAuthoring } from "@/features/session-builder/rich-text-block-authoring";
 import { RichTextEditor } from "@/features/session-builder/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 import type { Json } from "@/types/database.generated";
-import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkMoveTarget, sideBySideHeadingsAreValid } from "./homework-editor-model";
+import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkMoveTarget, sideBySideHeadingsAreValid } from "./homework-editor-model";
 import type { SideBySideResponseConfig } from "./side-by-side-response";
 import { SideBySideResponseFields } from "./side-by-side-response-fields";
 import { useHomeworkEditorState } from "./homework-editor-state";
@@ -76,15 +76,18 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
 
   function finishEditing() {
     if (!editing) return;
-    if (editing.blockType === "side_by_side_response" && (!editing.sideBySideConfig?.leftHeading.trim() || !editing.sideBySideConfig.rightHeading.trim())) return;
-    if (editing.blockType === "rich_text" && !richTextBlockIsComplete(editing.title, editing.richTextContent)) return;
-    if (editing.blockType === "long_answer" && !richTextBlockIsComplete(null, editing.richTextContent, false)) return;
+    if (!homeworkBlockIsComplete(editing)) return;
     if (editing.blockType === "video_link" && !videoLinkIsComplete({ title: editing.title ?? "", url: editing.url ?? "", description: editing.description ?? "" }, isValidHomeworkVideoUrl)) {
       setUrlMessage("Enter a valid http or https URL.");
       return;
     }
     setUrlMessage(null);
     homeworkEditor.finishEditing();
+  }
+
+  function cancelEditing() {
+    setUrlMessage(null);
+    homeworkEditor.cancelEditing();
   }
 
   function patchEditing(update: Parameters<typeof homeworkEditor.updateBlock>[1]) {
@@ -134,11 +137,11 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
             Both responses required
           </label>
           <SideBySidePreview config={editing.sideBySideConfig} />
-          <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!sideBySideHeadingsAreValid(editing.sideBySideConfig)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
+          <div className="flex justify-end gap-2"><button type="button" onClick={cancelEditing} className="min-h-10 rounded-md px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-muted focus-visible:bg-surface-muted">Cancel</button><button type="button" onClick={finishEditing} disabled={!sideBySideHeadingsAreValid(editing.sideBySideConfig)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
         </> : editing.blockType === "video_link" ? <><VideoLinkFields title={editing.title ?? ""} url={editing.url ?? ""} description={editing.description ?? ""}
           onTitleChange={(title) => patchEditing({ title: title || null })} onUrlChange={(url) => patchEditing({ url })}
           onDescriptionChange={(description) => patchEditing({ description: description || null })} urlError={urlMessage} />
-        <div className="flex justify-end"><button type="button" onClick={finishEditing} disabled={!videoLinkIsComplete({ title: editing.title ?? "", url: editing.url ?? "", description: editing.description ?? "" }, isValidHomeworkVideoUrl)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div></>
+        <div className="flex justify-end gap-2"><button type="button" onClick={cancelEditing} className="min-h-10 rounded-md px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-muted focus-visible:bg-surface-muted">Cancel</button><button type="button" onClick={finishEditing} disabled={!videoLinkIsComplete({ title: editing.title ?? "", url: editing.url ?? "", description: editing.description ?? "" }, isValidHomeworkVideoUrl)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div></>
           : editing.blockType === "checkbox_question" || editing.blockType === "radio_question" ? <>
             <div className="grid gap-1.5 text-sm font-medium text-text-primary"><p>Question</p>
               <RichTextEditor content={richText as Record<string, unknown>} onChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })} />
@@ -158,10 +161,10 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
               <Checkbox id={`homework-required-${editing.key}`} checked={editing.isRequired} onCheckedChange={(checked) => patchEditing({ isRequired: checked === true })} />
               Required question
             </label>
-            <div className="flex justify-end"><button type="button" onClick={finishEditing} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90">Done</button></div>
+            <div className="flex justify-end gap-2"><button type="button" onClick={cancelEditing} className="min-h-10 rounded-md px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-muted focus-visible:bg-surface-muted">Cancel</button><button type="button" onClick={finishEditing} disabled={!homeworkBlockIsComplete(editing)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
           </> : <RichTextBlockAuthoring title={editing.blockType === "rich_text" ? editing.title : null} content={richText as Record<string, unknown>}
             onTitleChange={editing.blockType === "rich_text" ? (title) => patchEditing({ title: title || null }) : undefined}
-            onContentChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })}
+            onContentChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })} onCancel={cancelEditing}
             onDone={finishEditing} requireTitle={editing.blockType === "rich_text"} doneLabel="Done" />}
       </div> : blocks.length ? <HomeworkRows blocks={blocks}
         edit={(key) => { setUrlMessage(null); homeworkEditor.setEditingKey(key); }}

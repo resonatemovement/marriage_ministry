@@ -24,7 +24,7 @@ describe("Session Builder feedback", () => {
   });
 
   it("preserves pending protection and first-save navigation after confirmed success", () => {
-    expect(editor).toContain("if (pendingRef.current || archived) return;");
+    expect(editor).toContain("if (pendingRef.current || archived || !homeworkCanCommit) return;");
     expect(editor).toContain("pendingRef.current = true;");
     expect(editor).toContain("pendingRef.current = false;");
     expect(editor).toContain("router.replace(`/session-builder/${next.sessionId}`)");

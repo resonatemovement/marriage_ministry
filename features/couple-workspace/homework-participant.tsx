@@ -95,6 +95,26 @@ export function participantRequiredAnswerErrors(homework: ParticipantHomework, a
   }));
 }
 
+function richTextPrompt(value: Json | null | undefined): string {
+  if (!value || typeof value !== "object") return "";
+  if (Array.isArray(value)) return value.map(richTextPrompt).filter(Boolean).join(" ");
+  if (value.type === "text" && typeof value.text === "string") return value.text;
+  return Object.values(value).map(richTextPrompt).filter(Boolean).join(" ");
+}
+
+export function participantMissingRequirements(homework: ParticipantHomework, answers: ParticipantHomeworkAnswers) {
+  const errors = participantRequiredAnswerErrors(homework, answers);
+  return homework.blocks.flatMap((block) => {
+    if (block.type === "side_by_side_response" && block.sideBySideResponseIds && block.sideBySideConfig) {
+      return errors[block.sideBySideResponseIds.left] || errors[block.sideBySideResponseIds.right]
+        ? [`${block.sideBySideConfig.leftHeading} / ${block.sideBySideConfig.rightHeading}`]
+        : [];
+    }
+    if (!errors[block.id]) return [];
+    return [block.title?.trim() || richTextPrompt(block.content).trim() || (block.type === "long_answer" ? "Long Answer" : `Required ${block.type.replaceAll("_", " ")}`)];
+  });
+}
+
 export function nextCheckboxAnswer(current: ParticipantHomeworkAnswer | undefined, choiceId: string, checked: boolean, choices: HomeworkAnswerChoice[]) {
   const selected = new Set(Array.isArray(current) ? current : []);
   if (checked) selected.add(choiceId);
@@ -177,7 +197,7 @@ function HomeworkBlockContent({ block, answers, errors, locked, updateAnswer }: 
     </>;
   }
   if (block.type === "rich_text" && block.content && typeof block.content === "object" && !Array.isArray(block.content)) {
-    return <><h3 className="font-heading text-lg font-bold text-text-primary">{block.title}</h3><RichTextReadOnly content={block.content as Record<string, unknown>} compact /></>;
+    return <div className="grid gap-3"><h3 className="font-heading text-lg font-bold text-text-primary">{block.title}</h3><RichTextReadOnly content={block.content as Record<string, unknown>} compact contentClassName="p-0" /></div>;
   }
   if (block.type === "video_link" && block.title && block.url && block.description) return <VideoLinkPreview title={block.title} url={block.url} description={block.description} />;
   if (block.type === "long_answer" && block.content && typeof block.content === "object" && !Array.isArray(block.content)) {
@@ -204,7 +224,8 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const dirty = participantAnswersAreDirty(answers, savedAnswers);
-  const submitHasRequiredErrors = Object.keys(participantRequiredAnswerErrors(homework, answers)).length > 0;
+  const missingRequirements = participantMissingRequirements(homework, answers);
+  const submitHasRequiredErrors = missingRequirements.length > 0;
   const locked = readOnly || status === "submitted" || status === "reviewed";
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
@@ -274,7 +295,10 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
       <div className="grid gap-4">{homework.blocks.map((block) => <Card key={block.id} className="p-5 sm:p-7">
         <HomeworkBlockContent block={block} answers={answers} errors={fieldErrors} locked={locked} updateAnswer={updateAnswer} />
       </Card>)}</div>
-      {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <div className="mt-5 flex flex-wrap items-center gap-3"><button type="button" onClick={() => persist("save")} disabled={pending || !dirty} className="min-h-10 cursor-pointer rounded-md border border-border bg-surface px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Saving…" : "Save Draft"}</button><button type="button" onClick={() => persist("submit")} disabled={pending || submitHasRequiredErrors} className="min-h-10 cursor-pointer rounded-md bg-brand-primary px-4 text-sm font-semibold text-white hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Submitting…" : "Submit Homework"}</button></div>}
+      {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <>
+        <div className="mt-5 flex flex-wrap items-center gap-3"><button type="button" onClick={() => persist("save")} disabled={pending || !dirty} className="min-h-10 cursor-pointer rounded-md border border-border bg-surface px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Saving…" : "Save Draft"}</button><button type="button" onClick={() => persist("submit")} disabled={pending || submitHasRequiredErrors} className="min-h-10 cursor-pointer rounded-md bg-brand-primary px-4 text-sm font-semibold text-white hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Submitting…" : "Submit Homework"}</button></div>
+        {missingRequirements.length ? <p className="mt-3 text-sm text-text-muted" role="status">Complete these required responses to submit: {missingRequirements.join("; ")}.</p> : null}
+      </>}
       {message ? <p role={message.kind === "error" ? "alert" : "status"} className={`mt-3 text-sm ${message.kind === "error" ? "text-danger" : "text-success-strong"}`}>{message.text}</p> : null}
     </form>
   </section>;

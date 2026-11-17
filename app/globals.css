@@ -99,6 +99,13 @@ body {
   letter-spacing: 0;
 }
 
+@supports not (field-sizing: content) {
+  .homework-side-by-side-response-textarea {
+    height: 66px;
+    overflow-y: auto;
+  }
+}
+
 @media (pointer: coarse) {
   .onboarding-phone-handoff {
     display: none;

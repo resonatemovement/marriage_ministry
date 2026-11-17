@@ -146,7 +146,7 @@ describe("atomic Session and Homework RPC adapter", () => {
       ...(["left", "right"] as const).map((side, position) => ({
         id: `${side}-snapshot`, homework_block_id: `${side}-logical`, client_id: `side-by-side:${config.groupId}:${side}`,
         block_type: "long_answer", position, title: side === "left" ? config.leftHeading : config.rightHeading,
-        rich_text_content: { type: "doc", content: [] }, url: null,
+        rich_text_content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: side === "left" ? config.leftHeading : config.rightHeading }] }] }, url: null,
         description: sideBySideResponseMetadata({ ...config, side }),
       })),
     ] } }, error: null });
@@ -156,10 +156,25 @@ describe("atomic Session and Homework RPC adapter", () => {
       target_homework_blocks: (["left", "right"] as const).map((side) => ({
         client_id: `side-by-side:${config.groupId}:${side}`, block_type: "long_answer",
         title: side === "left" ? config.leftHeading : config.rightHeading,
-        rich_text_content: { type: "doc", content: [] }, url: null,
+        rich_text_content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: side === "left" ? config.leftHeading : config.rightHeading }] }] }, url: null,
         description: sideBySideResponseMetadata({ ...config, side }),
       })),
     }));
+    const serialized = rpc.mock.calls[0]![1].target_homework_blocks as Array<{ rich_text_content: { content: Array<{ content: Array<{ text: string }> }> } }>;
+    expect(serialized.map((block) => block.rich_text_content.content[0]?.content[0]?.text)).toEqual([config.leftHeading, config.rightHeading]);
+  });
+
+  it("preserves staged Side-by-Side edits when the save RPC fails", async () => {
+    const pair = newHomeworkBlock("side_by_side_response", 0);
+    const config = { ...pair.sideBySideConfig!, leftHeading: "Recognize", rightHeading: "Renounce" };
+    const staged = updateHomeworkBlock(addHomeworkBlock(emptyHomework, pair), pair.key, { sideBySideConfig: config });
+    rpc.mockResolvedValue({ data: null, error: { message: "database failure detail" } });
+
+    const result = await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
+
+    expect(result).toEqual({ error: "Changes could not be saved. Please try again.", errorKind: "operation" });
+    expect(staged.blocks[0]?.sideBySideConfig).toEqual(config);
+    expect(staged.editingKey).toBe(pair.key);
   });
 
   it("surfaces the database's authoritative selection-question publish validation", async () => {

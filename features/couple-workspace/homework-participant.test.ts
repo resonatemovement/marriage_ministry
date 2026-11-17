@@ -5,6 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./homework-participant-actions", () => ({ persistParticipantHomework: vi.fn() }));
+vi.mock("@/features/session-builder/rich-text-editor", async () => {
+  const React = await import("react");
+  return {
+    RichTextReadOnly: ({ content, contentClassName }: { content: Record<string, unknown>; contentClassName?: string }) =>
+      React.createElement("div", { className: contentClassName, "data-rich-text": true }, JSON.stringify(content)),
+  };
+});
 
 import {
   ParticipantHomeworkContent,
@@ -12,6 +19,7 @@ import {
   nextRadioAnswer,
   participantAnswersAreDirty,
   participantAnswerValues,
+  participantMissingRequirements,
   participantRequiredAnswerErrors,
   type ParticipantHomework,
   type ParticipantHomeworkBlock,
@@ -48,6 +56,15 @@ describe("participant Homework presentation", () => {
   it("uses compact Rich Text and naturally sized outer blocks", () => {
     expect(participantSource).toContain('<Card key={block.id} className="p-5 sm:p-7">');
     expect(participantSource).not.toContain('className="min-h-40');
+    expect(participantSource).toContain('compact contentClassName="p-0" />');
+  });
+
+  it("spaces titled Couple Homework Rich Text by 12px without adding inner padding", () => {
+    const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, {
+      homework: homework([block({ id: "reading", type: "rich_text", title: "Read this", content: content("Rich text body") })]),
+    }));
+    expect(markup).toContain('<div class="grid gap-3"><h3 class="font-heading text-lg font-bold text-text-primary">Read this</h3><div class="p-0" data-rich-text="true">');
+    expect(markup).toContain("Rich text body");
   });
 
   it("keeps Long Answer controls close, resizable, and comfortably sized", () => {
@@ -160,7 +177,8 @@ describe("participant Homework presentation", () => {
     expect(markup).toContain("Renew");
     expect(markup).toContain('id="response-ab29786c-cc70-4b39-9f75-8640aa0872f7:left"');
     expect(markup).toContain('id="response-ab29786c-cc70-4b39-9f75-8640aa0872f7:right"');
-    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).toContain("sm:gap-4");
     expect(markup).toContain("text-base");
     expect(markup).toContain("Left saved");
     expect(markup).toContain("Add response");
@@ -187,6 +205,39 @@ describe("participant Homework presentation", () => {
     })).toMatchObject({ "left-block": expect.any(String), "right-block": expect.any(String) });
     const optional = homework([{ ...required, sideBySideConfig: { ...required.sideBySideConfig!, bothRequired: false } }]);
     expect(participantRequiredAnswerErrors(optional, participantAnswerValues(optional))).toEqual({});
+  });
+
+  it("enables Submit for valid persisted pairs and identifies other incomplete requirements", () => {
+    const pair = block({
+      id: "pair", type: "side_by_side_response", content: null,
+      sideBySideConfig: { groupId: "ab29786c-cc70-4b39-9f75-8640aa0872f7", instructions: "", leftHeading: "Recognize", rightHeading: "Renounce", bothRequired: true },
+      sideBySideResponseIds: { left: "stable-left", right: "stable-right" },
+      sideBySideRows: [
+        { id: "a555f2d8-84ce-44ca-9de8-2d6babaf994e", left: "A saved response", right: "Its paired answer" },
+        { id: "b5edf42b-9646-41a9-9fc0-996e2a6833c4", left: "Another response", right: "Another answer" },
+      ],
+    });
+    const answers = participantAnswerValues(homework([pair]));
+    const missingRequiredQuestion = block({ id: "other-required", content: content("What will you practice?") });
+    const assignmentWithOtherRequirement = homework([pair, missingRequiredQuestion]);
+    const combinedAnswers = participantAnswerValues(assignmentWithOtherRequirement);
+
+    expect(answers).toEqual({
+      "stable-left": JSON.stringify({ version: 1, rows: pair.sideBySideRows!.map(({ id, left: value }) => ({ id, value })) }),
+      "stable-right": JSON.stringify({ version: 1, rows: pair.sideBySideRows!.map(({ id, right: value }) => ({ id, value })) }),
+    });
+    expect(participantRequiredAnswerErrors(homework([pair]), answers)).toEqual({});
+    expect(participantAnswersAreDirty(answers, answers)).toBe(false);
+    expect(participantMissingRequirements(homework([pair]), answers)).toEqual([]);
+
+    const validMarkup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: homework([pair]) }));
+    expect(validMarkup).not.toMatch(/disabled=""[^>]*>Submit Homework<\/button>/);
+    expect(validMarkup).not.toContain("Complete these required responses to submit");
+
+    expect(participantMissingRequirements(assignmentWithOtherRequirement, combinedAnswers)).toEqual(["What will you practice?"]);
+    const incompleteMarkup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: assignmentWithOtherRequirement }));
+    expect(incompleteMarkup).toMatch(/disabled=""[^>]*>Submit Homework<\/button>/);
+    expect(incompleteMarkup).toContain("Complete these required responses to submit: What will you practice?");
   });
 
   it("uses one assignment form and submits the latest shared typed answer state", () => {

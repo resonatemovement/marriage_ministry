@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
 
-import { addHomeworkBlock, addHomeworkQuestionChoice, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
 
 describe("staged Homework Rich Text model", () => {
   it("loads persisted block IDs and retains unsupported future block types", () => {
@@ -136,6 +136,43 @@ describe("staged Homework Rich Text model", () => {
     expect(done.editingKey).toBeNull();
     expect(homeworkEditorIsDirty(done)).toBe(true);
     expect(done.blocks).toEqual(withSecond.blocks);
+    expect(homeworkEditorCanCommit(withSecond)).toBe(false);
+    expect(homeworkEditorCanCommit(done)).toBe(false);
+  });
+
+  it("cancels only the active persisted block edit and removes an unconfirmed new block", () => {
+    const baseline = homeworkEditorStateFromRows("draft-id", [
+      { id: "snapshot-a", homeworkBlockId: "logical-a", blockType: "rich_text", position: 0, title: "Saved", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Saved body" }] }] }, url: null, description: null },
+      { id: "snapshot-b", homeworkBlockId: "logical-b", blockType: "long_answer", position: 1, title: "Question", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Explain" }] }] }, url: null, description: null },
+    ]);
+    const changed = updateHomeworkBlock(beginHomeworkBlockEditing(baseline, "snapshot-a"), "snapshot-a", { title: "Unconfirmed" });
+    const canceled = cancelHomeworkBlockEditing(changed);
+    expect(canceled.blocks.map(({ title }) => title)).toEqual(["Saved", "Question"]);
+    expect(canceled.editingKey).toBeNull();
+    expect(homeworkEditorIsDirty(canceled)).toBe(false);
+
+    const added = addHomeworkBlock(baseline, newHomeworkBlock("rich_text", 2));
+    const canceledNew = cancelHomeworkBlockEditing(added);
+    expect(canceledNew.blocks.map(({ key }) => key)).toEqual(baseline.blocks.map(({ key }) => key));
+    expect(homeworkEditorIsDirty(canceledNew)).toBe(false);
+  });
+
+  it("requires valid fields across all block types before Done or a global save can proceed", () => {
+    const validRich = { ...newHomeworkBlock("rich_text", 0), title: "Reading", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Read this" }] }] } };
+    const validLongAnswer = { ...newHomeworkBlock("long_answer", 0), richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Reflect" }] }] } };
+    const validVideo = { ...newHomeworkBlock("video_link", 0), title: "Video", url: "https://example.com/video", description: "Watch this" };
+    const validChoice = { ...newHomeworkBlock("checkbox_question", 0), richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Choose" }] }] }, questionChoices: [
+      { id: "a8c2aa25-80e6-4bd0-b4f9-9a4f04bd79d2", label: "One" }, { id: "c79dc958-ea2a-47f2-9a4e-0c0e40dcc94c", label: "Two" },
+    ] };
+    const validPair = { ...newHomeworkBlock("side_by_side_response", 0), sideBySideConfig: { ...newHomeworkBlock("side_by_side_response", 0).sideBySideConfig!, leftHeading: "Recognize", rightHeading: "Renounce" } };
+    expect([validRich, validLongAnswer, validVideo, validChoice, validPair].every(homeworkBlockIsComplete)).toBe(true);
+    expect(homeworkBlockIsComplete(newHomeworkBlock("checkbox_question", 0))).toBe(false);
+    expect(homeworkBlockIsComplete({ ...validChoice, questionChoices: [{ ...validChoice.questionChoices[0]!, label: " " }, validChoice.questionChoices[1]!] })).toBe(false);
+    expect(homeworkBlockIsComplete({ ...validPair, sideBySideConfig: { ...validPair.sideBySideConfig!, rightHeading: "  " } })).toBe(false);
+
+    const validState = finishHomeworkBlockEditing(addHomeworkBlock(homeworkEditorStateFromRows("draft-id", []), validPair));
+    expect(homeworkEditorCanCommit(validState)).toBe(true);
+    expect(homeworkEditorCanCommit({ ...validState, editingKey: validState.blocks[0]!.key })).toBe(false);
   });
 
   it.each(["video_link", "long_answer"] as const)("keeps staged %s values on Done without changing persisted identities", (type) => {

@@ -5,6 +5,8 @@ import { homeworkAnswerChoicesFromJson, type HomeworkAnswerChoice } from "./sele
 import { reorderedBlockIds } from "@/features/session-builder/model";
 import { isDeleteConfirmation } from "@/components/shared/destructive-confirmation";
 import { groupSideBySideRows, type SideBySideResponseConfig, type SideBySideResponseIds } from "./side-by-side-response";
+import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
+import { isValidHomeworkVideoUrl } from "./homework-url";
 
 export type StagedHomeworkBlock = {
   key: string;
@@ -30,6 +32,7 @@ export type HomeworkEditorState = {
   blocks: StagedHomeworkBlock[];
   baseline: StagedHomeworkBlock[];
   editingKey: string | null;
+  editingOriginal: StagedHomeworkBlock | null;
 };
 
 export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question", "side_by_side_response"] as const;
@@ -72,7 +75,7 @@ export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDra
     };
   });
   const normalizedBlocks = normalizeHomeworkBlockPositions(blocks);
-  return { versionId, versionStatus, blocks: normalizedBlocks, baseline: structuredClone(normalizedBlocks), editingKey: null };
+  return { versionId, versionStatus, blocks: normalizedBlocks, baseline: structuredClone(normalizedBlocks), editingKey: null, editingOriginal: null };
 }
 
 export function persistHomeworkEditorState(state: HomeworkEditorState, rows: HomeworkDraftBlock[], versionId: string, versionStatus: "draft" | "published"): HomeworkEditorState {
@@ -85,7 +88,7 @@ export function persistHomeworkEditorState(state: HomeworkEditorState, rows: Hom
       ?? state.blocks.find((current) => current.persistedId === null && current.key === clientId);
     return match ? { ...block, key: match.key } : block;
   });
-  return { versionId, versionStatus, blocks, baseline: structuredClone(blocks), editingKey: null };
+  return { versionId, versionStatus, blocks, baseline: structuredClone(blocks), editingKey: null, editingOriginal: null };
 }
 
 export function initializeHomeworkEditorState(current: HomeworkEditorState, versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published" = "draft") {
@@ -121,7 +124,7 @@ export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPE
 }
 
 export function addHomeworkBlock(state: HomeworkEditorState, block: StagedHomeworkBlock) {
-  return { ...state, blocks: normalizeHomeworkBlockPositions([...state.blocks, block]), editingKey: block.key };
+  return { ...state, blocks: normalizeHomeworkBlockPositions([...state.blocks, block]), editingKey: block.key, editingOriginal: null };
 }
 
 export function normalizeHomeworkBlockPositions(blocks: StagedHomeworkBlock[]) {
@@ -200,7 +203,20 @@ export function reorderHomeworkQuestionChoices(state: HomeworkEditorState, key: 
 }
 
 export function finishHomeworkBlockEditing(state: HomeworkEditorState) {
-  return { ...state, editingKey: null };
+  return { ...state, editingKey: null, editingOriginal: null };
+}
+
+export function beginHomeworkBlockEditing(state: HomeworkEditorState, key: string | null) {
+  const block = key ? state.blocks.find((item) => item.key === key) : null;
+  return { ...state, editingKey: block?.key ?? null, editingOriginal: block ? structuredClone(block) : null };
+}
+
+export function cancelHomeworkBlockEditing(state: HomeworkEditorState) {
+  if (!state.editingKey) return state;
+  const blocks = state.editingOriginal
+    ? state.blocks.map((block) => block.key === state.editingKey ? structuredClone(state.editingOriginal!) : block)
+    : state.blocks.filter((block) => block.key !== state.editingKey);
+  return { ...state, blocks: normalizeHomeworkBlockPositions(blocks), editingKey: null, editingOriginal: null };
 }
 
 function comparable(block: StagedHomeworkBlock) {
@@ -232,6 +248,25 @@ export function homeworkSideBySideHeadingsAreValid(state: HomeworkEditorState) {
   return state.blocks.every((block) => block.blockType !== "side_by_side_response" || sideBySideHeadingsAreValid(block.sideBySideConfig));
 }
 
+export function homeworkBlockIsComplete(block: StagedHomeworkBlock) {
+  if (block.blockType === "side_by_side_response") return sideBySideHeadingsAreValid(block.sideBySideConfig);
+  if (block.blockType === "rich_text") return richTextBlockIsComplete(block.title, block.richTextContent);
+  if (block.blockType === "long_answer") return richTextBlockIsComplete(null, block.richTextContent, false);
+  if (block.blockType === "video_link") return videoLinkIsComplete({ title: block.title ?? "", url: block.url ?? "", description: block.description ?? "" }, isValidHomeworkVideoUrl);
+  if (block.blockType === "checkbox_question" || block.blockType === "radio_question") {
+    const choices = block.questionChoices;
+    return richTextBlockIsComplete(null, block.richTextContent, false)
+      && choices.length >= 2
+      && choices.every((choice) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(choice.id) && Boolean(choice.label.trim()))
+      && new Set(choices.map(({ id }) => id)).size === choices.length;
+  }
+  return true;
+}
+
+export function homeworkEditorCanCommit(state: HomeworkEditorState) {
+  return state.editingKey === null && state.blocks.every(homeworkBlockIsComplete);
+}
+
 export function restoreHomeworkEditorState(state: HomeworkEditorState) {
-  return { ...state, blocks: structuredClone(state.baseline), editingKey: null };
+  return { ...state, blocks: structuredClone(state.baseline), editingKey: null, editingOriginal: null };
 }

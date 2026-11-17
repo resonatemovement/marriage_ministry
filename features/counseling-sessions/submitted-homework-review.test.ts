@@ -5,7 +5,7 @@ import type { Json } from "@/types/database.generated";
 import { sideBySideAnswerColumn, sideBySideResponseMetadata } from "@/features/homework/side-by-side-response";
 
 vi.mock("next/link", () => ({ default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => createElement("a", props, children) }));
-vi.mock("@/features/session-builder/rich-text-editor", () => ({ RichTextReadOnly: ({ content }: { content: Record<string, unknown> }) => createElement("div", { "data-rich-text": true }, JSON.stringify(content)) }));
+vi.mock("@/features/session-builder/rich-text-editor", () => ({ RichTextReadOnly: ({ content, contentClassName }: { content: Record<string, unknown>; contentClassName?: string }) => createElement("div", { className: contentClassName, "data-rich-text": true }, JSON.stringify(content)) }));
 
 import { SubmittedHomeworkReviewPage } from "./submitted-homework-review-page";
 import { homeworkReviewAnswer, type SubmittedHomeworkReview } from "./submitted-homework-review";
@@ -26,6 +26,16 @@ const review: SubmittedHomeworkReview = {
 };
 
 describe("submitted Homework review presentation", () => {
+  it("uses a 12px title-to-content gap for titled review prompts", () => {
+    const question = { ...review.questions[0], title: "Question heading" };
+    const markup = renderToStaticMarkup(createElement(SubmittedHomeworkReviewPage, {
+      review: { ...review, questions: [question] }, partnerName: "Partner A",
+    }));
+
+    expect(markup).toContain('<div class="grid gap-3"><h2 class="font-heading text-lg font-bold text-text-primary">Question heading</h2><div class="p-0" data-rich-text="true">');
+    expect(markup).toContain("Long prompt");
+  });
+
   it("maps saved option IDs to the pinned option labels and preserves answer text", () => {
     expect(homeworkReviewAnswer(review.questions[0])).toEqual(["I want to be heard."]);
     expect(homeworkReviewAnswer(review.questions[1])).toEqual(["Listen closely", "Pause first"]);
@@ -69,7 +79,11 @@ describe("submitted Homework review presentation", () => {
     expect(markup).toContain("Replace and Renew");
     expect(markup).toContain("Name what happened.\nThen what it affected.");
     expect(markup).toContain("I will listen more.");
-    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).toContain(">Recognize and Renounce</h2>");
+    expect(markup.match(/>Recognize and Renounce<\/h2>/g)).toHaveLength(1);
+    expect(markup.match(/>Replace and Renew<\/h2>/g)).toHaveLength(1);
+    expect(markup).not.toContain("md:sr-only");
     expect(markup).not.toMatch(/<(textarea|input|button)\b/);
     expect(markup.indexOf("Recognize and Renounce")).toBeLessThan(markup.indexOf("Replace and Renew"));
   });
@@ -90,7 +104,14 @@ describe("submitted Homework review presentation", () => {
     expect(markup).toContain("Longer response\nwith another line\nand more context");
     expect(markup).toContain("Short response");
     expect(markup).toContain("Second pair");
-    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).toContain("items-stretch");
+    expect(markup).toContain('class="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-border"');
+    expect(markup).toContain('class="mb-3 grid grid-cols-2 gap-2 border-b border-border pb-3 sm:gap-4"');
+    expect(markup).toContain('class="min-w-0 px-1 sm:px-3"');
+    expect(markup.match(/>Notice<\/h2>/g)).toHaveLength(1);
+    expect(markup.match(/>Choose<\/h2>/g)).toHaveLength(1);
+    expect(markup).not.toMatch(/<div class="grid min-w-0 items-stretch[^\"]*border/);
     expect(markup).not.toMatch(/\b(?:Pair|Row)\s*\d+/);
     expect(markup).not.toContain("Add response");
     expect(markup).not.toMatch(/<(textarea|input|button)\b/);

@@ -29,8 +29,10 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
     }
 
     return <article className="overflow-hidden rounded-lg border border-border bg-white">
-      <h2 className="px-5 pt-5 font-heading text-lg font-bold text-text-primary sm:px-7 sm:pt-7">{block.title}</h2>
-      <RichTextReadOnly content={block.richTextContent} />
+      <div className="grid gap-3 p-5 sm:p-7">
+        <h2 className="font-heading text-lg font-bold text-text-primary">{block.title}</h2>
+        <RichTextReadOnly content={block.richTextContent} contentClassName="p-0" />
+      </div>
     </article>;
   }
 
@@ -48,7 +50,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
     }
 
     return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
-      <RichTextReadOnly content={block.richTextContent} />
+      <RichTextReadOnly content={block.richTextContent} compact contentClassName="p-0" />
       <div className="mt-6 border-t border-border pt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label htmlFor={`homework-preview-response-${block.key}`} className="text-sm font-semibold text-text-primary">Your response <span className="font-normal text-text-muted">(preview only)</span></label>
@@ -78,7 +80,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
     }
 
     return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
-      <div id={`homework-preview-question-${block.key}`}><RichTextReadOnly content={block.richTextContent} /></div>
+      <div id={`homework-preview-question-${block.key}`}><RichTextReadOnly content={block.richTextContent} compact contentClassName="p-0" /></div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-text-primary">Answer choices</h2>
         <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-text-muted">{block.isRequired ? "Required" : "Optional"}</span>

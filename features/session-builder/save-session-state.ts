@@ -89,14 +89,16 @@ function serializeHomeworkBlocks(editor: HomeworkEditorState): Record<string, un
   return editor.blocks.flatMap((block): Record<string, unknown>[] => {
     if (block.blockType === "side_by_side_response" && block.sideBySideConfig) {
       const config = block.sideBySideConfig;
-      const blankPrompt = { type: "doc", content: [] };
       return (["left", "right"] as const).map((side: SideBySideResponseSide) => {
         const ids = block.sideBySideResponseIds?.[side];
+        const heading = side === "left" ? config.leftHeading : config.rightHeading;
         return {
           ...(ids ? { id: ids.snapshotId, homework_block_id: ids.homeworkBlockId } : { client_id: `side-by-side:${config.groupId}:${side}` }),
           block_type: "long_answer",
-          title: side === "left" ? config.leftHeading : config.rightHeading,
-          rich_text_content: blankPrompt,
+          title: heading,
+          // The existing Homework contract requires meaningful long-answer prompt content.
+          // Store the same heading there; Side-by-Side rendering uses the paired metadata.
+          rich_text_content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: heading }] }] },
           url: null,
           description: sideBySideResponseMetadata({ ...config, side }),
         };

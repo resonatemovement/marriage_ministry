@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { EllipsisVertical } from "lucide-react";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -10,7 +11,13 @@ import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 import { reopenParticipantHomework } from "./homework-reopen-actions";
 
-export function ReopenHomeworkButton({ caseId, progressId, partnerName }: { caseId: string; progressId: string; partnerName: string }) {
+export function ReopenHomeworkButton({ caseId, progressId, partnerName, viewAnswersHref, canReopen }: {
+  caseId: string;
+  progressId: string;
+  partnerName: string;
+  viewAnswersHref?: string;
+  canReopen: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -30,12 +37,17 @@ export function ReopenHomeworkButton({ caseId, progressId, partnerName }: { case
     });
   }
 
+  if (!viewAnswersHref && !canReopen) return null;
+
   return <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild><button type="button" aria-label={`Homework actions for ${partnerName}`} className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md border border-border bg-surface text-text-muted hover:bg-surface-muted hover:text-text-primary focus-visible:bg-surface-muted"><EllipsisVertical className="size-4" aria-hidden="true" /></button></DropdownMenuTrigger>
-      <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setOpen(true)}>Reopen Homework</DropdownMenuItem></DropdownMenuContent>
+      <DropdownMenuContent align="end">
+        {viewAnswersHref ? <DropdownMenuItem asChild><Link href={viewAnswersHref}>View Answers<span className="sr-only"> for {partnerName}</span></Link></DropdownMenuItem> : null}
+        {canReopen ? <DropdownMenuItem onSelect={() => setOpen(true)}>Reopen Homework</DropdownMenuItem> : null}
+      </DropdownMenuContent>
     </DropdownMenu>
-    <AlertDialog open={open} onOpenChange={(nextOpen) => { if (!pending) setOpen(nextOpen); }}>
+    {canReopen ? <AlertDialog open={open} onOpenChange={(nextOpen) => { if (!pending) setOpen(nextOpen); }}>
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Reopen {partnerName}&apos;s Homework?</AlertDialogTitle>
@@ -46,6 +58,6 @@ export function ReopenHomeworkButton({ caseId, progressId, partnerName }: { case
         <AlertDialogAction disabled={pending} onClick={(event) => { event.preventDefault(); reopen(); }}>{pending ? "Reopening…" : "Reopen Homework"}</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
-    </AlertDialog>
+    </AlertDialog> : null}
   </>;
 }

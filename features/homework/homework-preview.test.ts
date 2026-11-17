@@ -8,8 +8,8 @@ import type { StagedHomeworkBlock } from "./homework-editor-model";
 vi.mock("@/features/session-builder/rich-text-editor", async () => {
   const React = await import("react");
   return {
-    RichTextReadOnly: ({ content }: { content: Record<string, unknown> }) =>
-      React.createElement("pre", { "data-rich-text": true }, JSON.stringify(content)),
+    RichTextReadOnly: ({ content, contentClassName }: { content: Record<string, unknown>; contentClassName?: string }) =>
+      React.createElement("pre", { "data-rich-text": true, className: contentClassName }, JSON.stringify(content)),
   };
 });
 
@@ -25,6 +25,17 @@ function render(blocks: StagedHomeworkBlock[]) {
 }
 
 describe("Homework Preview content", () => {
+  it("separates the Builder rich-text title and content by 12px while preserving card padding", () => {
+    const block = homeworkEditorStateFromRows("draft-id", [
+      { id: "rich-id", homeworkBlockId: "rich-block", blockType: "rich_text", position: 0, title: "Reading", richTextContent: documentWithText("Body copy"), url: null, description: null },
+    ]).blocks;
+    const markup = render(block);
+
+    expect(markup).toContain('<div class="grid gap-3 p-5 sm:p-7"><h2 class="font-heading text-lg font-bold text-text-primary">Reading</h2><pre data-rich-text="true" class="p-0">');
+    expect(markup).toContain("Body copy");
+    expect(markup).not.toContain("px-5 pt-5");
+  });
+
   it("renders the exact current staged order and unsaved add, edit, duplicate, delete, and reorder changes", () => {
     const initial = homeworkEditorStateFromRows("draft-id", [
       { id: "rich-id", homeworkBlockId: "rich-block", blockType: "rich_text", position: 0, title: "Original title", richTextContent: documentWithText("Original reading"), url: null, description: null },
@@ -55,6 +66,7 @@ describe("Homework Preview content", () => {
       blocks: deleteHomeworkBlock(reordered, "video-id", "DELETE"),
       baseline: initial.baseline,
       editingKey: null,
+      editingOriginal: null,
     };
     const beforeRender = structuredClone(staged);
 
@@ -121,10 +133,29 @@ describe("Homework Preview content", () => {
     expect(markup).toContain("Consider both prompts.");
     expect(markup).toContain("Recognize and Renounce");
     expect(markup).toContain("Replace and Renew");
-    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).toContain("grid-cols-2");
+    expect(markup).toContain("sm:gap-4");
+    expect(markup.match(/rows="2"/g)).toHaveLength(2);
+    expect(markup.match(/min-h-\[66px\]/g)).toHaveLength(2);
+    expect(markup.match(/homework-side-by-side-response-textarea field-sizing-content/g)).toHaveLength(2);
     expect(markup).toContain("Responses optional");
     expect(markup).toContain('readOnly=""');
     expect(markup).not.toMatch(/<form/);
+  });
+
+  it("keeps rich-text paragraphs aligned with their card heading in Builder previews", () => {
+    const richText: StagedHomeworkBlock = {
+      key: "reading", persistedId: null, homeworkBlockId: null, blockType: "rich_text", position: 0,
+      title: "Reading", richTextContent: documentWithText("Read this together."), url: null, description: null, questionChoices: [], isRequired: true,
+    };
+    const longAnswer: StagedHomeworkBlock = {
+      key: "prompt", persistedId: null, homeworkBlockId: null, blockType: "long_answer", position: 1,
+      title: null, richTextContent: documentWithText("What do you notice?"), url: null, description: null, questionChoices: [], isRequired: true,
+    };
+    const markup = render([richText, longAnswer]);
+
+    expect(markup).toContain('class="grid gap-3 p-5 sm:p-7"');
+    expect(markup).toContain('class="p-0"');
   });
 
   it("renders a safe empty state and author-facing placeholders for incomplete or unknown blocks", () => {

@@ -13,8 +13,15 @@ function isRichTextContent(value: SubmittedHomeworkQuestion["content"]): value i
 function ReviewQuestion({ question }: { question: SubmittedHomeworkQuestion }) {
   const answers = homeworkReviewAnswer(question);
   return <Card className="p-5 sm:p-7">
-    {question.title ? <h2 className="font-heading mb-3 text-lg font-bold text-text-primary">{question.title}</h2> : null}
-    {isRichTextContent(question.content) ? <RichTextReadOnly content={question.content} compact contentClassName="p-0" /> : null}
+    {question.title && isRichTextContent(question.content)
+      ? <div className="grid gap-3">
+        <h2 className="font-heading text-lg font-bold text-text-primary">{question.title}</h2>
+        <RichTextReadOnly content={question.content} compact contentClassName="p-0" />
+      </div>
+      : <>
+        {question.title ? <h2 className="font-heading text-lg font-bold text-text-primary">{question.title}</h2> : null}
+        {isRichTextContent(question.content) ? <RichTextReadOnly content={question.content} compact contentClassName="p-0" /> : null}
+      </>}
     <div className="mt-5 border-t border-border pt-4">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Submitted answer</h3>
       {answers.length === 0 ? <p className="mt-2 text-sm italic text-text-muted">No answer provided</p> : question.type === "long_answer"
@@ -28,17 +35,19 @@ function ReviewSideBySide({ config, left, right }: { config: Omit<import("@/feat
   const rows = sideBySideAnswerRows(left.answerText, right.answerText, config.groupId);
   return <Card className="p-5 sm:p-7">
     {config.instructions.trim() ? <p className="mb-5 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{config.instructions}</p> : null}
-    <div className="mb-2 hidden gap-5 md:grid md:grid-cols-2" aria-hidden="true">
-      {[config.leftHeading, config.rightHeading].map((heading, index) => <h2 key={index} className="break-words font-heading text-base font-bold text-text-primary">{heading}</h2>)}
-    </div>
-    <div className="grid gap-4">
-      {rows.map((row) => <div key={row.id} className="grid min-w-0 gap-4 md:grid-cols-2">
-        {([row.left, row.right] as const).map((answer, index) => <section key={index} className="min-w-0">
-          <h3 className="break-words font-heading text-base font-bold text-text-primary md:sr-only">{index === 0 ? config.leftHeading : config.rightHeading}</h3>
+    <div className="relative">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-border" />
+      <div className="mb-3 grid grid-cols-2 gap-2 border-b border-border pb-3 sm:gap-4">
+        {[config.leftHeading, config.rightHeading].map((heading, index) => <h2 id={`side-by-side-${config.groupId}-${index === 0 ? "left" : "right"}-heading`} key={index} className="min-w-0 break-words px-1 font-heading text-base font-bold text-text-primary sm:px-3">{heading}</h2>)}
+      </div>
+      <div className="grid gap-4">
+        {rows.map((row) => <div key={row.id} className="grid min-w-0 grid-cols-2 items-stretch gap-2 sm:gap-4">
+          {([row.left, row.right] as const).map((answer, index) => <section key={index} aria-labelledby={`side-by-side-${config.groupId}-${index === 0 ? "left" : "right"}-heading`} className="min-w-0 px-1 sm:px-3">
           {!answer.trim() ? <p className="mt-2 text-sm italic text-text-muted">No answer provided</p>
             : <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-text-primary">{answer}</p>}
-        </section>)}
-      </div>)}
+          </section>)}
+        </div>)}
+      </div>
     </div>
   </Card>;
 }

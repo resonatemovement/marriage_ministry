@@ -16,7 +16,7 @@ import type { CounselorAssessment } from "@/features/assessments/counselor-manag
 
 vi.mock("./homework-reopen-actions", () => ({ reopenParticipantHomework: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName }: { partnerName: string }) => createElement("button", null, `Reopen Homework for ${partnerName}`) }));
+vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName, viewAnswersHref, canReopen }: { partnerName: string; viewAnswersHref?: string; canReopen: boolean }) => createElement("div", null, viewAnswersHref ? createElement("a", { href: viewAnswersHref }, "View Answers") : null, canReopen ? `Reopen Homework for ${partnerName}` : null) }));
 vi.mock("@/features/assessments/counselor-assessment-management", () => ({
   CounselorAssessmentSchedulingSettings: () => createElement("section", { "aria-label": "Scheduling Settings" }, "Scheduling settings"),
   CounselorAssessmentCards: () => createElement("section", { "aria-label": "Assessments" }, "Assessment management"),
@@ -146,14 +146,14 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain("Submitted");
     expect(markup).toMatch(/<p class="break-words text-sm font-semibold text-text-primary">Anthony Jones<\/p><span class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2\.5 py-1 text-xs font-medium mt-1\.5 bg-success-soft text-success-strong">Submitted<\/span>/);
     expect(markup).toContain('href="/workspace/cases/case-1/homework/progress-anthony"');
-    expect(markup).toContain("border border-border bg-surface px-3 text-sm font-semibold text-text-primary");
     expect(markup).toContain("View Answers");
     expect(markup).not.toContain('href="/workspace/cases/case-1/homework/progress-amy"');
     expect(markup).toContain(">Amy Lee</p>");
     expect(markup).toContain("In Progress");
     expect(markup).toMatch(/<p class="break-words text-sm font-semibold text-text-primary">Amy Lee<\/p><span class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2\.5 py-1 text-xs font-medium mt-1\.5 bg-info-soft text-info-strong">In Progress<\/span>/);
     expect(markup).not.toContain("homework response");
-    expect(markup).toContain("flex min-w-0 flex-col gap-3 py-3 first:pt-2 last:pb-0 sm:flex-row sm:items-center sm:justify-between");
+    expect(markup).toContain("flex min-w-0 items-center justify-between gap-3 py-3 first:pt-2 last:pb-0");
+    expect(markup).toContain("flex shrink-0 items-center");
     expect(markup.indexOf("Upcoming Meeting")).toBeLessThan(markup.indexOf(">Homework</p>"));
     expect(markup).not.toContain("Current Homework");
     expect(markup).toContain('data-homework-revision="homework-revision"');
