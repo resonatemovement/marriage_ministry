@@ -21,6 +21,13 @@ vi.mock("@/features/prepare-enrich/actions", () => ({ reservePrepareEnrichUpload
 import { PeopleDetailPage } from "./people-detail-page";
 import type { PeopleDetailActionContext } from "./detail-actions-model";
 import type { GroupPeopleDetail } from "./detail-model";
+import type { CounselorAssessment } from "@/features/assessments/counselor-management-model";
+
+const assessmentSummaryFixture = {
+  id: "assessment-1", title: "Communication Styles", description: null, publishedVersionId: "version-1", publishedVersionNumber: 1,
+  systemDefaultSessionId: null, schedule: { id: "schedule-1", sessionId: "session-1", caseSessionId: null, progressionCaseSessionId: null, requiredForProgression: true, source: "system_default" },
+  partners: [],
+} satisfies CounselorAssessment;
 
 const detail: GroupPeopleDetail = {
   kind: "group",
@@ -63,6 +70,22 @@ const context: PeopleDetailActionContext = {
 };
 
 describe("Admin Couple detail right rail", () => {
+  it("places the shared Assessment summary below Counseling Status for Admin and omits it outside that role", () => {
+    const props = {
+      detail,
+      breadcrumbs: [{ label: "People & Teams", href: "/people" }, { label: detail.name, current: true as const }],
+      trail: [detail.id],
+      assessmentManagement: { assessments: [assessmentSummaryFixture], sessions: [], preferences: {} },
+    };
+    const adminMarkup = renderToStaticMarkup(createElement(PeopleDetailPage, { ...props, context }));
+    const adminRail = adminMarkup.slice(adminMarkup.indexOf("<aside"), adminMarkup.indexOf("</aside>"));
+    expect(adminRail.indexOf("Counseling Status")).toBeLessThan(adminRail.indexOf("Communication Styles"));
+    expect(adminRail).toContain("Required");
+
+    const nonAdminMarkup = renderToStaticMarkup(createElement(PeopleDetailPage, { ...props, context: null }));
+    expect(nonAdminMarkup).not.toContain("Communication Styles");
+  });
+
   it("keeps Prepare & Enrich after Counselor and preserves both document slots and actions", () => {
     const markup = renderToStaticMarkup(createElement(PeopleDetailPage, {
       detail,

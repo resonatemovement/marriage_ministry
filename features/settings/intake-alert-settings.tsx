@@ -62,7 +62,7 @@ export function IntakeAlertSettingsForm({ initialSettings }: { initialSettings: 
     });
   }
 
-  return <section className="mt-7 rounded-lg border border-border bg-surface p-5 sm:p-6">
+  return <section className="mt-7 rounded-lg border border-border bg-surface p-5">
     <div>
       <p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Intake Requests</p>
       <h2 className="font-heading mt-1 text-2xl font-bold text-text-primary">Intake Request Alerts</h2>

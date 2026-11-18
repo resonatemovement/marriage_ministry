@@ -15,6 +15,7 @@ const question = { id: "q1", position: 0, prompt: "Synthetic question?", choices
 const secondQuestion = { id: "q2", position: 1, prompt: "Another synthetic question?", choices: [{ id: "c", position: 0, label: "Third option" }, { id: "d", position: 1, label: "Fourth option" }] };
 const assessment: CoupleAssessmentData = {
   assignmentId: "assignment", title: "Synthetic Assessment", description: null, sessionTitle: "Session 1", status: "not_started",
+  requiredForProgression: true, participantName: "Alex Example", primaryResults: [],
   profileName: "Alex Example", attemptId: null, activeRetakeId: null, activeRetakeAnswers: {},
   questions: [question], answers: {}, results: [], history: [], partnerResults: null,
 };
@@ -22,16 +23,28 @@ const assessment: CoupleAssessmentData = {
 describe("Couple Assessment presentation", () => {
   it("shows independent assignment status and links to the participant's own assessment", () => {
     const html = renderToStaticMarkup(createElement(AssessmentList, { assessments: [
-      { assignmentId: "own-assignment", title: "Love Languages", description: "Discover how you prefer to give and receive love.", sessionTitle: "testing", status: "in_progress" },
-      { assignmentId: "done", title: "Completed Assessment", description: null, sessionTitle: "Session 2", status: "completed" },
-      { assignmentId: "empty", title: "Unpublished", description: null, sessionTitle: "Session 1", status: "unavailable" },
+      { assignmentId: "own-assignment", title: "Communication Styles", description: "Learn a new way to listen.", sessionTitle: "testing", status: "in_progress", requiredForProgression: true, participantName: "Taylor Example", primaryResults: [] },
+      { assignmentId: "done", title: "Completed Assessment", description: null, sessionTitle: "Session 2", status: "completed", requiredForProgression: false, participantName: "Taylor Example", primaryResults: ["Listening", "Repair"] },
+      { assignmentId: "empty", title: "Unpublished", description: null, sessionTitle: "Session 1", status: "unavailable", requiredForProgression: false, participantName: "Taylor Example", primaryResults: [] },
     ] }));
     expect(html).toContain("In Progress");
     expect(html).toContain('href="/workspace/assessments/own-assignment"');
     expect(html).toContain("Continue Assessment");
     expect(html).toContain("View Results");
+    expect(html).toMatch(/class="[^"]*text-brand-primary underline-offset-4[^"]*" href="\/workspace\/assessments\/done">View Results<\/a>/);
+    const resultsLink = html.match(/<a class="([^"]*)" href="\/workspace\/assessments\/done">View Results<\/a>/)?.[1] ?? "";
+    expect(resultsLink).toContain("mt-3");
+    expect(resultsLink).not.toContain("min-h-10");
+    expect(resultsLink).not.toMatch(/\bp[xytrbl]?-\d/);
+    expect(html).not.toMatch(/class="[^"]*bg-brand-primary[^"]*" href="\/workspace\/assessments\/done"/);
+    expect(html).toMatch(/class="[^"]*bg-brand-primary[^"]*" href="\/workspace\/assessments\/own-assignment"/);
     expect(html).toContain("not available yet");
-    expect(html).toContain("Discover how you prefer to give and receive love.");
+    expect(html).toContain("Learn a new way to listen.");
+    expect(html).toContain("Required");
+    expect(html).toContain("Optional");
+    expect(html).toContain("Taylor Example");
+    expect(html).toContain("Listening, Repair");
+    expect(html).not.toContain("Partner progress");
     expect(html).not.toContain(">testing</p>");
     expect(html).toContain("Session 2");
     expect(html).not.toContain('id="assessments-heading"');
@@ -108,6 +121,33 @@ describe("Couple Assessment presentation", () => {
     expect(html).toContain("Assessment unavailable");
     expect(html).toContain("does not have published questions yet");
     expect(html).not.toContain("Begin Assessment");
+  });
+
+  it("opens a not-started Assessment directly and provides retry without an intermediate Begin screen", () => {
+    const html = renderToStaticMarkup(createElement(CoupleAssessmentExperience, { assessment }));
+    const source = readFileSync("features/assessments/couple-experience.tsx", "utf8");
+    expect(html).toContain("Opening your Assessment…");
+    expect(html).not.toContain("Ready when you are");
+    expect(html).not.toContain("Begin Assessment");
+    expect(source).toContain('assessment.status !== "not_started" || attemptId || initialStartRequested.current');
+    expect(source).toContain("void begin(false)");
+    expect(html).not.toContain("Retry");
+  });
+
+  it("keeps an in-progress attempt and saved responses on the direct resume path", () => {
+    const html = renderToStaticMarkup(createElement(CoupleAssessmentExperience, { assessment: {
+      ...assessment, status: "in_progress", attemptId: "saved-attempt", answers: { q1: "a" },
+    } }));
+    expect(html).toContain("Review your answers");
+    expect(html).toContain("Question 1, answered");
+    expect(html).not.toContain("Begin Assessment");
+    expect(html).not.toContain("Opening your Assessment…");
+  });
+
+  it("uses explicitly symmetric horizontal padding for answer choices", () => {
+    const source = readFileSync("features/assessments/couple-experience.tsx", "utf8");
+    expect(source).toContain("items-center gap-4 rounded-md border px-4 py-4");
+    expect(source).toContain("<span className=\"shrink-0 text-xs text-text-muted\">");
   });
 
   it("renders server scores from highest to lowest and marks tied primary results", () => {

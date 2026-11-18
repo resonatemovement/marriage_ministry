@@ -292,7 +292,7 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
   return <section aria-label="Your Homework">
     {showHeader ? <header className="mb-6"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Session Homework</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{homework.title}</h2><p className="mt-2 text-sm text-text-muted">Status: <span className="font-medium text-text-primary">{homeworkProgressLabel(status)}</span></p></header> : null}
     <form noValidate onSubmit={(event) => event.preventDefault()}>
-      <div className="grid gap-4">{homework.blocks.map((block) => <Card key={block.id} className="p-5 sm:p-7">
+      <div className="grid gap-4">{homework.blocks.map((block) => <Card key={block.id} className="p-5">
         <HomeworkBlockContent block={block} answers={answers} errors={fieldErrors} locked={locked} updateAnswer={updateAnswer} />
       </Card>)}</div>
       {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <>
@@ -313,7 +313,7 @@ export function ParticipantHomeworkContent({ homework, emptyTitle = "Your Homewo
   onDirtyChange?: (dirty: boolean) => void;
   onStatusChange?: (status: HomeworkProgressStatus) => void;
 }) {
-  if (!homework) return <Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">{emptyTitle}</h2><p className="mt-2 text-sm text-text-muted">{emptyDescription}</p></Card>;
+  if (!homework) return <Card className="p-5"><h2 className="font-heading text-xl font-bold text-text-primary">{emptyTitle}</h2><p className="mt-2 text-sm text-text-muted">{emptyDescription}</p></Card>;
   return <HomeworkAssignment key={`${homework.progressId}-${homework.status}`} homework={homework} readOnly={readOnly} showHeader={showHeader} onDirtyChange={onDirtyChange} onStatusChange={onStatusChange} />;
 }
 

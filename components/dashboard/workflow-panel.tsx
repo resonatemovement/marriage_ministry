@@ -21,7 +21,7 @@ export function WorkflowPanel({ progression, canNavigate = true }: { progression
   const otherOutcomes = stages.filter((stage) => ["referred", "closed_incomplete"].includes(stage.id));
   return <div className="space-y-6">
     <Card id="workflow" className="overflow-hidden">
-      <div className="p-5 sm:p-6"><SectionHeading title="Ministry Progression" description="Unique Couples and pre-Couple Intake Requests by current stage" action={!hasData ? <span className="hidden rounded-full bg-surface-muted px-3 py-1 text-xs text-text-muted sm:block">Live data unavailable</span> : null} /></div>
+      <div className="p-5"><SectionHeading title="Ministry Progression" description="Unique Couples and pre-Couple Intake Requests by current stage" action={!hasData ? <span className="hidden rounded-full bg-surface-muted px-3 py-1 text-xs text-text-muted sm:block">Live data unavailable</span> : null} /></div>
       <div className="grid items-stretch border-t border-border/70 sm:grid-cols-2 xl:grid-cols-5">
         {primaryStages.map((stage) => <div key={stage.id} className="h-full border-b border-border/70 sm:border-r sm:last:border-r-0"><ProgressTile label={stage.label} count={stage.count} detail={stage.valueLabel} href={canNavigate ? stage.href : stage.id === "intake" ? "/intake-requests?view=open" : null} /></div>)}
         {!hasData ? <p className="p-5 text-sm text-text-muted">Progression data is temporarily unavailable.</p> : null}
@@ -51,7 +51,7 @@ export function WorkflowPanel({ progression, canNavigate = true }: { progression
     </Card>
 
     <Card className="overflow-hidden">
-      <div className="p-5 sm:p-6"><SectionHeading title="Counseling Sessions" description="Unique Couples by current Session progression" action={!hasData ? <span className="hidden rounded-full bg-surface-muted px-3 py-1 text-xs text-text-muted sm:block">Live data unavailable</span> : null} /></div>
+      <div className="p-5"><SectionHeading title="Counseling Sessions" description="Unique Couples by current Session progression" action={!hasData ? <span className="hidden rounded-full bg-surface-muted px-3 py-1 text-xs text-text-muted sm:block">Live data unavailable</span> : null} /></div>
       <div className="grid items-stretch border-t border-border/70 sm:grid-cols-2 xl:grid-cols-4">
         {(progression?.sessions ?? []).map((session) => <div key={session.id} className="h-full border-b border-border/70 sm:border-r sm:last:border-r-0"><ProgressTile label={session.number === null ? "Initial Meeting" : `Session ${session.number}`} count={session.count} href={canNavigate ? session.href : null} /></div>)}
         {progression && progression.sessions.length === 0 ? <p className="p-5 text-sm text-text-muted">No published Sessions are available.</p> : null}

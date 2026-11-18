@@ -22,7 +22,8 @@ import { MeetingRealtime } from "./meeting-realtime";
 import { CaseLifecycleRealtime } from "./case-lifecycle-realtime";
 import { ReopenHomeworkButton } from "./homework-reopen-button";
 import { CounselorAssessmentCards, CounselorAssessmentSchedulingSettings } from "@/features/assessments/counselor-assessment-management";
-import type { CounselorAssessment, CounselorAssessmentSession } from "@/features/assessments/counselor-management-model";
+import { assessmentBlocksSessionAdvancement, type CounselorAssessment, type CounselorAssessmentSession } from "@/features/assessments/counselor-management-model";
+import { orderCouplePartners } from "@/features/people/partner-order";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
   return <GroupedAvatars people={couplePhotoSlots(card.partners)} label={`${card.coupleName} partner photos`} />;
@@ -34,7 +35,7 @@ function PrepareEnrichCard({ caseId, document }: { caseId: string; document: Pre
 
 type MeetingNotificationRow = MeetingNotificationDelivery;
 
-export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessmentManagement = null, canManageAssessmentSchedule = false, canManageAssessmentPreference = false, canReadAssessmentResults = false, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [], showCoupleContactLink = true }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; assessmentManagement?: { assessments: CounselorAssessment[]; sessions: CounselorAssessmentSession[]; preferences: Record<string, string> } | null; canManageAssessmentSchedule?: boolean; canManageAssessmentPreference?: boolean; canReadAssessmentResults?: boolean; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[]; showCoupleContactLink?: boolean }) {
+export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessmentManagement = null, assessmentPartnerOrder = [], canManageAssessmentSchedule = false, canManageAssessmentPreference = false, canReadAssessmentResults = false, isAdmin = false, canReopenHomework = false, canResetCounselingJourney = false, meetingNotifications = [], showCoupleContactLink = true }: { card: CounselingSessionCard; prepareEnrich?: PrepareEnrichDocument | null; assessmentManagement?: { assessments: CounselorAssessment[]; sessions: CounselorAssessmentSession[]; preferences: Record<string, string> } | null; assessmentPartnerOrder?: { id: string; name: string; gender: "male" | "female" | null }[]; canManageAssessmentSchedule?: boolean; canManageAssessmentPreference?: boolean; canReadAssessmentResults?: boolean; isAdmin?: boolean; canReopenHomework?: boolean; canResetCounselingJourney?: boolean; meetingNotifications?: MeetingNotificationRow[]; showCoupleContactLink?: boolean }) {
   const presentation = counselingSessionPresentation(card.state);
   const progressPercent = counselingProgressPercent(presentation.progress, card.state.kind === "completed");
   const caseStatus = counselingStatusLabel(card.status, true, false) ?? card.status;
@@ -60,6 +61,19 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
   const activeHomeworkRevisionId = card.state.caseSession?.status === "active"
     ? card.state.caseSession.homeworkAssignmentRevisionId
     : null;
+  const activeCaseSessionId = card.state.caseSession?.status === "active" ? card.state.caseSession.id : null;
+  const assessmentPrerequisites = assessmentManagement && activeCaseSessionId
+    ? assessmentManagement.assessments.filter((assessment) => assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId)).map((assessment) => ({
+      id: assessment.id,
+      title: assessment.title,
+      partners: orderCouplePartners(card.partners.map((partner) => ({
+        profileId: partner.id,
+        name: partner.name,
+        gender: partner.gender ?? null,
+        status: assessment.partners.find(({ profileId }) => profileId === partner.id)?.status ?? "not_assigned" as const,
+      }))),
+    }))
+    : assessmentManagement ? [] : null;
   const coupleIdentityContent = <>
     <PartnerPhotos card={card} />
     <div className="min-w-0">
@@ -76,7 +90,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
     <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href="/workspace">Sessions</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{card.coupleName}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="space-y-6">
-        <Card className="p-5 sm:p-7">
+        <Card className="p-5">
           {showCoupleContactLink ? (
             <Link href={`/workspace/contacts/${card.caseId}/${card.coupleId}`} className="flex flex-col gap-5 rounded-md sm:flex-row sm:items-center">
               {coupleIdentityContent}
@@ -88,7 +102,7 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
           )}
         </Card>
 
-        <Card className="p-5 sm:p-6">
+        <Card className="p-5">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{sessionEyebrow}</p>
@@ -144,9 +158,9 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
       <aside className="space-y-4">
         <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Counseling Status</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{caseStatus}</p></Card>
         <PrepareEnrichCard caseId={card.caseId} document={prepareEnrich} />
-        <SessionLifecycleControls card={{ caseId: card.caseId, coupleName: card.coupleName, state: card.state, publishedSessions: card.publishedSessions, homework: card.homework, isAdmin }} partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
+        <SessionLifecycleControls card={{ caseId: card.caseId, coupleName: card.coupleName, state: card.state, publishedSessions: card.publishedSessions, homework: card.homework, isAdmin }} partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} assessmentPrerequisites={assessmentPrerequisites} />
         <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Progress</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{presentation.progress}</p>{progressPercent !== null ? <div role="progressbar" aria-label="Counseling program progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)} className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary" style={{ width: `${progressPercent}%` }} /></div> : null}</Card>
-        {assessmentManagement ? <CounselorAssessmentCards assessments={assessmentManagement.assessments} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} /> : null}
+        {assessmentManagement ? <CounselorAssessmentCards assessments={assessmentManagement.assessments} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} partnerOrder={assessmentPartnerOrder} /> : null}
       </aside>
     </section>
     {canResetCounselingJourney ? <DevResetControl caseId={card.caseId} /> : null}

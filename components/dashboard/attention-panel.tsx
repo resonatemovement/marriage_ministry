@@ -33,7 +33,7 @@ export function AttentionPanel({ items, error = false }: { items: readonly Dashb
     setTouchStart(null);
   };
 
-  return <Card id="attention" className="p-6 sm:p-7">
+  return <Card id="attention" className="p-5">
     <SectionHeading title="Needs Attention" description="Actionable Intake Requests and unassigned Couples" action={<Link href="/dashboard/attention" className="text-sm font-semibold text-brand-primary hover:underline">View All</Link>} />
     {error ? <p role="status" className="mt-6 text-sm text-text-muted">Needs Attention is temporarily unavailable.</p> : count === 0 ? <p className="mt-6 text-sm text-text-muted">Nothing needs attention right now.</p> : <div className="mt-6" onTouchStart={(event) => setTouchStart(event.touches[0]?.clientX ?? null)} onTouchEnd={onTouchEnd}>
       <AttentionLink item={items![activeIndex]!} />

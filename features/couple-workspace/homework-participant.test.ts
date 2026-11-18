@@ -54,7 +54,7 @@ const homework = (blocks: ParticipantHomeworkBlock[], status: ParticipantHomewor
 
 describe("participant Homework presentation", () => {
   it("uses compact Rich Text and naturally sized outer blocks", () => {
-    expect(participantSource).toContain('<Card key={block.id} className="p-5 sm:p-7">');
+    expect(participantSource).toContain('<Card key={block.id} className="p-5">');
     expect(participantSource).not.toContain('className="min-h-40');
     expect(participantSource).toContain('compact contentClassName="p-0" />');
   });

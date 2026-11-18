@@ -16,6 +16,8 @@ describe("Admin dashboard live-data presentation", () => {
     expect(markup).toContain("Team Availability");
     expect(markup).not.toContain("Team Capacity");
     expect(markup).toContain("Nothing needs attention right now.");
+    expect(markup).toMatch(/<section class="[^"]* p-5" id="attention"/);
+    expect(markup).toMatch(/<section class="[^"]* p-5" id="team-availability"/);
     expect(markup).not.toContain("Maya &amp; Jordan");
     expect(markup).not.toContain("AUG 19");
     expect(markup).not.toContain("63%");

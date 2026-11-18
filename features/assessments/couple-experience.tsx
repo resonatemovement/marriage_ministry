@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RadioGroup } from "radix-ui";
 import { ArrowLeft, ArrowRight, Check, ClipboardCheck, RotateCcw } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { AssessmentSummary, assessmentViewResultsClassName } from "./assessment-summary";
 import { assessmentCanSubmit, assessmentResumeIndex, assessmentResultsAreAvailable, assessmentResultsInDisplayOrder, coupleAssessmentNavigationReducer, nextAssessmentQuestionIndex, previousAssessmentQuestionIndex, type CoupleAssessmentHistoryItem, type CoupleAssessmentResult, type CoupleAssessmentStatus } from "./couple-model";
 import type { CoupleAssessmentData, CoupleAssessmentSummary } from "./couple-queries";
 import { saveCoupleAssessmentResponse, startCoupleAssessment, submitCoupleAssessment } from "./couple-actions";
@@ -15,7 +15,7 @@ import { saveCoupleAssessmentResponse, startCoupleAssessment, submitCoupleAssess
 const statusLabels: Record<CoupleAssessmentStatus, string> = { not_started: "Not Started", in_progress: "In Progress", completed: "Completed", unavailable: "Unavailable" };
 
 function actionClass(primary = false) {
-  return `inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${primary ? "bg-brand-primary text-white hover:bg-brand-primary/90" : "border border-border bg-surface text-text-primary hover:bg-surface-muted"}`;
+  return `inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition focus-visible:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60 ${primary ? "bg-brand-primary text-white hover:bg-brand-primary/90" : "border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted"}`;
 }
 
 export function AssessmentList({ assessments }: { assessments: CoupleAssessmentSummary[] }) {
@@ -26,10 +26,17 @@ export function AssessmentList({ assessments }: { assessments: CoupleAssessmentS
 }
 
 function AssessmentSummaryCard({ assessment }: { assessment: CoupleAssessmentSummary }) {
-  return <Card className="flex h-full flex-col p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-heading text-lg font-bold text-text-primary">{assessment.title}</h3><p className="mt-1 text-sm text-text-muted">{assessment.description ?? assessment.sessionTitle}</p></div><Badge className={assessment.status === "completed" ? "bg-success-soft text-success-strong" : "bg-surface-muted text-text-muted"}>{statusLabels[assessment.status]}</Badge></div>
+  return <Card className="flex h-full flex-col p-5"><AssessmentSummary
+    title={assessment.title}
+    requirement={assessment.requiredForProgression ? "Required" : "Optional"}
+    participants={[{ id: assessment.assignmentId, name: assessment.participantName, status: statusLabels[assessment.status], primaryResults: assessment.status === "completed" ? assessment.primaryResults : [] }]}
+  >
+    <p className="mt-2 text-sm text-text-muted">{assessment.description ?? assessment.sessionTitle}</p>
     {assessment.status === "unavailable" ? <p className="mt-4 text-sm text-text-muted">This Assessment is not available yet. Please contact your Counselor.</p>
-      : <Link className={`${actionClass(assessment.status !== "completed")} mt-5 self-start`} href={`/workspace/assessments/${assessment.assignmentId}`}>{assessment.status === "completed" ? "View Results" : assessment.status === "in_progress" ? "Continue Assessment" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></Link>}
-  </Card>;
+      : assessment.status === "completed"
+        ? <Link className={`${assessmentViewResultsClassName} mt-3`} href={`/workspace/assessments/${assessment.assignmentId}`}>View Results</Link>
+        : <Link className={`${actionClass(true)} mt-4`} href={`/workspace/assessments/${assessment.assignmentId}`}>{assessment.status === "in_progress" ? "Continue Assessment" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></Link>}
+  </AssessmentSummary></Card>;
 }
 
 function completionDate(value: string) {
@@ -55,6 +62,7 @@ export function AssessmentResults({
 export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleAssessmentData }) {
   const router = useRouter();
   const [starting, setStarting] = useState(false);
+  const initialStartRequested = useRef(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState(assessment.attemptId);
   const [submittedResults, setSubmittedResults] = useState<CoupleAssessmentResult[] | null>(null);
@@ -74,7 +82,7 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
   const { questionIndex, review, openedFromReview } = navigation;
   const question = questions[questionIndex];
 
-  async function begin(voluntaryRetake = false) {
+  const begin = useCallback(async (voluntaryRetake = false) => {
     if (starting) return;
     setStarting(true); setStartError(null);
     let result: Awaited<ReturnType<typeof startCoupleAssessment>>;
@@ -83,14 +91,18 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     setStarting(false);
     if (!result.success || !result.attemptId) { setStartError(result.error); return; }
     setAttemptId(result.attemptId);
-    if (voluntaryRetake) {
-      setSubmittedResults(null);
-      setAnswers(result.answers);
-      setSavedAnswers(result.answers);
-      dispatchNavigation({ type: "resume", questionIndex: assessmentResumeIndex(assessment.questions, result.answers) });
-    }
+    setAnswers(result.answers);
+    setSavedAnswers(result.answers);
+    dispatchNavigation({ type: "resume", questionIndex: assessmentResumeIndex(assessment.questions, result.answers) });
+    if (voluntaryRetake) setSubmittedResults(null);
     router.refresh();
-  }
+  }, [assessment.assignmentId, assessment.questions, router, starting]);
+
+  useEffect(() => {
+    if (assessment.status !== "not_started" || attemptId || initialStartRequested.current) return;
+    initialStartRequested.current = true;
+    void begin(false);
+  }, [assessment.status, attemptId, begin]);
 
   async function saveChoice(questionId: string, choiceId: string) {
     if (!attemptId || saving || submitted) return;
@@ -133,7 +145,7 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [question, currentAnswer, currentAnswerSaved]);
-  if (assessment.status === "unavailable") return <AssessmentPageShell assessment={assessment}><Card className="p-6"><h2 className="font-heading text-xl font-bold text-text-primary">Assessment unavailable</h2><p className="mt-2 text-sm text-text-muted">This Assessment does not have published questions yet. Please contact your Counselor.</p></Card></AssessmentPageShell>;
+  if (assessment.status === "unavailable") return <AssessmentPageShell assessment={assessment}><Card className="p-5"><h2 className="font-heading text-xl font-bold text-text-primary">Assessment unavailable</h2><p className="mt-2 text-sm text-text-muted">This Assessment does not have published questions yet. Please contact your Counselor.</p></Card></AssessmentPageShell>;
   if (submitted) return <AssessmentPageShell assessment={assessment} eyebrow="ASSESSMENT">
     <div className={assessment.partnerResults ? "grid gap-5 md:grid-cols-2" : "space-y-5"}>
       <AssessmentResults className={assessment.partnerResults ? "h-full md:col-start-1 md:row-start-1" : undefined} name={assessment.profileName} results={submittedResults ?? assessment.results} history={assessment.history} />
@@ -144,10 +156,10 @@ export function CoupleAssessmentExperience({ assessment }: { assessment: CoupleA
       {assessment.partnerResults ? <AssessmentResults className="h-full md:col-start-2 md:row-start-1" name={assessment.partnerResults.name} results={assessment.partnerResults.results} submittedAt={assessment.partnerResults.submittedAt} /> : <p className="text-sm text-text-muted">Partner results are shared after both partners complete their initial Assessment.</p>}
     </div>
   </AssessmentPageShell>;
-  if (!attemptId) return <AssessmentPageShell assessment={assessment}><Card className="p-6"><p className="text-sm text-text-muted">Assigned for {assessment.sessionTitle}</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">Ready when you are</h2><p className="mt-2 text-sm text-text-muted">Your progress is saved as you answer, and you can return later.</p><button type="button" onClick={() => begin(false)} disabled={starting} className={`${actionClass(true)} mt-5`}>{starting ? "Starting…" : "Begin Assessment"}<ArrowRight className="size-4" aria-hidden="true" /></button>{startError ? <p role="alert" className="mt-3 text-sm text-danger">{startError}</p> : null}</Card></AssessmentPageShell>;
+  if (!attemptId) return <AssessmentPageShell assessment={assessment}><Card className="p-5"><p className="text-sm text-text-muted">{startError ? "This Assessment is ready to open." : "Opening your Assessment…"}</p>{startError ? <><p role="alert" className="mt-2 text-sm text-danger">{startError}</p><button type="button" onClick={() => begin(false)} disabled={starting} className={`${actionClass(true)} mt-5`}>{starting ? "Opening…" : "Retry"}<ArrowRight className="size-4" aria-hidden="true" /></button></> : null}</Card></AssessmentPageShell>;
   return <AssessmentPageShell assessment={assessment}>
     <div className="mb-5"><div className="flex justify-between gap-3 text-sm"><span className="font-medium text-text-primary">{review ? "Review your answers" : `Question ${questionIndex + 1} of ${questions.length}`}</span><span className="text-text-muted">{progress}%</span></div><div role="progressbar" aria-label="Assessment progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary transition-[width]" style={{ width: `${progress}%` }} /></div></div>
-    {review ? <Card className="p-5 sm:p-7"><h2 className="font-heading text-xl font-bold text-text-primary">Review &amp; Submit</h2><p className="mt-2 text-sm text-text-muted">Select any question number to review or change your answer.</p><div className="mt-5 grid grid-cols-5 gap-2 sm:grid-cols-10">{questions.map((item, index) => { const answered = Boolean(savedAnswers[item.id]); return <button key={item.id} type="button" onClick={() => { dispatchNavigation({ type: "open-review-question", questionIndex: index }); setError(null); }} aria-label={`Question ${index + 1}, ${answered ? "answered" : "not answered"}`} className="relative grid aspect-square min-h-10 place-items-center rounded-md border border-border bg-surface text-lg font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted"><span>{index + 1}</span>{answered ? <Check className="absolute right-1 top-1 size-3 text-success-strong" aria-hidden="true" /> : null}</button>; })}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => dispatchNavigation({ type: "open-review-question", questionIndex: questions.length - 1 })} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back</button><button type="button" onClick={submit} disabled={!assessmentCanSubmit(questions, savedAnswers, saving, submitting)} className={actionClass(true)}>{submitting ? "Submitting…" : "Submit Assessment"}<ClipboardCheck className="size-4" aria-hidden="true" /></button></div></Card> : question ? <Card className="p-5 sm:p-7"><h2 className="font-heading text-xl font-bold leading-relaxed text-text-primary">{question.prompt}</h2><RadioGroup.Root value={currentAnswer ?? ""} onValueChange={(value) => choose(question.id, value)} disabled={saving || submitting} aria-label={`Answer to question ${questionIndex + 1}`} className="mt-6 grid gap-3">{question.choices.map((choice, index) => { const selected = currentAnswer === choice.id; return <RadioGroup.Item key={choice.id} id={`assessment-choice-${choice.id}`} value={choice.id} aria-label={choice.label} className={`flex min-h-16 w-full cursor-pointer items-center gap-4 rounded-md border p-4 text-left text-sm text-text-primary transition-colors hover:border-brand-primary/50 hover:bg-surface-muted focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-brand-primary bg-brand-primary/5" : "border-border"}`}><span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full border border-border bg-white"><RadioGroup.Indicator className="size-2.5 rounded-full bg-brand-primary" /></span><span className="flex min-h-8 flex-1 items-center">{choice.label}</span><span className="text-xs text-text-muted">{String.fromCharCode(65 + index)}</span></RadioGroup.Item>; })}</RadioGroup.Root><div aria-live="polite" className="mt-4 min-h-5 text-sm">{saving ? <span className="text-text-muted">Saving answer…</span> : currentAnswerSaved ? <span className="text-success-strong">Answer saved</span> : currentAnswer ? <span className="text-danger">Not saved yet</span> : null}</div>{currentAnswer && !currentAnswerSaved && !saving ? <button type="button" onClick={() => saveChoice(question.id, currentAnswer)} className="mt-2 min-h-10 text-sm font-semibold text-brand-secondary hover:text-brand-primary">Retry saving answer</button> : null}<div className="mt-4 flex flex-wrap justify-between gap-3"><div className="flex flex-wrap gap-3"><button type="button" onClick={() => dispatchNavigation({ type: "go-to-question", questionIndex: previousAssessmentQuestionIndex(questionIndex, questions.length) })} disabled={saving || Boolean(currentAnswer && !currentAnswerSaved) || questionIndex === 0} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back</button>{openedFromReview ? <button type="button" onClick={() => { dispatchNavigation({ type: "return-to-review" }); setError(null); }} disabled={saving || Boolean(currentAnswer && !currentAnswerSaved)} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back to Review</button> : null}</div>{questionIndex === questions.length - 1 ? <button type="button" onClick={() => dispatchNavigation({ type: "show-review" })} disabled={saving || !currentAnswerSaved || !canReview} className={actionClass(true)}>Review &amp; Submit<ArrowRight className="size-4" aria-hidden="true" /></button> : <button type="button" onClick={() => dispatchNavigation({ type: "go-to-question", questionIndex: nextAssessmentQuestionIndex(questionIndex, questions.length) })} disabled={saving || !currentAnswerSaved} className={actionClass(true)}>Next<ArrowRight className="size-4" aria-hidden="true" /></button>}</div></Card> : null}
+    {review ? <Card className="p-5 sm:p-7"><h2 className="font-heading text-xl font-bold text-text-primary">Review &amp; Submit</h2><p className="mt-2 text-sm text-text-muted">Select any question number to review or change your answer.</p><div className="mt-5 grid grid-cols-5 gap-2 sm:grid-cols-10">{questions.map((item, index) => { const answered = Boolean(savedAnswers[item.id]); return <button key={item.id} type="button" onClick={() => { dispatchNavigation({ type: "open-review-question", questionIndex: index }); setError(null); }} aria-label={`Question ${index + 1}, ${answered ? "answered" : "not answered"}`} className="relative grid aspect-square min-h-10 place-items-center rounded-md border border-border bg-surface text-lg font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted"><span>{index + 1}</span>{answered ? <Check className="absolute right-1 top-1 size-3 text-success-strong" aria-hidden="true" /> : null}</button>; })}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => dispatchNavigation({ type: "open-review-question", questionIndex: questions.length - 1 })} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back</button><button type="button" onClick={submit} disabled={!assessmentCanSubmit(questions, savedAnswers, saving, submitting)} className={actionClass(true)}>{submitting ? "Submitting…" : "Submit Assessment"}<ClipboardCheck className="size-4" aria-hidden="true" /></button></div></Card> : question ? <Card className="p-5 sm:p-7"><h2 className="font-heading text-xl font-bold leading-relaxed text-text-primary">{question.prompt}</h2><RadioGroup.Root value={currentAnswer ?? ""} onValueChange={(value) => choose(question.id, value)} disabled={saving || submitting} aria-label={`Answer to question ${questionIndex + 1}`} className="mt-6 grid gap-3">{question.choices.map((choice, index) => { const selected = currentAnswer === choice.id; return <RadioGroup.Item key={choice.id} id={`assessment-choice-${choice.id}`} value={choice.id} aria-label={choice.label} className={`box-border flex min-h-16 w-full cursor-pointer items-center gap-4 rounded-md border px-4 py-4 text-left text-sm text-text-primary transition-colors hover:border-brand-primary/50 hover:bg-surface-muted focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-brand-primary bg-brand-primary/5" : "border-border"}`}><span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full border border-border bg-white"><RadioGroup.Indicator className="size-2.5 rounded-full bg-brand-primary" /></span><span className="flex min-h-8 flex-1 items-center">{choice.label}</span><span className="shrink-0 text-xs text-text-muted">{String.fromCharCode(65 + index)}</span></RadioGroup.Item>; })}</RadioGroup.Root><div aria-live="polite" className="mt-4 min-h-5 text-sm">{saving ? <span className="text-text-muted">Saving answer…</span> : currentAnswerSaved ? <span className="text-success-strong">Answer saved</span> : currentAnswer ? <span className="text-danger">Not saved yet</span> : null}</div>{currentAnswer && !currentAnswerSaved && !saving ? <button type="button" onClick={() => saveChoice(question.id, currentAnswer)} className="mt-2 min-h-10 text-sm font-semibold text-brand-secondary hover:text-brand-primary">Retry saving answer</button> : null}<div className="mt-4 flex flex-wrap justify-between gap-3"><div className="flex flex-wrap gap-3"><button type="button" onClick={() => dispatchNavigation({ type: "go-to-question", questionIndex: previousAssessmentQuestionIndex(questionIndex, questions.length) })} disabled={saving || Boolean(currentAnswer && !currentAnswerSaved) || questionIndex === 0} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back</button>{openedFromReview ? <button type="button" onClick={() => { dispatchNavigation({ type: "return-to-review" }); setError(null); }} disabled={saving || Boolean(currentAnswer && !currentAnswerSaved)} className={actionClass()}><ArrowLeft className="size-4" aria-hidden="true" />Back to Review</button> : null}</div>{questionIndex === questions.length - 1 ? <button type="button" onClick={() => dispatchNavigation({ type: "show-review" })} disabled={saving || !currentAnswerSaved || !canReview} className={actionClass(true)}>Review &amp; Submit<ArrowRight className="size-4" aria-hidden="true" /></button> : <button type="button" onClick={() => dispatchNavigation({ type: "go-to-question", questionIndex: nextAssessmentQuestionIndex(questionIndex, questions.length) })} disabled={saving || !currentAnswerSaved} className={actionClass(true)}>Next<ArrowRight className="size-4" aria-hidden="true" /></button>}</div></Card> : null}
     {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
   </AssessmentPageShell>;
 }

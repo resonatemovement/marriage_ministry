@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -23,6 +24,7 @@ import type { CounselingSessionCard } from "./queries";
 
 type Mode = "schedule-initial" | "reschedule-initial" | "complete-initial" | "complete-session" | "complete-program" | "close-case" | "schedule-followup" | "reschedule-meeting";
 type LifecycleCard = Pick<CounselingSessionCard, "caseId" | "coupleName" | "state" | "publishedSessions" | "homework"> & { isAdmin: boolean };
+type AssessmentPrerequisites = { id: string; title: string; partners: { profileId: string; name: string; gender: "male" | "female" | null; status: "not_assigned" | "not_started" | "in_progress" | "completed" }[] }[] | null;
 
 const title: Record<Mode, string> = {
   "schedule-initial": "Schedule Initial Meeting",
@@ -46,6 +48,7 @@ function successMessage(mode: Mode) {
 }
 
 function inlineDomainError(error: string) {
+  if (error.includes("Both partners must submit the required initial Assessment before advancing") || error.includes("Both partners must submit the required initial Assessment before completing the program")) return "Both partners must submit their required initial Assessments before this Session can advance. Admin Homework override cannot bypass this requirement.";
   if (error.includes("Both partners must submit Homework")) return "Both partners must submit Homework. Admin or Super Admin may type OVERRIDE to continue.";
   if (error.includes("OVERRIDE is only accepted")) return "OVERRIDE is only accepted when required Homework is incomplete.";
   if (error.includes("Required Homework progress") || error.includes("Current Session Homework is unavailable")) return "Homework status is unavailable. Refresh the case and try again.";
@@ -85,7 +88,17 @@ function previousMeetingStartForMode(mode: Mode, card: LifecycleCard) {
   return null;
 }
 
-export function SessionLifecycleControls({ card, partners = [], deliveries = [] }: { card: LifecycleCard; partners?: MeetingNotificationPartner[]; deliveries?: MeetingNotificationDelivery[] }) {
+function AssessmentPrerequisiteNotice({ unavailable, assessments }: { unavailable: boolean; assessments: NonNullable<AssessmentPrerequisites> }) {
+  return <div role="status" aria-label="Assessment prerequisite status" className="grid gap-2 rounded-md bg-amber-50 px-3 py-2">
+    <p className="text-sm font-semibold text-amber-900">{unavailable ? "Assessment status is unavailable." : "Required Assessments must be completed first."}</p>
+    {unavailable ? <p className="text-sm text-amber-900">Refresh the case to check Assessment status. Session completion and Admin Homework override are unavailable until the status can be verified.</p> : <>
+      <p className="text-sm text-amber-900">Both partners must submit their required initial Assessments before this Session can advance. Admin Homework override cannot bypass this requirement.</p>
+      {assessments.map((assessment) => <div key={assessment.id} className="grid gap-1.5"><p className="text-sm font-medium text-amber-900">{assessment.title}</p>{assessment.partners.map((partner) => <div key={partner.profileId} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 break-words text-amber-900">{partner.name}</span><Badge className={partner.status === "completed" ? "bg-success-soft text-success-strong" : "bg-surface-muted text-text-muted"}>{partner.status === "completed" ? "Submitted" : partner.status === "in_progress" ? "In Progress" : partner.status === "not_started" ? "Not Started" : "Not Assigned"}</Badge></div>)}</div>)}
+    </>}
+  </div>;
+}
+
+export function SessionLifecycleControls({ card, partners = [], deliveries = [], assessmentPrerequisites = null }: { card: LifecycleCard; partners?: MeetingNotificationPartner[]; deliveries?: MeetingNotificationDelivery[]; assessmentPrerequisites?: AssessmentPrerequisites }) {
   const initialSessionId = card.state.nextSession?.id ?? card.publishedSessions[0]?.id ?? "";
   const initialSession = card.publishedSessions.find((session) => session.id === initialSessionId);
   const [mode, setMode] = useState<Mode | null>(null);
@@ -115,7 +128,11 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
   const homeworkRequired = Boolean(card.state.caseSession?.homeworkAssignmentRevisionId);
   const homeworkComplete = !homeworkRequired || card.homework?.complete === true;
   const homeworkBlocked = !homeworkComplete;
-  const overrideValid = card.isAdmin && overrideConfirmation === "OVERRIDE";
+  const hasAssessmentGate = Boolean(card.state.caseSession);
+  const assessmentDataUnavailable = hasAssessmentGate && assessmentPrerequisites === null;
+  const incompleteAssessments = assessmentPrerequisites ?? [];
+  const assessmentBlocked = assessmentDataUnavailable || incompleteAssessments.length > 0;
+  const overrideValid = card.isAdmin && !assessmentBlocked && overrideConfirmation === "OVERRIDE";
   const scheduleValidation = open && open !== "complete-program" && open !== "close-case"
     ? validateMeetingSchedule(meetingDate, meetingTime, meetingPeriod, new Date(), previousMeetingStartsAt)
     : null;
@@ -274,6 +291,7 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
             </section> : null}
           </> : null}
           {open === "complete-session" || open === "complete-program" ? <section aria-label="Homework status" className="grid gap-2">
+            {assessmentBlocked ? <AssessmentPrerequisiteNotice unavailable={assessmentDataUnavailable} assessments={incompleteAssessments} /> : null}
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Homework status</p>
             {!homeworkRequired ? <p className="text-sm text-text-muted">No Homework is required for this Session.</p> : card.homework ? <>
               {homeworkBlocked ? <div role="status" className="rounded-md bg-amber-50 px-3 py-2"><p className="text-sm font-semibold text-amber-900">Homework must be completed first</p><p className="mt-0.5 text-sm text-amber-900">Both partners need to submit their required Homework before you can complete this Session.</p></div> : null}
@@ -282,7 +300,7 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
                 return <div key={partner.profileId} className="flex justify-between gap-3 text-sm"><span>{firstName}</span><span className={partner.status === "submitted" || partner.status === "reviewed" ? "font-medium text-success-strong" : "font-medium text-amber-800"}>{partner.status === "submitted" || partner.status === "reviewed" ? "Submitted" : homeworkProgressLabel(partner.status)}</span></div>;
               })}
             </> : <p role="status" className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Homework status is unavailable, so this Session cannot be completed yet.</p>}
-            {homeworkBlocked && card.isAdmin ? <Collapsible open={overrideOpen} onOpenChange={(expanded) => { setOverrideOpen(expanded); if (!expanded) setOverrideConfirmation(""); }} className="mt-1">
+            {homeworkBlocked && card.isAdmin && !assessmentBlocked ? <Collapsible open={overrideOpen} onOpenChange={(expanded) => { setOverrideOpen(expanded); if (!expanded) setOverrideConfirmation(""); }} className="mt-1">
               <CollapsibleTrigger type="button" className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md bg-surface-muted px-3 py-2 text-left transition-colors hover:bg-sidebar-accent focus-visible:bg-surface-muted focus-visible:text-text-primary data-[state=open]:bg-sidebar-accent">
                 <span className="grid gap-0.5"><span className="text-sm font-semibold text-text-primary">Admin override</span><span className="text-xs font-normal text-text-muted">Continue without completed Homework.</span></span>
                 <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-text-muted transition-transform data-[state=open]:rotate-180" />
@@ -311,7 +329,7 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [] 
           {open === "close-case" ? <section className="grid gap-3 rounded-md border border-danger-strong/30 bg-danger-soft/40 p-3"><p className="text-sm font-semibold text-danger-strong">This ends counseling without normal program completion. Session history, meetings, materials, and Homework responses will be preserved.</p><div className="grid gap-1.5"><label htmlFor="closure-reason" className="text-sm font-medium">Reason{card.isAdmin ? " (optional for Admin)" : ""}</label><input type="hidden" name="closureReason" value={closureReason} /><Select value={closureReason} onValueChange={setClosureReason}><SelectTrigger id="closure-reason" className="w-full"><SelectValue placeholder="Select a reason" /></SelectTrigger><SelectContent>{["Couple withdrew", "Unable to contact couple", "Couple relocated", "Referred elsewhere", "Counseling relationship ended", "Other"].map((reason) => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent></Select></div>{closureReason === "Other" ? <label className="grid gap-1.5 text-sm font-medium">Notes<textarea required name="closureNotes" rows={3} className="rounded-md border border-border bg-white px-3 py-2" /></label> : <input type="hidden" name="closureNotes" value="" />}</section> : null}
           {open === "complete-initial" && !card.publishedSessions.length ? <p role="alert" className="text-sm text-danger-strong">A published Session with Material and Homework is required.</p> : null}
           {error && error !== "Meeting date is required." ? <p role="alert" className="text-sm text-danger-strong">{error}</p> : null}
-          {!nextSessionUnavailable ? <button disabled={pending || Boolean(scheduleValidation && (scheduleValidation.dateError || scheduleValidation.timeError || !scheduleValidation.time)) || ((open === "complete-initial" || open === "complete-session") && (!sessionId || selectedMaterialBlockIds.length === 0)) || ((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid)) || (open === "close-case" && !closureReason && !card.isAdmin)} className="min-h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">{pending ? "Saving…" : title[open]}</button> : null}
+          {!nextSessionUnavailable ? <button disabled={pending || Boolean(scheduleValidation && (scheduleValidation.dateError || scheduleValidation.timeError || !scheduleValidation.time)) || ((open === "complete-initial" || open === "complete-session") && (!sessionId || selectedMaterialBlockIds.length === 0)) || ((open === "complete-session" || open === "complete-program") && (assessmentBlocked || homeworkBlocked && (!card.isAdmin || !overrideValid))) || (open === "close-case" && !closureReason && !card.isAdmin)} className="min-h-11 rounded-md bg-brand-primary px-4 text-sm font-bold text-white disabled:opacity-60">{pending ? "Saving…" : title[open]}</button> : null}
         </form> : null}
       </SheetContent>
     </Sheet>

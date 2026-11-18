@@ -53,11 +53,20 @@ describe("Counselor Assessment management presentation", () => {
     expect(cards).not.toContain("Not scheduled");
     expect(cards).toContain("1 of 2 submitted");
     expect(cards).toContain("Blocking Session advancement");
-    expect(cards).toContain(">Alex A</span>");
-    expect(cards).toContain(">Words, Time</span>");
+    expect(cards).toContain("Alex A");
+    expect(cards).toContain("Words, Time");
+    expect(cards).toContain("Submitted");
+    expect(cards).toContain("In Progress");
+    expect(cards).toContain("1 of 2 submitted");
     expect(cards).toContain("View Results");
-    expect(cards).toContain('aria-label="Primary results"');
-    expect(cards).toContain('class="mt-2 grid gap-1.5 text-sm text-text-secondary"');
+    expect(cards).toContain("text-brand-primary underline-offset-4");
+    const resultsTrigger = cards.match(/<button[^>]*aria-haspopup="dialog"[^>]*class="([^"]*)"[^>]*>View Results<\/button>/)?.[1] ?? "";
+    expect(resultsTrigger).toContain("inline-flex w-fit items-center");
+    expect(resultsTrigger).not.toContain("min-h-10");
+    expect(resultsTrigger).not.toMatch(/\bp[xytrbl]?-\d/);
+    expect(cards).not.toContain("bg-brand-primary px-4");
+    expect(cards).toContain('aria-label="Love Languages participant progress"');
+    expect(cards).toContain("Alex A");
     expect(cards).not.toContain("sm:grid-cols-2");
     expect(cards).not.toContain("Scheduling Settings");
     expect(cards).not.toContain("Case Session");
@@ -65,6 +74,23 @@ describe("Counselor Assessment management presentation", () => {
     expect(cards).not.toContain("Save Session");
     expect(cards).not.toContain("View score history");
     expect(cards).not.toMatch(/response|answer|scoring key/i);
+  });
+
+  it("keeps only the aggregate submission count when both partners submitted", () => {
+    const completed: CounselorAssessment = {
+      ...assessment,
+      partners: assessment.partners.map((partner) => ({ ...partner, status: "completed" as const })),
+    };
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
+      assessments: [completed], canReadResults: true, activeCaseSessionId: null,
+    }));
+    const summary = markup.slice(0, markup.indexOf("View Results"));
+
+    expect(summary).toContain("2 of 2 submitted");
+    expect(summary).toContain("Alex A");
+    expect(summary).toContain("Blake B");
+    expect(summary).not.toContain("Submitted");
+    expect(markup).not.toContain("Primary results:");
   });
 
   it("renders partner status and full-width numeric score rows in responsive results content", () => {
@@ -121,13 +147,24 @@ describe("Counselor Assessment management presentation", () => {
     };
     const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
       assessments: [bothSubmitted], canReadResults: true, activeCaseSessionId: null,
+      partnerOrder: [{ id: "profile-b", name: "Blake B", gender: "male" }, { id: "profile-a", name: "Alex A", gender: "female" }],
     }));
-    const summary = markup.slice(markup.indexOf('aria-label="Primary results"'), markup.indexOf("</ul>", markup.indexOf('aria-label="Primary results"')));
-    expect(summary.indexOf("Alex A")).toBeLessThan(summary.indexOf("Blake B"));
+    const summary = markup.slice(markup.indexOf('aria-label="Love Languages participant progress"'), markup.indexOf("</ul>", markup.indexOf('aria-label="Love Languages participant progress"')));
+    expect(summary.indexOf("Blake B")).toBeLessThan(summary.indexOf("Alex A"));
     expect(summary).toContain("Words, Time");
     expect(summary).toContain("Touch");
-    expect(summary.match(/rounded-md bg-surface-muted px-2 py-1\.5/g)).toHaveLength(2);
+    expect(summary.match(/rounded-md bg-surface-muted px-3 py-2 text-sm/g)).toHaveLength(2);
     expect(summary).not.toContain("sm:grid-cols-2");
+  });
+
+  it("does not render participant status or results when the view is not authorized to read them", () => {
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
+      assessments: [assessment], canReadResults: false, activeCaseSessionId: null,
+    }));
+    expect(markup).toContain("Partner completion status and results are unavailable in this view.");
+    expect(markup).not.toContain("Alex A");
+    expect(markup).not.toContain("Words");
+    expect(markup).not.toContain("View Results");
   });
 
   it("keeps each visible scheduling form associated with its assessment", () => {

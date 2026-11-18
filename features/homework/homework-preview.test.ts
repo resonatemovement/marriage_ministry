@@ -31,7 +31,7 @@ describe("Homework Preview content", () => {
     ]).blocks;
     const markup = render(block);
 
-    expect(markup).toContain('<div class="grid gap-3 p-5 sm:p-7"><h2 class="font-heading text-lg font-bold text-text-primary">Reading</h2><pre data-rich-text="true" class="p-0">');
+    expect(markup).toContain('<div class="grid gap-3 p-5"><h2 class="font-heading text-lg font-bold text-text-primary">Reading</h2><pre data-rich-text="true" class="p-0">');
     expect(markup).toContain("Body copy");
     expect(markup).not.toContain("px-5 pt-5");
   });
@@ -154,7 +154,7 @@ describe("Homework Preview content", () => {
     };
     const markup = render([richText, longAnswer]);
 
-    expect(markup).toContain('class="grid gap-3 p-5 sm:p-7"');
+    expect(markup).toContain('class="grid gap-3 p-5"');
     expect(markup).toContain('class="p-0"');
   });
 

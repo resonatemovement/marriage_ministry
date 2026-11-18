@@ -29,7 +29,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
     }
 
     return <article className="overflow-hidden rounded-lg border border-border bg-white">
-      <div className="grid gap-3 p-5 sm:p-7">
+      <div className="grid gap-3 p-5">
         <h2 className="font-heading text-lg font-bold text-text-primary">{block.title}</h2>
         <RichTextReadOnly content={block.richTextContent} contentClassName="p-0" />
       </div>
@@ -49,7 +49,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
       return <IncompletePreviewBlock />;
     }
 
-    return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
+    return <article className="rounded-lg border border-border bg-white p-5">
       <RichTextReadOnly content={block.richTextContent} compact contentClassName="p-0" />
       <div className="mt-6 border-t border-border pt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -64,7 +64,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
   if (block.blockType === "side_by_side_response" && block.sideBySideConfig) {
     const config = block.sideBySideConfig;
     if (!config.leftHeading.trim() || !config.rightHeading.trim()) return <IncompletePreviewBlock />;
-    return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
+    return <article className="rounded-lg border border-border bg-white p-5">
       {config.instructions.trim() ? <p className="mb-5 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{config.instructions}</p> : null}
       <SideBySideResponseFields config={config} rows={[{ id: config.groupId, left: "", right: "" }]} readOnly />
       <span className="mt-4 inline-flex rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-text-muted">{config.bothRequired ? "Both responses required" : "Responses optional"}</span>
@@ -79,7 +79,7 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
       return <IncompletePreviewBlock />;
     }
 
-    return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
+    return <article className="rounded-lg border border-border bg-white p-5">
       <div id={`homework-preview-question-${block.key}`}><RichTextReadOnly content={block.richTextContent} compact contentClassName="p-0" /></div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-text-primary">Answer choices</h2>
@@ -101,13 +101,13 @@ function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
     </article>;
   }
 
-  return <article className="rounded-lg border border-border bg-surface-muted p-5 sm:p-7">
+  return <article className="rounded-lg border border-border bg-surface-muted p-5">
     <p className="text-sm text-text-muted">This content type cannot currently be previewed.</p>
   </article>;
 }
 
 export function VideoLinkPreview({ title, description, url }: { title: string; description: string; url: string }) {
-  return <article className="rounded-lg border border-border bg-white p-5 sm:p-7">
+  return <article className="rounded-lg border border-border bg-white p-5">
     <h2 className="font-heading text-lg font-bold text-text-primary">{title}</h2>
     <p className="mt-3 whitespace-pre-line text-sm leading-6 text-text-muted">{description}</p>
     <div className="mt-5">
@@ -119,7 +119,7 @@ export function VideoLinkPreview({ title, description, url }: { title: string; d
 }
 
 function IncompletePreviewBlock() {
-  return <article className="rounded-lg border border-dashed border-border bg-surface-muted p-5 sm:p-7">
+  return <article className="rounded-lg border border-dashed border-border bg-surface-muted p-5">
     <p className="text-sm font-medium text-text-muted">Incomplete content</p>
     <p className="mt-1 text-xs text-text-muted">Complete this block in the editor to preview it.</p>
   </article>;

@@ -16,8 +16,13 @@ describe("Couple Assessment server actions", () => {
 
   it("starts only the idempotent initial participant attempt", async () => {
     rpc.mockResolvedValue({ data: attemptId, error: null });
-    await expect(startCoupleAssessment(assignmentId)).resolves.toMatchObject({ success: true, attemptId });
+    const eq = vi.fn().mockResolvedValue({ data: [{ question_id: questionId, choice_id: choiceId }], error: null });
+    const select = vi.fn(() => ({ eq }));
+    from.mockReturnValue({ select });
+    await expect(startCoupleAssessment(assignmentId)).resolves.toMatchObject({ success: true, attemptId, answers: { [questionId]: choiceId } });
     expect(rpc).toHaveBeenCalledWith("start_assessment_attempt", { target_participant_assignment_id: assignmentId, voluntary_retake: false });
+    expect(from).toHaveBeenCalledWith("assessment_responses");
+    expect(eq).toHaveBeenCalledWith("attempt_id", attemptId);
   });
 
   it("requests a voluntary retake through the same server-authorized start RPC", async () => {

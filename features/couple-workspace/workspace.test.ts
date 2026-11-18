@@ -126,7 +126,7 @@ describe("CoupleWorkspace", () => {
     const shellStart = html.indexOf('class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]"');
     const mainColumn = html.slice(shellStart, html.indexOf("<aside", shellStart));
     expect(mainColumn).toContain('class="space-y-6"');
-    expect(mainColumn).toContain("p-5 sm:p-7");
+    expect(mainColumn).toContain("p-5");
     expect(mainColumn).toContain('aria-label="Alex &amp; Jordan partner photos"');
     expect(mainColumn).toContain("Follow your counseling journey, current Session, and next meeting.");
     expect(mainColumn.indexOf("Couple Workspace")).toBeLessThan(mainColumn.indexOf("Current Session"));

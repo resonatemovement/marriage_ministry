@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const controls = readFileSync("features/counseling-sessions/session-lifecycle-controls.tsx", "utf8");
 const actions = readFileSync("features/counseling-sessions/actions.ts", "utf8");
 const timeInput = readFileSync("components/ui/time-input.tsx", "utf8");
+const coupleDetail = readFileSync("features/counseling-sessions/couple-detail-page.tsx", "utf8");
 
 describe("lifecycle scheduling date control", () => {
   it("uses one shared required DatePicker and keeps time selection without native validation", () => {
@@ -240,7 +241,7 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).not.toContain("Outstanding Homework:");
     expect(controls).toContain('<Select required value={sessionId} onValueChange={selectSession}>');
     expect(controls).toContain('open !== "complete-session" || homeworkComplete || overrideValid');
-    expect(controls).toContain('((open === "complete-session" || open === "complete-program") && homeworkBlocked && (!card.isAdmin || !overrideValid))');
+    expect(controls).toContain('((open === "complete-session" || open === "complete-program") && (assessmentBlocked || homeworkBlocked && (!card.isAdmin || !overrideValid)))');
     expect(controls).toContain("homeworkRequired = Boolean(card.state.caseSession?.homeworkAssignmentRevisionId)");
     expect(controls).toContain("No Homework is required for this Session.");
   });
@@ -259,10 +260,50 @@ describe("lifecycle scheduling date control", () => {
     expect(controls).toContain('overrideConfirmation === "OVERRIDE"');
     expect(controls).toContain('if (!expanded) setOverrideConfirmation("")');
     expect(actions).toContain('override_confirmation: isAdmin ? overrideConfirmation ?? undefined : undefined');
-    expect(controls).toContain('homeworkBlocked && card.isAdmin ? <Collapsible');
+    expect(controls).toContain('homeworkBlocked && card.isAdmin && !assessmentBlocked ? <Collapsible');
     expect(controls).toContain('homeworkBlocked && (!card.isAdmin || !overrideValid)');
     expect(controls).toContain('open !== "complete-session" || homeworkComplete || overrideValid');
     expect(controls).not.toContain("does not submit or change either partner’s Homework");
+  });
+
+  it("fails closed for missing Assessment status and disables both Session and program completion until prerequisites pass", () => {
+    expect(controls).toContain('const assessmentDataUnavailable = hasAssessmentGate && assessmentPrerequisites === null');
+    expect(controls).toContain("const assessmentBlocked = assessmentDataUnavailable || incompleteAssessments.length > 0");
+    expect(controls).toContain('homeworkBlocked && card.isAdmin && !assessmentBlocked ? <Collapsible');
+    expect(controls).toContain('((open === "complete-session" || open === "complete-program") && (assessmentBlocked || homeworkBlocked && (!card.isAdmin || !overrideValid)))');
+    expect(controls).toContain("Session completion and Admin Homework override are unavailable until the status can be verified.");
+  });
+
+  it("shows authorized per-partner Assessment status without rendering answer or score data", () => {
+    expect(controls).toContain('aria-label="Assessment prerequisite status"');
+    expect(controls).toContain("Both partners must submit their required initial Assessments before this Session can advance.");
+    expect(controls).toContain("Admin Homework override cannot bypass this requirement.");
+    expect(controls).toContain('partner.status === "completed" ? "Submitted"');
+    expect(controls).toContain('partner.status === "in_progress" ? "In Progress"');
+    expect(controls).not.toContain("partner.latestScores");
+    expect(controls).not.toContain("partner.history");
+    expect(coupleDetail).toContain('orderCouplePartners(card.partners.map');
+    expect(coupleDetail).toContain("assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId)");
+  });
+
+  it("keeps prerequisite details in the completion dialog, not the Next Step sidebar, while preserving fail-closed controls", () => {
+    expect(controls).not.toContain('{isAuthored && assessmentBlocked ? <div className="mt-3"><AssessmentPrerequisiteNotice');
+    const completionSectionStart = controls.indexOf('{open === "complete-session" || open === "complete-program" ? <section aria-label="Homework status"');
+    const completionSection = controls.slice(completionSectionStart, controls.indexOf("{homeworkBlocked && card.isAdmin", completionSectionStart));
+    expect(completionSection).toContain('{assessmentBlocked ? <AssessmentPrerequisiteNotice unavailable={assessmentDataUnavailable} assessments={incompleteAssessments} /> : null}');
+    expect(completionSection).toContain('open === "complete-program"');
+    expect(controls).toContain('onClick={() => openMode(primaryMode)}');
+    expect(controls).toContain('((open === "complete-session" || open === "complete-program") && (assessmentBlocked || homeworkBlocked && (!card.isAdmin || !overrideValid)))');
+    expect(controls).toContain('homeworkBlocked && card.isAdmin && !assessmentBlocked ? <Collapsible');
+  });
+
+  it("maps known Assessment gate errors to actionable safe copy while retaining generic unexpected errors", () => {
+    expect(controls).toContain('error.includes("Both partners must submit the required initial Assessment before advancing")');
+    expect(controls).toContain('error.includes("Both partners must submit the required initial Assessment before completing the program")');
+    expect(controls).toContain("Both partners must submit their required initial Assessments before this Session can advance.");
+    expect(controls).toContain("return null;");
+    expect(controls).toContain('showErrorToast(failureMessage(open!));');
+    expect(controls).not.toContain("showErrorToast(result.error)");
   });
 
   it("renders the authored Session number supplied by the canonical ranked projection", () => {

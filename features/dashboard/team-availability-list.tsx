@@ -34,7 +34,7 @@ export function TeamAvailabilityList({ teams, view, search, error = false }: { t
     <nav aria-label="Breadcrumb" className="mb-4 text-sm text-text-muted"><ol className="flex items-center gap-2"><li><Link href="/dashboard" className="text-brand-primary hover:underline">Dashboard</Link></li><li aria-hidden="true">/</li><li aria-current="page" className="font-medium text-text-primary">Team Availability</li></ol></nav>
     <header><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Dashboard</p><h1 className="font-heading mt-1 text-2xl font-bold text-text-primary">Team Availability</h1><p className="mt-2 text-sm text-text-muted">Active Campus Lead, Coach, and Counselor teams, ordered by directly assigned Couples.</p></header>
 
-    <Card className="mt-7 p-5 sm:p-6">
+    <Card className="mt-7 p-5">
       <nav aria-label="Team availability filters" className="flex flex-wrap gap-2">{views.map((item) => <Link key={item.id} aria-current={view === item.id ? "page" : undefined} href={teamAvailabilityListHref(item.id, search)} className={view === item.id ? "rounded-md bg-sidebar-accent px-3 py-2 text-sm font-bold text-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30" : "rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"}>{item.label}</Link>)}</nav>
       <form action="/dashboard/team-availability" method="get" className="mt-4 flex flex-col gap-3 sm:flex-row">
         {view === "all" ? <input type="hidden" name="view" value="all" /> : null}

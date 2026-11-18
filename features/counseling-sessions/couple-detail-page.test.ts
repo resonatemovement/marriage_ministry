@@ -91,6 +91,35 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain("Assessment management");
   });
 
+  it("shows required Assessment prerequisites in male-first order without exposing results", () => {
+    const partners = [
+      { id: "amy", firstName: "Amy", name: "Amy Lee", gender: "female" as const, photoUrl: null },
+      { id: "anthony", firstName: "Anthony", name: "Anthony Jones", gender: "male" as const, photoUrl: null },
+    ];
+    const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, {
+      card: { ...card, partners },
+      assessmentManagement: {
+        assessments: [{
+          id: "assessment-1", title: "Initial Assessment", description: null,
+          publishedVersionId: "version-1", publishedVersionNumber: 1, systemDefaultSessionId: "session-1",
+          schedule: { id: "schedule-1", sessionId: "session-1", caseSessionId: "case-session", progressionCaseSessionId: "case-session", requiredForProgression: true, source: "system_default" },
+          partners: [
+            { profileId: "amy", name: "Amy Lee", status: "in_progress", latestScores: [{ label: "Private", score: 10, rank: 1, isPrimary: true }], history: [] },
+            { profileId: "anthony", name: "Anthony Jones", status: "completed", latestScores: [], history: [] },
+          ],
+        }], sessions: [], preferences: {},
+      },
+    }));
+    const nextStepStart = markup.indexOf('aria-label="Next Step"');
+    const nextStep = markup.slice(nextStepStart);
+    expect(nextStep).not.toContain("Both partners must submit their required initial Assessments");
+    expect(markup).not.toContain("Admin Homework override cannot bypass this requirement.");
+    expect(markup).not.toContain("Private");
+    expect(markup).not.toContain(">10</span>");
+    expect(markup).not.toContain(">Admin override</span>");
+    expect(nextStep).toContain(">Schedule Next Session</button>");
+  });
+
   it("uses the Schedule Next Session label for Session 0 while retaining its existing completion flow", () => {
     const session0: CounselingSessionCard = {
       ...card,

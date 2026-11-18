@@ -22,7 +22,7 @@ export function MetricCard({ metric }: { metric: DashboardMetric }) {
   const tone = toneStyles[metric.tone];
   const Icon = tone.icon;
 
-  const content = <Card className={cn("h-full flex-1 p-5 sm:p-6", metric.href && "transition-shadow group-hover:shadow-[0_2px_4px_rgba(43,45,42,0.05),0_12px_30px_rgba(43,45,42,0.06)]")}>
+  const content = <Card className={cn("h-full flex-1 p-5", metric.href && "transition-shadow group-hover:shadow-[0_2px_4px_rgba(43,45,42,0.05),0_12px_30px_rgba(43,45,42,0.06)]")}>
         <div className="flex h-full flex-col justify-between gap-6">
           <div className="flex items-start justify-between gap-3">
             <div className={cn("grid size-9 place-items-center rounded-lg", tone.surface)}>

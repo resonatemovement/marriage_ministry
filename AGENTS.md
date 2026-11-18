@@ -20,6 +20,9 @@ Prefer extracting a small shared primitive over creating parallel feature-specif
 
 - Use existing shadcn primitives for standardized controls. Do not introduce native `<select>` controls where shadcn Select exists.
 - Preserve the current Resonate visual system and avoid unrelated redesign during functional work.
+- Follow `docs/UI_STANDARDS.md` for action hierarchy and control presentation in new or materially changed UI. This is a forward-looking standard; application-wide remediation is a separate health-audit task.
+- Primary filled buttons advance workflows (Begin/Continue Assessment, Open current Session, Save Changes); styled text links navigate to existing information (View Results, View History, View Intake Request, View completed Session). Preserve the established secondary, icon, destructive, and contextual action standards in `docs/UI_STANDARDS.md`.
+- Comparable summary cards use compact `p-5` (20px) padding at all viewport sizes. Keep internal spacing intentional, and avoid adding padding twice through nested wrappers. Informational text links omit trailing arrows; forward workflow actions may use them.
 - Button/action controls should avoid decorative outlines or rings; keyboard focus must remain visible through a non-outline state. This does not broadly change form-field focus styling.
 - Accessible labels, focus states, keyboard behavior, and field-level error states are required.
 - On mobile and touch-primary devices, editable form controls must have a computed font size of at least 16px to prevent automatic focus zoom in iOS Safari. Preserve larger control typography and all desktop font sizes; do not disable intentional browser zoom.

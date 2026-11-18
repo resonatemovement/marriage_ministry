@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { orderCouplePartners, type PartnerGender } from "@/features/people/partner-order";
 
 import { rescheduleCaseAssessment, saveCaseAssessmentSchedule, saveCounselorAssessmentPreference } from "./counselor-management-actions";
 import { assessmentBlocksSessionAdvancement, type CounselorAssessment, type CounselorAssessmentSession } from "./counselor-management-model";
+import { AssessmentSummary, assessmentViewResultsClassName } from "./assessment-summary";
 
 function statusLabel(status: CounselorAssessment["partners"][number]["status"]) {
   return status === "completed" ? "Submitted" : status === "in_progress" ? "In Progress" : status === "not_started" ? "Not Started" : "Not Assigned";
@@ -28,25 +30,11 @@ export function AssessmentResultsContent({ assessment }: { assessment: Counselor
   </article>)}</div>;
 }
 
-function primaryResults(assessment: CounselorAssessment) {
-  return assessment.partners.flatMap((partner) => {
-    const labels = partner.latestScores.filter((score) => score.isPrimary).map(({ label }) => label);
-    return labels.length ? [{ name: partner.name, labels }] : [];
-  });
-}
-
-function AssessmentPrimarySummary({ assessment }: { assessment: CounselorAssessment }) {
-  const results = primaryResults(assessment);
-  return results.length ? <ul className="mt-2 grid gap-1.5 text-sm text-text-secondary" aria-label="Primary results">
-    {results.map(({ name, labels }) => <li key={name} className="rounded-md bg-surface-muted px-2 py-1.5"><span className="block font-semibold text-text-primary">{name}</span><span className="block break-words">{labels.join(", ")}</span></li>)}
-  </ul> : null;
-}
-
 function AssessmentResultsDialog({ assessment }: { assessment: CounselorAssessment }) {
   const [open, setOpen] = useState(false);
 
   return <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild><button type="button" aria-haspopup="dialog" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-brand-primary px-4 text-sm font-semibold text-white transition hover:bg-brand-primary/90 focus-visible:bg-brand-primary/90">View Results</button></Dialog.Trigger>
+      <Dialog.Trigger asChild><button type="button" aria-haspopup="dialog" className={`${assessmentViewResultsClassName} mt-3`}>View Results</button></Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content className="fixed inset-x-3 top-1/2 z-50 flex max-h-[90dvh] -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-background shadow-xl sm:left-1/2 sm:right-auto sm:w-[min(880px,calc(100vw-2rem))] sm:-translate-x-1/2">
@@ -156,18 +144,33 @@ export function CounselorAssessmentSchedulingSettings({ caseId, assessments, ses
     </section>;
 }
 
-export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId">) {
+export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId, partnerOrder = [] }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId"> & { partnerOrder?: { id: string; name: string; gender: PartnerGender }[] }) {
   if (!assessments.length) return <Card className="p-5"><section aria-label="Assessments"><h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3><p className="mt-2 text-sm text-text-muted">No Assessments are configured.</p></section></Card>;
   return <Card className="p-5"><section aria-label="Assessments">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3>
       <div className="mt-3 divide-y divide-border">{assessments.map((assessment) => {
         const blocking = canReadResults && assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId);
         const completion = assessment.partners.filter((partner) => partner.status === "completed").length;
+        const allPartnersSubmitted = assessment.partners.length === 2 && completion === 2;
+        const orderedPartners = orderCouplePartners(assessment.partners.map((partner) => ({
+          ...partner,
+          gender: partnerOrder.find(({ id }) => id === partner.profileId)?.gender ?? null,
+        })));
         return <div key={assessment.id} className="py-3 first:pt-0 last:pb-0">
-          <div className="flex flex-wrap items-start justify-between gap-2"><h4 className="font-heading min-w-0 text-base font-bold text-text-primary">{assessment.title}</h4><Badge className={assessment.schedule?.requiredForProgression ? "bg-info-soft text-info-strong" : "bg-surface-muted text-text-muted"}>{assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}</Badge></div>
-          {assessment.schedule && canReadResults ? <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><span className="text-text-secondary">{completion} of {assessment.partners.length} submitted</span>{blocking ? <Badge className="bg-amber-50 text-amber-900">Blocking Session advancement</Badge> : null}</div> : null}
-          {canReadResults && assessment.schedule ? <AssessmentPrimarySummary assessment={assessment} /> : null}
-          {canReadResults && assessment.schedule ? <AssessmentResultsDialog assessment={assessment} /> : null}
+          <AssessmentSummary
+            title={assessment.title}
+            requirement={assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}
+            progress={assessment.schedule && canReadResults ? `${completion} of ${assessment.partners.length} submitted` : undefined}
+            participants={canReadResults && assessment.schedule ? orderedPartners.map((partner) => ({
+              id: partner.profileId,
+              name: partner.name,
+              status: allPartnersSubmitted ? undefined : statusLabel(partner.status),
+              primaryResults: partner.latestScores.filter((score) => score.isPrimary).map(({ label }) => label),
+            })) : []}
+          >
+            {blocking ? <Badge className="mt-2 bg-amber-50 text-amber-900">Blocking Session advancement</Badge> : null}
+            {canReadResults && assessment.schedule ? <AssessmentResultsDialog assessment={{ ...assessment, partners: orderedPartners }} /> : null}
+          </AssessmentSummary>
           {assessment.schedule && !canReadResults ? <p className="mt-2 text-sm text-text-muted">Partner completion status and results are unavailable in this view.</p> : null}
         </div>;
       })}</div>

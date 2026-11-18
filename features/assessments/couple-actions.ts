@@ -13,13 +13,10 @@ export async function startCoupleAssessment(assignmentId: string, voluntaryRetak
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("start_assessment_attempt", { target_participant_assignment_id: assignmentId, voluntary_retake: voluntaryRetake });
   if (error || !data) return { ...unavailable, attemptId: null, answers: {} };
-  let answers: Record<string, string> = {};
-  if (voluntaryRetake) {
-    const { data: responses, error: responseError } = await supabase.from("assessment_responses")
-      .select("question_id,choice_id").eq("attempt_id", data);
-    if (responseError) return { ...unavailable, attemptId: null, answers: {} };
-    answers = Object.fromEntries((responses ?? []).map((response) => [response.question_id, response.choice_id]));
-  }
+  const { data: responses, error: responseError } = await supabase.from("assessment_responses")
+    .select("question_id,choice_id").eq("attempt_id", data);
+  if (responseError) return { ...unavailable, attemptId: null, answers: {} };
+  const answers = Object.fromEntries((responses ?? []).map((response) => [response.question_id, response.choice_id]));
   revalidatePath("/workspace/assessments");
   revalidatePath("/workspace");
   return { success: true as const, error: null, attemptId: data, answers };
