@@ -34,6 +34,27 @@ describe("Session Materials PDF route", () => {
     expect(pdf).toHaveBeenCalledWith("Connection", [{ id: "snapshot-block" }], "https://app.example");
   });
 
+  it("uses one generated document for inline preview and attachment download", async () => {
+    process.env.APP_URL = "https://app.example";
+    const snapshot = { title: "Connection", blocks: [{ id: "same-snapshot" }] };
+    const generated = { bytes: Buffer.from("%PDF-identical-content"), filename: "Connection.pdf" };
+    authorized.mockResolvedValue(snapshot);
+    pdf.mockResolvedValue(generated);
+
+    const request = (query: string) => GET(
+      new Request("https://app.example/api/case-sessions/id/materials-pdf" + query),
+      { params: Promise.resolve({ caseSessionId: "8ce4f24e-f644-47bc-bde8-1860e53af28b" }) },
+    );
+    const preview = await request("");
+    const download = await request("?download=1");
+
+    expect(await preview.arrayBuffer()).toEqual(await download.arrayBuffer());
+    expect(preview.headers.get("content-disposition")).toContain("inline;");
+    expect(download.headers.get("content-disposition")).toContain("attachment;");
+    expect(pdf).toHaveBeenNthCalledWith(1, "Connection", snapshot.blocks, "https://app.example");
+    expect(pdf).toHaveBeenNthCalledWith(2, "Connection", snapshot.blocks, "https://app.example");
+  });
+
   it("returns a private generic error without exposing details when PDF preparation fails", async () => {
     authorized.mockRejectedValueOnce(new Error("private database detail"));
     const response = await GET(new Request("https://app.example/api/case-sessions/8ce4f24e-f644-47bc-bde8-1860e53af28b/materials-pdf?download=1"), { params: Promise.resolve({ caseSessionId: "8ce4f24e-f644-47bc-bde8-1860e53af28b" }) });

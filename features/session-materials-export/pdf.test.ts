@@ -18,6 +18,24 @@ function decodedPdfText(pdf: Buffer) {
   return textStreams.flatMap((stream) => [...stream.matchAll(/<([0-9a-f]+)>/gi)].map(([, text]) => Buffer.from(text, "hex").toString("latin1"))).join("");
 }
 
+function decodedPageTexts(pdf: Buffer) {
+  const source = pdf.toString("latin1");
+  const objects = new Map([...source.matchAll(/(\d+) 0 obj\n([\s\S]*?)endobj/g)].map(([, id, body]) => [id, body]));
+  const pages = [...objects.values()].filter((body) => /\/Type \/Page\b/.test(body));
+  return pages.map((page) => {
+    const reference = page.match(/\/Contents\s+(\d+) 0 R/)?.[1];
+    const stream = reference ? objects.get(reference)?.match(/stream\r?\n([\s\S]*?)\r?\nendstream/)?.[1] : null;
+    if (!stream) return "";
+    try {
+      return [...inflateSync(Buffer.from(stream, "latin1")).toString("latin1").matchAll(/<([0-9a-f]+)>/gi)]
+        .map(([, text]) => Buffer.from(text, "hex").toString("latin1"))
+        .join("");
+    } catch {
+      return "";
+    }
+  });
+}
+
 describe("assigned Session Materials PDF", () => {
   it("places the Resonate brand name in the PDF header above the Session title", async () => {
     const { bytes } = await buildSessionMaterialsPdf("Marriage Connection", [], "https://app.example");
@@ -58,5 +76,69 @@ describe("assigned Session Materials PDF", () => {
 
   it("fails safely on unsupported rich text nodes rather than silently omitting content", async () => {
     await expect(buildSessionMaterialsPdf("Session", [{ ...page("Bad", 1, "Unused"), richTextContent: { type: "doc", content: [{ type: "image", attrs: { src: "https://example.test/image.png" } }] } }], "https://app.example")).rejects.toThrow("unsupported content");
+  });
+
+  it("flows long paragraphs and lists across measured pages with a footer on every content page", async () => {
+    const longParagraph = "Long paragraph content wraps naturally and remains inside the printable page width. ".repeat(180);
+    const longList = Array.from({ length: 28 }, (_, index) => ({
+      type: "listItem",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "List entry " + (index + 1) + ": " + "wrapped list body text ".repeat(14) }] }],
+    }));
+    const block: SessionMaterialsPdfBlock = {
+      ...page("Long layout", 1, "ignored"),
+      richTextContent: {
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Heading stays with its opening paragraph" }] },
+          { type: "paragraph", content: [{ type: "text", text: longParagraph }] },
+          { type: "orderedList", attrs: { start: 4 }, content: longList },
+          { type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: "Quote before normal content" }] }] },
+          { type: "paragraph", content: [{ type: "text", text: "Normal indentation is restored after the quote" }] },
+        ],
+      },
+    };
+    const { bytes } = await buildSessionMaterialsPdf("Long layout", [block], "https://app.example");
+    const pageTexts = decodedPageTexts(bytes);
+
+    expect(pageTexts.length).toBeGreaterThan(2);
+    expect(pageTexts[0]).toContain("Heading stays with its opening paragraph");
+    expect(decodedPdfText(bytes)).toContain("Normal indentation is restored after the quote");
+    expect(pageTexts.every((text, index) => text.includes((index + 1) + " / " + pageTexts.length))).toBe(true);
+    expect(pageTexts.every((text) => text.replace(/Resonate Marriage Ministry|\d+ \/ \d+/g, "").trim().length > 0)).toBe(true);
+    expect(decodedPdfText(bytes)).toContain("List entry 28");
+  });
+
+  it("preserves mixed inline marks, nested list numbering, and quote indentation", async () => {
+    const block: SessionMaterialsPdfBlock = {
+      ...page("Formatting", 1, "ignored"),
+      richTextContent: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [
+            { type: "text", text: "Bold italic", marks: [{ type: "bold" }, { type: "italic" }] },
+            { type: "text", text: " underlined", marks: [{ type: "underline" }] },
+            { type: "text", text: " struck", marks: [{ type: "strike" }] },
+            { type: "text", text: " code", marks: [{ type: "code" }] },
+            { type: "text", text: " linked", marks: [{ type: "link", attrs: { href: "https://example.test" } }] },
+          ] },
+          { type: "bulletList", content: [{ type: "listItem", content: [
+            { type: "paragraph", content: [{ type: "text", text: "Outer bullet" }] },
+            { type: "orderedList", attrs: { start: 3 }, content: [
+              { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Nested item" }] }] },
+            ] },
+          ] }] },
+          { type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: "Quoted content" }] }] },
+          { type: "paragraph", content: [{ type: "text", text: "Unindented content after quote" }] },
+          { type: "codeBlock", content: [{ type: "text", text: "const stable = true;" }] },
+        ],
+      },
+    };
+    const { bytes } = await buildSessionMaterialsPdf("Formatting", [block], "https://app.example");
+    const text = decodedPdfText(bytes);
+
+    for (const expected of ["Bold italic", "underlined", "struck", "code", "linked", "Outer bullet", "3.", "Nested item", "Quoted content", "Unindented content after quote", "const stable = true;"]) {
+      expect(text).toContain(expected);
+    }
+    expect(bytes.toString("latin1")).toContain("https://example.test/");
   });
 });
