@@ -16,7 +16,7 @@ export function createResendEmailProvider(): EmailProvider {
   return {
     async send(message: EmailMessage): Promise<ProviderSendResult> {
       try {
-        const { data, error } = await resend.emails.send({ from, replyTo, to: message.to, subject: message.subject, text: message.text, html: message.html, tags: message.tags, attachments: message.attachments?.map((attachment) => ({ filename: attachment.filename, content: attachment.content, contentType: attachment.contentType })) });
+        const { data, error } = await resend.emails.send({ from: message.from ?? from, replyTo: message.replyTo ?? replyTo, to: message.to, subject: message.subject, text: message.text, html: message.html, tags: message.tags, attachments: message.attachments?.map((attachment) => ({ filename: attachment.filename, content: attachment.content, contentType: attachment.contentType })) }, { idempotencyKey: message.idempotencyKey });
         if (error) return mapResendFailure(error, "rejected");
         return { success: true, providerMessageId: data?.id ?? null };
       } catch (error) {

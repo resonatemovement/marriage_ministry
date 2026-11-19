@@ -29,7 +29,7 @@ export type DashboardProgression = {
 
 export type DashboardAttentionItem = {
   id: string;
-  category: "Intake Request" | "Unassigned Couple";
+  category: "Intake Request" | "Unassigned Couple" | "Homework Email";
   title: string;
   detail: string;
   href: string;

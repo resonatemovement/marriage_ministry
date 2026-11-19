@@ -96,7 +96,9 @@ export function createOnboardingReminderEmailProvider(
 ): EmailProvider {
   return {
     async send(message: EmailMessage): Promise<ProviderSendResult> {
-      const decision = validateOnboardingReminderRecipient(message.to, environment);
+      const decision = typeof message.to === "string"
+        ? validateOnboardingReminderRecipient(message.to, environment)
+        : { allowed: false as const, reason: "recipient_not_allowed" as const };
       if (!decision.allowed) {
         return decision.reason === "recipient_not_allowed"
           ? { success: false, errorCategory: "invalid_recipient", errorMessage: "Onboarding reminder recipient is not allowed." }

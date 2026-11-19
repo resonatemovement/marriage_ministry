@@ -5,6 +5,7 @@ import { getIntakeRequestAlerts } from "@/features/intake-requests/alert-queries
 import { getPeopleRecords } from "@/features/people/queries";
 import { coupleDisplayName } from "@/features/people/types";
 import { counselingStatusLabel } from "@/lib/counseling/domain";
+import { getHomeworkCompletionNotificationAlerts, homeworkNotificationStatusMessage } from "@/features/notifications/homework-completion-admin";
 
 import { MINISTRY_PROGRESSION_STAGES } from "@/lib/counseling/progression";
 import { calculateDashboardCounts, canReadAdminDashboard, canReadSharedDashboard, dashboardProgressionHref, dashboardSessionHref, intakeAttentionItems, dedupeDashboardAttentionItems, type DashboardAttentionItem, type DashboardCase, type DashboardCounts, type DashboardProgression } from "./data";
@@ -144,19 +145,27 @@ export async function getDashboardCounselingProgression(canNavigate: boolean): P
 export async function getDashboardAttentionItems(identity: { id: string; roles: readonly string[]; workspaces: readonly string[] }): Promise<{ items: DashboardAttentionItem[] | null; error: "unauthorized" | "unavailable" | null }> {
   if (!canReadSharedDashboard(identity.roles)) return { items: null, error: "unauthorized" };
   const isAdmin = canReadAdminDashboard(identity.roles);
-  const [{ alerts, error: alertError }, unassigned] = await Promise.all([
+  const [{ alerts, error: alertError }, unassigned, homeworkNotifications] = await Promise.all([
     getIntakeRequestAlerts(),
     isAdmin
       ? getPeopleRecords("couples", "", "unassigned")
       : getCampusLeadUnassignedCandidates(identity.id),
+    isAdmin ? getHomeworkCompletionNotificationAlerts(identity.roles) : Promise.resolve({ alerts: [], error: false }),
   ]);
-  if (alertError || ("error" in unassigned && unassigned.error)) return { items: null, error: "unavailable" };
+  if (alertError || ("error" in unassigned && unassigned.error) || homeworkNotifications.error) return { items: null, error: "unavailable" };
 
   const intakeItems = intakeAttentionItems(alerts);
   const coupleItems: DashboardAttentionItem[] = "records" in unassigned
     ? unassigned.records.map((record) => ({ id: `couple:${record.id}`, category: "Unassigned Couple", title: record.name, detail: `Unassigned · ${record.campus ?? "Campus not assigned"} · ${record.status ?? "No Case"}`, href: `/people/${record.id}` }))
     : unassigned.candidates.map((candidate) => ({ id: `couple:${candidate.id}`, category: "Unassigned Couple", title: candidate.name, detail: `Unassigned · ${candidate.campus} · ${candidate.caseStatus ?? "No Case"}`, href: candidate.href }));
-  return { items: dedupeDashboardAttentionItems([...intakeItems, ...coupleItems]), error: null };
+  const homeworkItems: DashboardAttentionItem[] = homeworkNotifications.alerts.map((alert) => ({
+    id: `homework-email:${alert.id}`,
+    category: "Homework Email",
+    title: `Session ${alert.sessionNumber} Homework notification ${alert.status}`,
+    detail: homeworkNotificationStatusMessage(alert.status, alert.statusCode),
+    href: "/dashboard/attention#homework-notifications",
+  }));
+  return { items: dedupeDashboardAttentionItems([...intakeItems, ...coupleItems, ...homeworkItems]), error: null };
 }
 
 async function getCampusLeadUnassignedCandidates(profileId: string) {

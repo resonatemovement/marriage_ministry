@@ -7,10 +7,13 @@ export type NotificationTemplateKey =
   | "intake_submitted_couple_email";
 
 export type EmailMessage = {
-  to: string;
+  to: string | string[];
   subject: string;
   text: string;
   html: string;
+  from?: string;
+  replyTo?: string;
+  idempotencyKey?: string;
   attachments?: { filename: string; content: string; contentType: string }[];
   tags?: { name: string; value: string }[];
 };
