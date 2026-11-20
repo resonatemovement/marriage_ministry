@@ -35,7 +35,7 @@ describe("onboarding reminder delivery contract", () => {
     expect(allowlistFilter).toBeLessThan(deliveryInsert);
     expect(migration).toContain("onboarding_reminder_deliveries from public, anon, authenticated");
     expect(reminders).toContain("getConfiguredOnboardingReminderRecipients()");
-    expect(reminders).toContain("createOnboardingReminderEmailProvider(provider)");
+    expect(reminders).toContain("createOnboardingReminderEmailProvider(provider ?? createResendEmailProvider())");
     expect(reminders).toContain("safeProvider.send(renderOnboardingReminderEmail");
   });
 
