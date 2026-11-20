@@ -7,7 +7,7 @@ Repository: resonatemovement/marriage_ministry
 
 - **Change:** On the sign-in form, “Forgot password?” now appears in a right-aligned row directly below the password input, with 8px spacing above it. Existing form `space-y-5` spacing remains between the password field group and the Sign in action. The `/forgot-password` destination, password-visibility button, validation, autofill handling, and authentication flow are unchanged.
 - **Verification:** Focused auth tests passed 8/8; typecheck, lint, production build, and `git diff --check` passed. The built app was visually checked in headless Chrome at desktop width 1440px and mobile width 390px. Computed layout showed no horizontal overflow at mobile width and the link right edge aligned with the password field at both widths. No browser tooling was installed.
-- **Git:** Work is isolated on `fix/ui-05-forgot-password-link`; only the sign-in form, its focused regression test, and this project-state update are scoped for delivery. Unrelated local edits to `AGENTS.md` and `.env.example` remain unstaged. All eight existing stash object IDs are unchanged. No deployment is requested; stop before merging.
+- **Git:** Work is isolated on `fix/ui-05-forgot-password-link`, based on main `330cf45370377f4892af5477edee8852ffd4b072`. Implementation commit `a2588817f3b23cc8a41dd960f793712d8ad5ec68` and the project-state update are pushed to the matching origin branch. Only the sign-in form, its focused regression test, and task documentation are included. Unrelated local edits to `AGENTS.md` and `.env.example` remain unstaged. All eight existing stash object IDs are unchanged. No deployment is requested; stop before merging.
 
 ## N-01 Automatic Homework Notification Expansion (November 20, 2026)
 
