@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 20, 2026
-Current working branch: fix/t-01-onboarding-reminder-test (from main `a00e42edb233047a2acf51318a0c8713ed187ac5`)
+Current working branch: main (`9c80aa2068d20e7635fff66e07b8d2b9f4713ea8`; T-01 merged)
 Repository: resonatemovement/marriage_ministry
 
 ## T-01 Onboarding Reminder Test Baseline (November 20, 2026)
@@ -8,7 +8,8 @@ Repository: resonatemovement/marriage_ministry
 - **Root cause:** `features/notifications/onboarding-reminder-contract.test.ts` asserted the old source text `createOnboardingReminderEmailProvider(provider)`. The implementation correctly wraps the injected provider or the existing Resend provider fallback with the same safety guard: `createOnboardingReminderEmailProvider(provider ?? createResendEmailProvider())`. The test expectation had not been updated when the fallback was added; this was not an application defect.
 - **Correction:** Updated the focused source-contract assertion to match the actual guarded provider expression. No application code, reminder behavior, recipients, schedule, authorization, or security settings changed. No migration or email was sent, and Cron was not changed.
 - **Validation:** The previously failing test now passes (5/5). Full suite passes **1,530 tests across 265 files**. Typecheck, lint, production build, and `git diff --check` pass. The earlier 1,528-pass/1-fail result was the stale assertion now corrected.
-- **Git:** Focused branch `fix/t-01-onboarding-reminder-test` was created from main `a00e42edb233047a2acf51318a0c8713ed187ac5`. The test and documentation change was committed as `0230399` (`test: align onboarding reminder provider contract`) and pushed to `origin/fix/t-01-onboarding-reminder-test`; a documentation-only follow-up records the final push state. No merge or deployment is requested. Unrelated local `AGENTS.md` and `.env.example` edits remain unstaged. All eight existing stashes remain unchanged.
+- **Merge and DEV deployment:** Feature HEAD `9c80aa2068d20e7635fff66e07b8d2b9f4713ea8` matched origin after fetch and contained only this test correction and documentation. It fast-forward merged and pushed without conflict or history rewriting. The dedicated `marriage-ministry-dev` deployment `dpl_GC5bwwSVKBwuefaRgHSvwdryzNMq` reached READY at the exact merge SHA. No application configuration, database, Cron, or email settings changed.
+- **Git closeout:** The merged feature branch was deleted locally and remotely after ancestry verification. At this closeout point, local main and origin/main are synchronized at `9c80aa2068d20e7635fff66e07b8d2b9f4713ea8`, and only main remains locally. Unrelated local `AGENTS.md` and `.env.example` edits remain unstaged and uncommitted. All eight stashes remain unchanged. No further T-01 work is pending.
 
 ## UI-05 Forgot Password Link Placement (November 20, 2026)
 
