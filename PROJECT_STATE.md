@@ -1,13 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 20, 2026
-Current working branch: fix/ui-05-forgot-password-link (focused from main `330cf45370377f4892af5477edee8852ffd4b072`)
+Current working branch: main (`cd2c7acfe6705c502a95270b7a4cf481e1325612`; UI-05 merged and deployed)
 Repository: resonatemovement/marriage_ministry
 
 ## UI-05 Forgot Password Link Placement (November 20, 2026)
 
 - **Change:** On the sign-in form, “Forgot password?” now appears in a right-aligned row directly below the password input, with 8px spacing above it. Existing form `space-y-5` spacing remains between the password field group and the Sign in action. The `/forgot-password` destination, password-visibility button, validation, autofill handling, and authentication flow are unchanged.
 - **Verification:** Focused auth tests passed 8/8; typecheck, lint, production build, and `git diff --check` passed. The built app was visually checked in headless Chrome at desktop width 1440px and mobile width 390px. Computed layout showed no horizontal overflow at mobile width and the link right edge aligned with the password field at both widths. No browser tooling was installed.
-- **Git:** Work is isolated on `fix/ui-05-forgot-password-link`, based on main `330cf45370377f4892af5477edee8852ffd4b072`. Implementation commit `a2588817f3b23cc8a41dd960f793712d8ad5ec68` and the project-state update are pushed to the matching origin branch. Only the sign-in form, its focused regression test, and task documentation are included. Unrelated local edits to `AGENTS.md` and `.env.example` remain unstaged. All eight existing stash object IDs are unchanged. No deployment is requested; stop before merging.
+- **Merge and DEV deployment:** The approved feature (`cd2c7acfe6705c502a95270b7a4cf481e1325612`) matched its origin branch; current main was fetched and fast-forwarded without conflicts or history rewriting. The main push created dedicated DEV deployment `dpl_5GCCai68cHdesWZQwY6LZMZDiwRV` at `https://marriage-ministry-queib3ll0-resonate-movement.vercel.app`, status READY, source SHA `cd2c7acfe6705c502a95270b7a4cf481e1325612`. Protected deployment checks returned HTTP 200 for `/login` and `/forgot-password`. The sign-in HTML has the link in the `mt-2 flex justify-end` row immediately after the password input, with the existing `/forgot-password` target. The reset route renders its existing email form; it was not submitted, so no reset email was sent. Prior local headless-Chrome checks verified desktop 1440px and mobile 390px alignment and no horizontal overflow.
+- **Git closeout:** UI-05 is complete on `main`; local and `origin/main` are synchronized at `cd2c7acfe6705c502a95270b7a4cf481e1325612`. The feature branch was confirmed fully merged, then deleted locally and remotely. Only local `main` remains. Focused auth tests pass 8/8; lint, production build, typecheck (rerun after build-generated types were ready), and `git diff --check` pass. The only remaining worktree modifications are the user's unrelated `AGENTS.md` and `.env.example` edits; they remain unstaged and uncommitted. All eight stash object IDs remain unchanged. No authentication configuration or password-reset behavior was changed.
 
 ## N-01 Automatic Homework Notification Expansion (November 20, 2026)
 
