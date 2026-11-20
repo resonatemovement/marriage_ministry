@@ -3,7 +3,7 @@ import "server-only";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 import { orderCouplePartners } from "@/features/people/partner-order";
 import { createResendEmailProvider } from "./provider";
-import { getHomeworkCompletionAutomaticDevScope } from "./homework-completion-automatic-dev-scope";
+import { isHomeworkCompletionAutomaticDevRuntime } from "./homework-completion-automatic-dev-runtime";
 import { getHomeworkCompletionDevTestConfig } from "./homework-completion-dev-test";
 import type { HomeworkCompletionDevTestConfig } from "./homework-completion-dev-test";
 import { HOMEWORK_COMPLETION_APP_URL, renderHomeworkCompletionEmail } from "./homework-completion-template";
@@ -71,7 +71,7 @@ async function rpc(client: RawClient, name: string, args: Record<string, unknown
   return result.data;
 }
 
-async function getMetadata(client: RawClient, claim: Claim, allowedRecipients: readonly string[]) {
+async function getMetadata(client: RawClient, claim: Claim, allowedRecipients?: readonly string[]) {
   const raw = object(await rpc(client, "get_homework_completion_recipient_delivery_context", {
     target_notification_id: claim.notification_id,
     target_delivery_id: claim.delivery_id,
@@ -97,7 +97,7 @@ async function getMetadata(client: RawClient, claim: Claim, allowedRecipients: r
   const recipientEmail = typeof notification.recipient_email === "string" ? notification.recipient_email.trim().toLowerCase() : "";
   if (coupleNames.length !== 2) throw new Error("Homework Couple details are unavailable.");
   if (!recipientEmail || !validEmail(recipientEmail)) throw new Error(recipientEmail ? "recipient_email_invalid" : "recipient_email_missing");
-  if (!allowedRecipients.includes(recipientEmail)) return { notification, recipientEmail, allowed: false as const };
+  if (allowedRecipients && !allowedRecipients.includes(recipientEmail)) return { notification, recipientEmail, allowed: false as const };
   return { notification, recipientEmail, allowed: true as const, coupleNames };
 }
 
@@ -149,7 +149,7 @@ async function finishAttempt(client: RawClient, claim: Claim, outcome: string, o
 async function processClaimedDeliveries(
   client: RawClient,
   claims: Claim[],
-  allowedRecipients: readonly string[],
+  allowedRecipients: readonly string[] | undefined,
   provider: EmailProvider,
   sender?: { from: string; replyTo: string },
 ) {
@@ -252,24 +252,11 @@ function getDevTestProviderConfiguration(executionMode: HomeworkCompletionDevTes
 }
 
 export async function processHomeworkCompletionNotifications(provider: EmailProvider = createResendEmailProvider()) {
-  const scope = getHomeworkCompletionAutomaticDevScope();
-  if (!scope) throw new Error("Homework notification DEV safety is not configured.");
+  if (!isHomeworkCompletionAutomaticDevRuntime()) throw new Error("Homework notification DEV safety is not configured.");
   assertProviderConfiguration();
   const client = createServiceRoleSupabaseClient() as unknown as RawClient;
-  const claims = parseClaim(await rpc(client, "claim_due_homework_completion_dev_recipient_deliveries", {
-    claim_limit: 25,
-    target_recipient_emails: [...scope.allowedRecipients].sort(),
-  }));
-  const scopedProvider: EmailProvider = {
-    async send(message) {
-      const recipients = Array.isArray(message.to) ? message.to : [message.to];
-      if (recipients.length !== 1 || !scope.allowedRecipients.includes(recipients[0]!.trim().toLowerCase())) {
-        return { success: false, errorCategory: "invalid_recipient", errorMessage: "Homework notification recipient is outside the approved DEV scope." };
-      }
-      return provider.send(message);
-    },
-  };
-  return processClaimedDeliveries(client, claims, scope.allowedRecipients, scopedProvider);
+  const claims = parseClaim(await rpc(client, "claim_due_homework_completion_recipient_deliveries", { claim_limit: 25 }));
+  return processClaimedDeliveries(client, claims, undefined, provider);
 }
 
 export async function processHomeworkCompletionDevTestNotification(

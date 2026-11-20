@@ -39,7 +39,7 @@ function configureMocks(options: { claims?: typeof deliveries; emails?: Record<s
   mockState.client.rpc.mockImplementation(async (name: string, args: Record<string, unknown> = {}) => {
     const claim = claims.find(({ delivery_id }) => delivery_id === args.target_delivery_id)
       ?? claims.find(({ claim_token }) => claim_token === args.target_claim_token) ?? claims[0];
-    if (name === "claim_due_homework_completion_dev_recipient_deliveries") return { data: claims, error: null };
+    if (name === "claim_due_homework_completion_recipient_deliveries") return { data: claims, error: null };
     if (name === "claim_homework_completion_dev_test_notification") return { data: claims, error: null };
     if (name === "get_homework_completion_recipient_delivery_context") return { data: {
       notification_id: notificationId, delivery_id: claim?.delivery_id, case_id: caseId,
@@ -70,8 +70,6 @@ function allowDevDelivery() {
   process.env.VERCEL_ENV = "production";
   process.env.VERCEL_PROJECT_ID = "prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://lctkqjjkhpyootwvttvj.supabase.co";
-  process.env.TEST_COUNSELOR_EMAIL = "counselor-a@mailinator.com";
-  process.env.TEST_COUNSELOR_2_EMAIL = "counselor-b@mailinator.com";
   process.env.RESEND_API_KEY = "mock-only";
   process.env.NOTIFICATION_FROM_EMAIL = "notifications@example.test";
   process.env.NOTIFICATION_REPLY_TO_EMAIL = "help@example.test";
@@ -84,23 +82,25 @@ describe("Homework completion recipient delivery", () => {
     if (initialNodeEnv) Reflect.set(process.env, "NODE_ENV", initialNodeEnv);
   });
 
-  it("sends a separate one-recipient message for each eligible Counselor in one completion cycle", async () => {
-    configureMocks(); allowDevDelivery();
+  it("sends one independent message to every eligible Counselor in the dedicated DEV environment", async () => {
+    configureMocks({ emails: {
+      [deliveries[0]!.delivery_id]: "first.counselor@example.org",
+      [deliveries[1]!.delivery_id]: "second.counselor@example.org",
+    } });
+    allowDevDelivery();
     const sent: EmailMessage[] = [];
     const provider: EmailProvider = { send: async (message) => { sent.push(message); return { success: true, providerMessageId: `resend-${sent.length}` }; } };
     const result = await processHomeworkCompletionNotifications(provider);
 
     expect(result).toMatchObject({ claimed: 2, accepted: 2 });
     expect(sent).toHaveLength(2);
-    expect(sent.map(({ to }) => to)).toEqual([["counselor-a@mailinator.com"], ["counselor-b@mailinator.com"]]);
+    expect(sent.map(({ to }) => to)).toEqual([["first.counselor@example.org"], ["second.counselor@example.org"]]);
     expect(sent[0]?.idempotencyKey).not.toBe(sent[1]?.idempotencyKey);
     expect(sent[0]?.tags).toContainEqual({ name: "notification_delivery_id", value: deliveries[0]!.delivery_id });
     expect(sent[1]?.tags).toContainEqual({ name: "notification_delivery_id", value: deliveries[1]!.delivery_id });
-    expect(mockState.client.rpc).toHaveBeenCalledWith("claim_due_homework_completion_dev_recipient_deliveries", {
-      claim_limit: 25,
-      target_recipient_emails: ["counselor-a@mailinator.com", "counselor-b@mailinator.com"],
-    });
-    expect(mockState.client.rpc.mock.calls.map(([name]) => name)).not.toContain("claim_due_homework_completion_recipient_deliveries");
+    expect(mockState.client.rpc).toHaveBeenCalledWith("claim_due_homework_completion_recipient_deliveries", { claim_limit: 25 });
+    expect(process.env.TEST_COUNSELOR_EMAIL).toBeUndefined();
+    expect(process.env.TEST_COUNSELOR_2_EMAIL).toBeUndefined();
     expect(mockState.client.rpc).toHaveBeenCalledWith("finish_homework_completion_recipient_attempt", expect.objectContaining({
       target_notification_id: notificationId, target_delivery_id: deliveries[1]!.delivery_id, provider_outcome: "accepted",
     }));
@@ -255,14 +255,14 @@ describe("Homework completion recipient delivery", () => {
     expect(mockState.client.rpc.mock.calls.map(([name]) => name)).not.toContain("claim_due_homework_completion_recipient_deliveries");
   });
 
-  it("fails closed when the DEV recipient allowlist is missing", async () => {
+  it("fails closed when the dedicated DEV deployment identity is missing", async () => {
     configureMocks();
     const provider: EmailProvider = { send: vi.fn() };
     await expect(processHomeworkCompletionNotifications(provider)).rejects.toThrow("DEV safety is not configured");
     expect(mockState.client.rpc).not.toHaveBeenCalled();
   });
 
-  it("does not run the worker from an unapproved or shared Couple recipient scope", async () => {
+  it("does not run the worker from a non-DEV Vercel project", async () => {
     configureMocks(); allowDevDelivery();
     process.env.VERCEL_PROJECT_ID = "a-different-project";
     const provider: EmailProvider = { send: vi.fn() };
