@@ -5,10 +5,16 @@ import { Resend } from "resend";
 import { mapResendFailure } from "./provider-errors";
 import type { EmailProvider, EmailMessage, ProviderSendResult } from "./types";
 
-export function createResendEmailProvider(): EmailProvider {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.NOTIFICATION_FROM_EMAIL;
-  const replyTo = process.env.NOTIFICATION_REPLY_TO_EMAIL;
+export type ResendEmailProviderConfiguration = {
+  apiKey: string | undefined;
+  from: string | undefined;
+  replyTo: string | undefined;
+};
+
+export function createResendEmailProvider(configuration?: ResendEmailProviderConfiguration): EmailProvider {
+  const apiKey = configuration ? configuration.apiKey : process.env.RESEND_API_KEY;
+  const from = configuration ? configuration.from : process.env.NOTIFICATION_FROM_EMAIL;
+  const replyTo = configuration ? configuration.replyTo : process.env.NOTIFICATION_REPLY_TO_EMAIL;
   if (!apiKey || !from || !replyTo) {
     return { send: async () => ({ success: false, errorCategory: "configuration", errorMessage: "Email notifications are not configured." }) };
   }

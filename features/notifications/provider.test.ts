@@ -38,4 +38,21 @@ describe("Resend email provider", () => {
       to: ["counselor-a@mailinator.com", "counselor-b@mailinator.com"],
     }), { idempotencyKey: "completion-cycle-key" });
   });
+
+  it("does not fall back to shared mail credentials when explicit DEV-test configuration is incomplete", async () => {
+    process.env.RESEND_API_KEY = "shared-key-must-not-be-used";
+    process.env.NOTIFICATION_FROM_EMAIL = "global@example.test";
+    process.env.NOTIFICATION_REPLY_TO_EMAIL = "global-reply@example.test";
+    const provider = createResendEmailProvider({ apiKey: undefined, from: undefined, replyTo: undefined });
+
+    const result = await provider.send({
+      to: ["test@mailinator.com"],
+      subject: "Test",
+      text: "Test",
+      html: "<p>Test</p>",
+    });
+
+    expect(result).toMatchObject({ success: false, errorCategory: "configuration" });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
 });

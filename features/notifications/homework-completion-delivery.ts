@@ -4,6 +4,8 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 import { orderCouplePartners } from "@/features/people/partner-order";
 import { createResendEmailProvider } from "./provider";
 import { getConfiguredOnboardingReminderRecipients } from "./onboarding-reminder-safety";
+import { getHomeworkCompletionDevTestConfig } from "./homework-completion-dev-test";
+import type { HomeworkCompletionDevTestConfig } from "./homework-completion-dev-test";
 import { HOMEWORK_COMPLETION_APP_URL, renderHomeworkCompletionEmail } from "./homework-completion-template";
 import type { EmailMessage, EmailProvider } from "./types";
 
@@ -108,10 +110,15 @@ async function getAttemptId(client: RawClient, claim: Claim) {
   return data;
 }
 
-function canonicalPayload(metadata: Awaited<ReturnType<typeof getMetadata>>, claim: Claim, attemptId: string) {
+function canonicalPayload(
+  metadata: Awaited<ReturnType<typeof getMetadata>>,
+  claim: Claim,
+  attemptId: string,
+  sender?: { from: string; replyTo: string },
+) {
   if (!metadata.allowed) return null;
-  const from = process.env.NOTIFICATION_FROM_EMAIL?.trim();
-  const replyTo = process.env.NOTIFICATION_REPLY_TO_EMAIL?.trim();
+  const from = (sender?.from ?? process.env.NOTIFICATION_FROM_EMAIL)?.trim();
+  const replyTo = (sender?.replyTo ?? process.env.NOTIFICATION_REPLY_TO_EMAIL)?.trim();
   if (!from || !replyTo) throw new Error("Notification sender configuration is unavailable.");
   return renderHomeworkCompletionEmail({
     to: [metadata.recipientEmail], from, replyTo,
@@ -139,12 +146,13 @@ async function finishAttempt(client: RawClient, claim: Claim, outcome: string, o
   return status;
 }
 
-export async function processHomeworkCompletionNotifications(provider: EmailProvider = createResendEmailProvider()) {
-  const allowedRecipients = getConfiguredOnboardingReminderRecipients();
-  if (!allowedRecipients?.length) throw new Error("Homework notification DEV safety is not configured.");
-  if (!process.env.RESEND_API_KEY || !process.env.NOTIFICATION_FROM_EMAIL || !process.env.NOTIFICATION_REPLY_TO_EMAIL) throw new Error("Homework notification provider configuration is unavailable.");
-  const client = createServiceRoleSupabaseClient() as unknown as RawClient;
-  const claims = parseClaim(await rpc(client, "claim_due_homework_completion_recipient_deliveries", { claim_limit: 25 }));
+async function processClaimedDeliveries(
+  client: RawClient,
+  claims: Claim[],
+  allowedRecipients: readonly string[],
+  provider: EmailProvider,
+  sender?: { from: string; replyTo: string },
+) {
   const result = { claimed: claims.length, accepted: 0, delivered: 0, retryScheduled: 0, failed: 0, uncertain: 0, skipped: 0, blockedByDevAllowlist: 0 };
 
   for (const claim of claims) {
@@ -152,7 +160,7 @@ export async function processHomeworkCompletionNotifications(provider: EmailProv
       const metadata = await getMetadata(client, claim, allowedRecipients);
       if (!metadata.allowed) { result.blockedByDevAllowlist++; continue; }
       const attemptId = await getAttemptId(client, claim);
-      const candidate = canonicalPayload(metadata, claim, attemptId);
+      const candidate = canonicalPayload(metadata, claim, attemptId, sender);
       if (!candidate) throw new Error("Homework notification content is unavailable.");
       const prepared = object(await rpc(client, "prepare_homework_completion_recipient_payload", {
         target_notification_id: claim.notification_id,
@@ -222,6 +230,71 @@ export async function processHomeworkCompletionNotifications(provider: EmailProv
     }
   }
   return result;
+}
+
+function assertProviderConfiguration() {
+  if (!process.env.RESEND_API_KEY || !process.env.NOTIFICATION_FROM_EMAIL || !process.env.NOTIFICATION_REPLY_TO_EMAIL) {
+    throw new Error("Homework notification provider configuration is unavailable.");
+  }
+}
+
+function getDevTestProviderConfiguration() {
+  const apiKey = process.env.HOMEWORK_NOTIFICATION_DEV_TEST_RESEND_API_KEY?.trim();
+  const from = process.env.HOMEWORK_NOTIFICATION_DEV_TEST_FROM_EMAIL?.trim();
+  const replyTo = process.env.HOMEWORK_NOTIFICATION_DEV_TEST_REPLY_TO_EMAIL?.trim();
+  if (!apiKey || !from || !replyTo || !validSender(from) || !validEmail(replyTo)) {
+    throw new Error("DEV test email provider configuration is unavailable.");
+  }
+  return { apiKey, from, replyTo };
+}
+
+export async function processHomeworkCompletionNotifications(provider: EmailProvider = createResendEmailProvider()) {
+  const allowedRecipients = getConfiguredOnboardingReminderRecipients();
+  if (!allowedRecipients?.length) throw new Error("Homework notification DEV safety is not configured.");
+  assertProviderConfiguration();
+  const client = createServiceRoleSupabaseClient() as unknown as RawClient;
+  const claims = parseClaim(await rpc(client, "claim_due_homework_completion_recipient_deliveries", { claim_limit: 25 }));
+  return processClaimedDeliveries(client, claims, allowedRecipients, provider);
+}
+
+export async function processHomeworkCompletionDevTestNotification(
+  config: HomeworkCompletionDevTestConfig,
+  injectedProvider?: EmailProvider,
+) {
+  const verifiedConfig = getHomeworkCompletionDevTestConfig();
+  if (!verifiedConfig
+    || verifiedConfig.notificationId !== config.notificationId
+    || verifiedConfig.caseSessionId !== config.caseSessionId
+    || verifiedConfig.coupleGroupId !== config.coupleGroupId
+    || verifiedConfig.allowedRecipients.length !== config.allowedRecipients.length
+    || verifiedConfig.allowedRecipients.some((email, index) => email !== config.allowedRecipients[index])) {
+    throw new Error("Homework notification DEV test scope is not verified.");
+  }
+  const providerConfiguration = getDevTestProviderConfiguration();
+  const provider = injectedProvider ?? createResendEmailProvider(providerConfiguration);
+  const client = createServiceRoleSupabaseClient() as unknown as RawClient;
+  const claims = parseClaim(await rpc(client, "claim_homework_completion_dev_test_notification", {
+    target_notification_id: config.notificationId,
+    target_case_session_id: config.caseSessionId,
+    target_couple_group_id: config.coupleGroupId,
+    target_recipient_emails: [...config.allowedRecipients].sort(),
+  }));
+  if (claims.length !== 2 || claims.some((claim) => claim.notification_id !== config.notificationId)) {
+    throw new Error("DEV test notification claim did not match the configured scope.");
+  }
+  const guardedProvider: EmailProvider = {
+    async send(message) {
+      const recipients = Array.isArray(message.to) ? message.to : [message.to];
+      if (recipients.length !== 1 || !config.allowedRecipients.includes(recipients[0]!.trim().toLowerCase())) {
+        return { success: false, errorCategory: "configuration", errorMessage: "DEV test recipient is outside the allowlist." };
+      }
+      return provider.send(message);
+    },
+  };
+  return processClaimedDeliveries(client, claims, config.allowedRecipients, guardedProvider, {
+    from: providerConfiguration.from,
+    replyTo: providerConfiguration.replyTo,
+  });
 }
 
 export const homeworkCompletionDeliveryInternals = { parseClaim, parsePayload, getMetadata, canonicalPayload, HOMEWORK_COMPLETION_APP_URL };

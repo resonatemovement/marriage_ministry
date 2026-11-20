@@ -5,7 +5,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/service-role", () => ({ createServiceRoleSupabaseClient: () => mockState.client }));
 vi.mock("./provider", () => ({ createResendEmailProvider: vi.fn() }));
 
-import { processHomeworkCompletionNotifications } from "./homework-completion-delivery";
+import { processHomeworkCompletionDevTestNotification, processHomeworkCompletionNotifications } from "./homework-completion-delivery";
 import type { EmailMessage, EmailProvider } from "./types";
 
 const notificationId = "11111111-1111-4111-8111-111111111111";
@@ -37,8 +37,9 @@ function configureMocks(options: { claims?: typeof deliveries; emails?: Record<s
   const claims = options.claims ?? deliveries;
   mockState.client.rpc.mockImplementation(async (name: string, args: Record<string, unknown> = {}) => {
     const claim = claims.find(({ delivery_id }) => delivery_id === args.target_delivery_id)
-      ?? claims.find(({ claim_token }) => claim_token === args.target_claim_token);
+      ?? claims.find(({ claim_token }) => claim_token === args.target_claim_token) ?? claims[0];
     if (name === "claim_due_homework_completion_recipient_deliveries") return { data: claims, error: null };
+    if (name === "claim_homework_completion_dev_test_notification") return { data: claims, error: null };
     if (name === "get_homework_completion_recipient_delivery_context") return { data: {
       notification_id: notificationId, delivery_id: claim?.delivery_id, case_id: caseId,
       case_session_id: "44444444-4444-4444-8444-444444444444", completion_cycle: 1,
@@ -79,7 +80,7 @@ function allowDevDelivery() {
 describe("Homework completion recipient delivery", () => {
   afterEach(() => {
     vi.clearAllMocks();
-    for (const key of ["ONBOARDING_REMINDER_DEV_SAFETY_MODE", "ONBOARDING_REMINDER_DEV_ALLOWED_RECIPIENTS", "VERCEL", "VERCEL_ENV", "VERCEL_PROJECT_ID", "VERCEL_GIT_COMMIT_REF", "NEXT_PUBLIC_SUPABASE_URL", "RESEND_API_KEY", "NOTIFICATION_FROM_EMAIL", "NOTIFICATION_REPLY_TO_EMAIL"]) delete process.env[key];
+    for (const key of ["ONBOARDING_REMINDER_DEV_SAFETY_MODE", "ONBOARDING_REMINDER_DEV_ALLOWED_RECIPIENTS", "VERCEL", "VERCEL_ENV", "VERCEL_PROJECT_ID", "VERCEL_GIT_COMMIT_REF", "NEXT_PUBLIC_SUPABASE_URL", "RESEND_API_KEY", "NOTIFICATION_FROM_EMAIL", "NOTIFICATION_REPLY_TO_EMAIL", "HOMEWORK_NOTIFICATION_DEV_TEST_MODE", "HOMEWORK_NOTIFICATION_DEV_TEST_NOTIFICATION_ID", "HOMEWORK_NOTIFICATION_DEV_TEST_CASE_SESSION_ID", "HOMEWORK_NOTIFICATION_DEV_TEST_COUPLE_GROUP_ID", "HOMEWORK_NOTIFICATION_DEV_TEST_ALLOWED_RECIPIENTS", "HOMEWORK_NOTIFICATION_DEV_TEST_RESEND_API_KEY", "HOMEWORK_NOTIFICATION_DEV_TEST_FROM_EMAIL", "HOMEWORK_NOTIFICATION_DEV_TEST_REPLY_TO_EMAIL"]) delete process.env[key];
   });
 
   it("sends a separate one-recipient message for each eligible Counselor in one completion cycle", async () => {
@@ -148,6 +149,63 @@ describe("Homework completion recipient delivery", () => {
     const result = await processHomeworkCompletionNotifications(provider);
     expect(result.skipped).toBe(2);
     expect(provider.send).not.toHaveBeenCalled();
+  });
+
+  it("uses only the explicit targeted claim and rejects claimed notification scope drift", async () => {
+    configureMocks();
+    const config = {
+      notificationId,
+      caseSessionId: "44444444-4444-4444-8444-444444444444",
+      coupleGroupId: "55555555-5555-4555-8555-555555555555",
+      allowedRecipients: ["counselor-a@mailinator.com", "counselor-b@mailinator.com"] as [string, string],
+    };
+    const provider: EmailProvider = { send: vi.fn(async () => ({ success: true as const, providerMessageId: "targeted" })) };
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_MODE = "true";
+    process.env.VERCEL = "1";
+    process.env.VERCEL_ENV = "preview";
+    process.env.VERCEL_PROJECT_ID = "prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt";
+    process.env.VERCEL_GIT_COMMIT_REF = "feature/homework-completion-notification";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://lctkqjjkhpyootwvttvj.supabase.co";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_NOTIFICATION_ID = notificationId;
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_CASE_SESSION_ID = config.caseSessionId;
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_COUPLE_GROUP_ID = config.coupleGroupId;
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_ALLOWED_RECIPIENTS = config.allowedRecipients.join(",");
+
+    await expect(processHomeworkCompletionDevTestNotification(config, provider)).rejects.toThrow("provider configuration is unavailable");
+    expect(mockState.client.rpc).not.toHaveBeenCalled();
+
+    process.env.RESEND_API_KEY = "mock-only";
+    process.env.NOTIFICATION_FROM_EMAIL = "notifications@example.test";
+    process.env.NOTIFICATION_REPLY_TO_EMAIL = "help@example.test";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_MODE = "true";
+    process.env.VERCEL = "1";
+    process.env.VERCEL_ENV = "preview";
+    process.env.VERCEL_PROJECT_ID = "prj_J5QbuVHBVRyQeq78Qd6G9HmJFbVt";
+    process.env.VERCEL_GIT_COMMIT_REF = "feature/homework-completion-notification";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://lctkqjjkhpyootwvttvj.supabase.co";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_NOTIFICATION_ID = notificationId;
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_CASE_SESSION_ID = "44444444-4444-4444-8444-444444444444";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_COUPLE_GROUP_ID = "55555555-5555-4555-8555-555555555555";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_ALLOWED_RECIPIENTS = "counselor-a@mailinator.com,counselor-b@mailinator.com";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_RESEND_API_KEY = "mock-only";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_FROM_EMAIL = "notifications@example.test";
+    process.env.HOMEWORK_NOTIFICATION_DEV_TEST_REPLY_TO_EMAIL = "help@example.test";
+
+    const result = await processHomeworkCompletionDevTestNotification(config, provider);
+
+    expect(result).toMatchObject({ claimed: 2, accepted: 2 });
+    expect(mockState.client.rpc).toHaveBeenCalledWith("claim_homework_completion_dev_test_notification", {
+      target_notification_id: notificationId,
+      target_case_session_id: config.caseSessionId,
+      target_couple_group_id: config.coupleGroupId,
+      target_recipient_emails: [...config.allowedRecipients].sort(),
+    });
+    expect(mockState.client.rpc.mock.calls.map(([name]) => name)).not.toContain("claim_due_homework_completion_recipient_deliveries");
+    expect(provider.send).toHaveBeenCalledTimes(2);
+
+    configureMocks({ claims: [{ ...deliveries[0]!, notification_id: "66666666-6666-4666-8666-666666666666" }] });
+    await expect(processHomeworkCompletionDevTestNotification(config, provider)).rejects.toThrow("claim did not match");
+    expect(provider.send).toHaveBeenCalledTimes(2);
   });
 
   it("fails closed when the DEV recipient allowlist is missing", async () => {
