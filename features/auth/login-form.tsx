@@ -73,10 +73,7 @@ export function LoginForm({ next }: { next?: string }) {
         />
       </div>
       <div>
-        <div className="flex items-center justify-between gap-4">
-          <label htmlFor="password" className="text-sm font-medium text-text-primary">Password</label>
-          <a href="/forgot-password" className="text-sm font-medium text-brand-primary hover:underline">Forgot password?</a>
-        </div>
+        <label htmlFor="password" className="text-sm font-medium text-text-primary">Password</label>
         <div className="relative mt-2">
           <input
             id="password"
@@ -97,6 +94,9 @@ export function LoginForm({ next }: { next?: string }) {
           >
             {showPassword ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
           </button>
+        </div>
+        <div className="mt-2 flex justify-end">
+          <a href="/forgot-password" className="text-sm font-medium text-brand-primary hover:underline">Forgot password?</a>
         </div>
       </div>
       {error ? <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">{error}</p> : null}

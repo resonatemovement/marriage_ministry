@@ -36,4 +36,14 @@ describe("sign-in button validation", () => {
     expect(form).toContain('href="/forgot-password"');
     expect(form).toContain("showPassword ? \"text\" : \"password\"");
   });
+
+  it("places the forgot-password link below the password input and right-aligns it", () => {
+    const form = readFileSync(fileURLToPath(new URL("./login-form.tsx", import.meta.url)), "utf8");
+    const passwordField = form.slice(form.indexOf('<label htmlFor="password"'), form.indexOf("{error ?"));
+
+    expect(passwordField.indexOf('id="password"')).toBeLessThan(passwordField.indexOf('href="/forgot-password"'));
+    expect(passwordField).toContain('<div className="mt-2 flex justify-end">');
+    expect(form).toContain('<form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>');
+    expect(form).not.toContain("items-center justify-between gap-4");
+  });
 });

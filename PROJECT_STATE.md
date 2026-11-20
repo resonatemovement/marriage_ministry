@@ -1,7 +1,13 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 20, 2026
-Current working branch: main (N-01 all-Couple recipient expansion merged and deployed to dedicated DEV)
+Current working branch: fix/ui-05-forgot-password-link (focused from main `330cf45370377f4892af5477edee8852ffd4b072`)
 Repository: resonatemovement/marriage_ministry
+
+## UI-05 Forgot Password Link Placement (November 20, 2026)
+
+- **Change:** On the sign-in form, “Forgot password?” now appears in a right-aligned row directly below the password input, with 8px spacing above it. Existing form `space-y-5` spacing remains between the password field group and the Sign in action. The `/forgot-password` destination, password-visibility button, validation, autofill handling, and authentication flow are unchanged.
+- **Verification:** Focused auth tests passed 8/8; typecheck, lint, production build, and `git diff --check` passed. The built app was visually checked in headless Chrome at desktop width 1440px and mobile width 390px. Computed layout showed no horizontal overflow at mobile width and the link right edge aligned with the password field at both widths. No browser tooling was installed.
+- **Git:** Work is isolated on `fix/ui-05-forgot-password-link`; only the sign-in form, its focused regression test, and this project-state update are scoped for delivery. Unrelated local edits to `AGENTS.md` and `.env.example` remain unstaged. All eight existing stash object IDs are unchanged. No deployment is requested; stop before merging.
 
 ## N-01 Automatic Homework Notification Expansion (November 20, 2026)
 
