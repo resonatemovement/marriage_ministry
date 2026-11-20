@@ -21,6 +21,7 @@ const base = {
 describe("Homework notification DEV test guard", () => {
   it("accepts only explicitly enabled, exact DEV Preview scope with two unique synthetic recipients", () => {
     expect(parseHomeworkCompletionDevTestConfig(base)).toMatchObject({
+      executionMode: "preview",
       notificationId: base.notificationId,
       caseSessionId: base.caseSessionId,
       coupleGroupId: base.coupleGroupId,
@@ -36,6 +37,38 @@ describe("Homework notification DEV test guard", () => {
       { allowedRecipients: "only-one@mailinator.com" },
     ]) {
       expect(parseHomeworkCompletionDevTestConfig({ ...base, ...change })).toBeNull();
+    }
+  });
+
+  it("allows explicit local development only with NODE_ENV development and the exact DEV Supabase URL", () => {
+    expect(parseHomeworkCompletionDevTestConfig({
+      ...base,
+      vercel: undefined,
+      vercelEnv: undefined,
+      vercelProjectId: undefined,
+      gitCommitRef: undefined,
+      localDevelopment: "true",
+      nodeEnv: "development",
+    })).toMatchObject({ executionMode: "local", notificationId: base.notificationId });
+
+    for (const change of [
+      { localDevelopment: undefined },
+      { localDevelopment: "false" },
+      { nodeEnv: "production" },
+      { vercel: "1" },
+      { vercelEnv: "production" },
+      { supabaseUrl: "https://wrong-project.supabase.co" },
+    ]) {
+      expect(parseHomeworkCompletionDevTestConfig({
+        ...base,
+        vercel: undefined,
+        vercelEnv: undefined,
+        vercelProjectId: undefined,
+        gitCommitRef: undefined,
+        localDevelopment: "true",
+        nodeEnv: "development",
+        ...change,
+      })).toBeNull();
     }
   });
 

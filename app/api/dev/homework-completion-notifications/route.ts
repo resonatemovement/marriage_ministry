@@ -12,6 +12,17 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const config = getHomeworkCompletionDevTestConfig();
   if (!config) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  if (config.executionMode === "local") {
+    let hostname = "";
+    try {
+      hostname = new URL(request.url).hostname;
+    } catch {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+    if (!new Set(["localhost", "127.0.0.1", "[::1]"]).has(hostname)) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+  }
   const identity = await getAuthenticatedIdentity().catch(() => null);
   if (!identity || identity.accountStage !== "active") {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });

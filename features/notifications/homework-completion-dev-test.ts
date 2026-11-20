@@ -10,6 +10,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 export type HomeworkCompletionDevTestEnvironment = {
   enabled?: string;
+  localDevelopment?: string;
+  nodeEnv?: string;
   vercel?: string;
   vercelEnv?: string;
   vercelProjectId?: string;
@@ -22,6 +24,7 @@ export type HomeworkCompletionDevTestEnvironment = {
 };
 
 export type HomeworkCompletionDevTestConfig = {
+  executionMode: "preview" | "local";
   notificationId: string;
   caseSessionId: string;
   coupleGroupId: string;
@@ -31,11 +34,18 @@ export type HomeworkCompletionDevTestConfig = {
 export function parseHomeworkCompletionDevTestConfig(
   environment: HomeworkCompletionDevTestEnvironment,
 ): HomeworkCompletionDevTestConfig | null {
+  const previewMode = environment.vercel === "1"
+    && environment.vercelEnv === "preview"
+    && environment.vercelProjectId === DEV_VERCEL_PROJECT_ID
+    && environment.gitCommitRef === DEV_TEST_BRANCH;
+  const localMode = environment.localDevelopment === "true"
+    && environment.nodeEnv === "development"
+    && environment.vercel === undefined
+    && environment.vercelEnv === undefined
+    && environment.vercelProjectId === undefined
+    && environment.gitCommitRef === undefined;
   if (environment.enabled !== "true"
-    || environment.vercel !== "1"
-    || environment.vercelEnv !== "preview"
-    || environment.vercelProjectId !== DEV_VERCEL_PROJECT_ID
-    || environment.gitCommitRef !== DEV_TEST_BRANCH
+    || (!previewMode && !localMode)
     || !environment.notificationId || !UUID.test(environment.notificationId)
     || !environment.caseSessionId || !UUID.test(environment.caseSessionId)
     || !environment.coupleGroupId || !UUID.test(environment.coupleGroupId)) return null;
@@ -51,6 +61,7 @@ export function parseHomeworkCompletionDevTestConfig(
   const recipients = parseOnboardingReminderAllowedRecipients(environment.allowedRecipients);
   if (recipients.length !== 2 || environment.allowedRecipients?.split(",").length !== 2) return null;
   return {
+    executionMode: localMode ? "local" : "preview",
     notificationId: environment.notificationId,
     caseSessionId: environment.caseSessionId,
     coupleGroupId: environment.coupleGroupId,
@@ -61,6 +72,8 @@ export function parseHomeworkCompletionDevTestConfig(
 export function getHomeworkCompletionDevTestConfig() {
   return parseHomeworkCompletionDevTestConfig({
     enabled: process.env.HOMEWORK_NOTIFICATION_DEV_TEST_MODE,
+    localDevelopment: process.env.HOMEWORK_NOTIFICATION_DEV_TEST_LOCAL,
+    nodeEnv: process.env.NODE_ENV,
     vercel: process.env.VERCEL,
     vercelEnv: process.env.VERCEL_ENV,
     vercelProjectId: process.env.VERCEL_PROJECT_ID,

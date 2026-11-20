@@ -19,6 +19,7 @@ vi.mock("@/lib/auth/session", () => ({ getAuthenticatedIdentity: mocks.identity 
 import { POST } from "./route";
 
 const config = {
+  executionMode: "preview" as const,
   notificationId: "11111111-1111-4111-8111-111111111111",
   caseSessionId: "22222222-2222-4222-8222-222222222222",
   coupleGroupId: "33333333-3333-4333-8333-333333333333",
@@ -83,5 +84,24 @@ describe("manual DEV Homework notification endpoint", () => {
     expect(mocks.process).toHaveBeenCalledOnce();
     expect(mocks.process).toHaveBeenCalledWith(config);
     expect(await response.json()).toMatchObject({ ok: true, claimed: 2, accepted: 2 });
+  });
+
+  it("allows local mode only when the request host is loopback", async () => {
+    mocks.getConfig.mockReturnValue({ ...config, executionMode: "local" });
+    const remote = await POST(new Request("https://example.test/api/dev/homework-completion-notifications", {
+      method: "POST",
+      headers: { authorization: "Bearer test-credential", "content-type": "application/json" },
+      body: JSON.stringify({ notificationId: config.notificationId }),
+    }));
+    expect(remote.status).toBe(404);
+    expect(mocks.process).not.toHaveBeenCalled();
+
+    const localhostRequest = new Request("http://localhost:3000/api/dev/homework-completion-notifications", {
+      method: "POST",
+      headers: { authorization: "Bearer test-credential", "content-type": "application/json" },
+      body: JSON.stringify({ notificationId: config.notificationId }),
+    });
+    expect((await POST(localhostRequest)).status).toBe(200);
+    expect(mocks.process).toHaveBeenCalledOnce();
   });
 });

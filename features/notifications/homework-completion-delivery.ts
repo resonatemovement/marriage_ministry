@@ -3,7 +3,7 @@ import "server-only";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 import { orderCouplePartners } from "@/features/people/partner-order";
 import { createResendEmailProvider } from "./provider";
-import { getConfiguredOnboardingReminderRecipients } from "./onboarding-reminder-safety";
+import { getHomeworkCompletionAutomaticDevScope } from "./homework-completion-automatic-dev-scope";
 import { getHomeworkCompletionDevTestConfig } from "./homework-completion-dev-test";
 import type { HomeworkCompletionDevTestConfig } from "./homework-completion-dev-test";
 import { HOMEWORK_COMPLETION_APP_URL, renderHomeworkCompletionEmail } from "./homework-completion-template";
@@ -238,10 +238,13 @@ function assertProviderConfiguration() {
   }
 }
 
-function getDevTestProviderConfiguration() {
-  const apiKey = process.env.HOMEWORK_NOTIFICATION_DEV_TEST_RESEND_API_KEY?.trim();
-  const from = process.env.HOMEWORK_NOTIFICATION_DEV_TEST_FROM_EMAIL?.trim();
-  const replyTo = process.env.HOMEWORK_NOTIFICATION_DEV_TEST_REPLY_TO_EMAIL?.trim();
+function getDevTestProviderConfiguration(executionMode: HomeworkCompletionDevTestConfig["executionMode"]) {
+  // Local-only verification intentionally reuses the established Resend integration.
+  // Preview stays isolated and must use its dedicated DEV-only provider configuration.
+  const local = executionMode === "local";
+  const apiKey = (local ? process.env.RESEND_API_KEY : process.env.HOMEWORK_NOTIFICATION_DEV_TEST_RESEND_API_KEY)?.trim();
+  const from = (local ? process.env.NOTIFICATION_FROM_EMAIL : process.env.HOMEWORK_NOTIFICATION_DEV_TEST_FROM_EMAIL)?.trim();
+  const replyTo = (local ? process.env.NOTIFICATION_REPLY_TO_EMAIL : process.env.HOMEWORK_NOTIFICATION_DEV_TEST_REPLY_TO_EMAIL)?.trim();
   if (!apiKey || !from || !replyTo || !validSender(from) || !validEmail(replyTo)) {
     throw new Error("DEV test email provider configuration is unavailable.");
   }
@@ -249,12 +252,24 @@ function getDevTestProviderConfiguration() {
 }
 
 export async function processHomeworkCompletionNotifications(provider: EmailProvider = createResendEmailProvider()) {
-  const allowedRecipients = getConfiguredOnboardingReminderRecipients();
-  if (!allowedRecipients?.length) throw new Error("Homework notification DEV safety is not configured.");
+  const scope = getHomeworkCompletionAutomaticDevScope();
+  if (!scope) throw new Error("Homework notification DEV safety is not configured.");
   assertProviderConfiguration();
   const client = createServiceRoleSupabaseClient() as unknown as RawClient;
-  const claims = parseClaim(await rpc(client, "claim_due_homework_completion_recipient_deliveries", { claim_limit: 25 }));
-  return processClaimedDeliveries(client, claims, allowedRecipients, provider);
+  const claims = parseClaim(await rpc(client, "claim_due_homework_completion_dev_recipient_deliveries", {
+    claim_limit: 25,
+    target_recipient_emails: [...scope.allowedRecipients].sort(),
+  }));
+  const scopedProvider: EmailProvider = {
+    async send(message) {
+      const recipients = Array.isArray(message.to) ? message.to : [message.to];
+      if (recipients.length !== 1 || !scope.allowedRecipients.includes(recipients[0]!.trim().toLowerCase())) {
+        return { success: false, errorCategory: "invalid_recipient", errorMessage: "Homework notification recipient is outside the approved DEV scope." };
+      }
+      return provider.send(message);
+    },
+  };
+  return processClaimedDeliveries(client, claims, scope.allowedRecipients, scopedProvider);
 }
 
 export async function processHomeworkCompletionDevTestNotification(
@@ -263,6 +278,7 @@ export async function processHomeworkCompletionDevTestNotification(
 ) {
   const verifiedConfig = getHomeworkCompletionDevTestConfig();
   if (!verifiedConfig
+    || verifiedConfig.executionMode !== config.executionMode
     || verifiedConfig.notificationId !== config.notificationId
     || verifiedConfig.caseSessionId !== config.caseSessionId
     || verifiedConfig.coupleGroupId !== config.coupleGroupId
@@ -270,7 +286,7 @@ export async function processHomeworkCompletionDevTestNotification(
     || verifiedConfig.allowedRecipients.some((email, index) => email !== config.allowedRecipients[index])) {
     throw new Error("Homework notification DEV test scope is not verified.");
   }
-  const providerConfiguration = getDevTestProviderConfiguration();
+  const providerConfiguration = getDevTestProviderConfiguration(config.executionMode);
   const provider = injectedProvider ?? createResendEmailProvider(providerConfiguration);
   const client = createServiceRoleSupabaseClient() as unknown as RawClient;
   const claims = parseClaim(await rpc(client, "claim_homework_completion_dev_test_notification", {
