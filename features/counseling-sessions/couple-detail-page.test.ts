@@ -31,6 +31,7 @@ const card: CounselingSessionCard = {
   team: { campusLead: { id: "lead-team", name: "Davis & Morgan" }, coach: { id: "coach-team", name: "James & Gina Jacobs" }, counselor: { id: "counselor-team", name: "Taylor & Jordan Reed" } },
   homework: { title: "Session 2 Homework", complete: false, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
   materialSessions: [{ id: "case-session", sessionId: "session-2", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }, { id: "case-session-completed", sessionId: "session-3", title: "Trust", actualSequence: 3, templateSequence: 3, status: "completed" }],
+  homeworkSessions: [],
 };
 
 describe("Counseling couple detail foundation", () => {

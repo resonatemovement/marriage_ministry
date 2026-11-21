@@ -101,5 +101,15 @@ describe("projectCounselingHomeworkProgress", () => {
 
     expect(projected.homeworkByRevision.get("revision-a")).toEqual({ sessionId: "session-1", complete: false, progress: [] });
     expect(projected.homeworkByRevision.get("revision-history")).toEqual({ sessionId: "session-history", complete: false, progress: [{ progressId: "progress-history", profileId: "partner-a", status: "submitted" }] });
+    expect(projected.homeworkHistoryByRevision.get("revision-history")).toEqual({ sessionId: "session-history", complete: false, progress: [{ progressId: "progress-history", profileId: "partner-a", status: "submitted" }] });
+  });
+
+  it("keeps ended pinned Homework available for historical Session status without adding it to current progression", () => {
+    const assignment = [{ counseling_case_id: "case-a", homework_assignment_revisions: [{ id: "revision-a", ended_at: "2026-11-01T00:00:00Z", homework_participant_progress: [{ id: "p1", profile_id: "partner-a", status: "reviewed" as const }] }] }];
+    const projected = projectCounselingHomeworkProgress(assignment, [pinnedSession]);
+
+    expect(projected.homeworkByRevision.has("revision-a")).toBe(false);
+    expect(projected.progressByCase.has("case-a")).toBe(false);
+    expect(projected.homeworkHistoryByRevision.get("revision-a")).toEqual({ sessionId: "session-1", complete: false, progress: [{ progressId: "p1", profileId: "partner-a", status: "reviewed" }] });
   });
 });

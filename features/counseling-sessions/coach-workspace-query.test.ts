@@ -60,6 +60,15 @@ describe("Counseling Sessions Coach workspace query scope", () => {
     expect(mocks.filters.some(({ table, method }) => table === "counseling_cases" && method === "in")).toBe(false);
   });
 
+  it("restricts a direct Couple details Session summary lookup to its authorized Case", async () => {
+    await getCounselingSessionCard("admin-visible-case", "admin");
+
+    expect(mocks.filters).toContainEqual({ table: "counseling_cases", method: "eq", args: ["id", "admin-visible-case"] });
+    expect(mocks.filters).toContainEqual({ table: "case_session_meetings", method: "eq", args: ["counseling_case_id", "admin-visible-case"] });
+    expect(mocks.filters).toContainEqual({ table: "case_sessions", method: "eq", args: ["counseling_case_id", "admin-visible-case"] });
+    expect(mocks.filters).toContainEqual({ table: "homework_assignments", method: "eq", args: ["counseling_case_id", "admin-visible-case"] });
+  });
+
   it("leaves non-Coach workspace visibility behavior unchanged", async () => {
     await getCounselingSessionCards("counselor");
 

@@ -19,6 +19,8 @@ vi.mock("@/features/onboarding/admin-recovery", () => ({ AdminOnboardingRecovery
 vi.mock("@/features/prepare-enrich/actions", () => ({ reservePrepareEnrichUpload: vi.fn(), finishPrepareEnrichUpload: vi.fn() }));
 
 import { PeopleDetailPage } from "./people-detail-page";
+import { CoupleSessionsTab } from "./people-detail-page";
+import { PrepareEnrichAdminManager } from "@/features/prepare-enrich/admin-manager";
 import type { PeopleDetailActionContext } from "./detail-actions-model";
 import type { GroupPeopleDetail } from "./detail-model";
 import type { CounselorAssessment } from "@/features/assessments/counselor-management-model";
@@ -37,7 +39,10 @@ const detail: GroupPeopleDetail = {
   campusId: "campus-1",
   campus: "Fremont",
   updatedAt: "2026-10-01T12:00:00.000Z",
-  members: [],
+    members: [
+      { id: "partner-1", firstName: "Jordan", lastName: "Smith", name: "Jordan Smith", gender: "male", email: "jordan@example.test", phone: "5105550101", campusId: "campus-1", photoUrl: "https://example.test/jordan.jpg", roles: ["couple"], accountStatus: "Active", accountAccessState: "active_account", onboardingStatus: "Onboarding Complete", onboardingComplete: true },
+      { id: "partner-2", firstName: "Casey", lastName: "Smith", name: "Casey Smith", gender: "female", email: "casey@example.test", phone: "5105550102", campusId: "campus-1", photoUrl: null, roles: ["couple"], accountStatus: "Active", accountAccessState: "active_account", onboardingStatus: "Onboarding Complete", onboardingComplete: true },
+    ],
   counselingStatus: "active",
   activeAssignmentCount: 1,
   assignmentSummary: "Counselor assigned",
@@ -69,24 +74,45 @@ const context: PeopleDetailActionContext = {
   coupleAssignmentReady: true,
 };
 
-describe("Admin Couple detail right rail", () => {
-  it("places the shared Assessment summary below Counseling Status for Admin and omits it outside that role", () => {
+describe("Admin Couple detail tabs and rail", () => {
+  it("renders four accessible tabs and keeps concise Couple context in the persistent rail", () => {
     const props = {
       detail,
       breadcrumbs: [{ label: "People & Teams", href: "/people" }, { label: detail.name, current: true as const }],
       trail: [detail.id],
       assessmentManagement: { assessments: [assessmentSummaryFixture], sessions: [], preferences: {} },
+      prepareEnrich: { counselingCaseId: "case-1", documents: [] },
+      sessionSummary: {
+        caseId: "case-1", coupleId: detail.id, coupleName: detail.name, partners: [], status: "active", state: { label: "SESSION 1", detail: "Communication", caseSession: null, session: null }, publishedSessions: [], team: { campusLead: null, coach: null, counselor: null }, homework: null, materialSessions: [],
+        homeworkSessions: [{ caseSessionId: "case-session-1", sessionId: "session-1", title: "Communication", actualSequence: 1, templateSequence: 1, status: "active" as const, revisionAssigned: true, partners: [{ progressId: "progress-1", profileId: "partner-1", name: "Jordan", status: "submitted" as const }, { progressId: "progress-2", profileId: "partner-2", name: "Casey", status: "not_started" as const }] }],
+      } as never,
     };
     const adminMarkup = renderToStaticMarkup(createElement(PeopleDetailPage, { ...props, context }));
-    const adminRail = adminMarkup.slice(adminMarkup.indexOf("<aside"), adminMarkup.indexOf("</aside>"));
-    expect(adminRail.indexOf("Counseling Status")).toBeLessThan(adminRail.indexOf("Communication Styles"));
-    expect(adminRail).toContain("Required");
+    expect(adminMarkup).toContain('role="tablist"');
+    expect(adminMarkup).toContain('aria-label="Couple details sections"');
+    expect(adminMarkup.match(/role="tab"/g)).toHaveLength(4);
+    expect(adminMarkup).toContain("Overview");
+    expect(adminMarkup).toContain("Sessions &amp; Homework");
+    expect(adminMarkup).toContain("Assessments");
+    expect(adminMarkup).toContain("Prepare &amp; Enrich");
+    expect(adminMarkup).toContain("Counseling: In Progress");
+    expect(adminMarkup).toContain("Current Session");
+    expect(adminMarkup).toContain("0 of 1 required complete");
+    expect(adminMarkup).not.toContain("Communication Styles");
+    expect(adminMarkup).toContain('role="tabpanel"');
+    expect(adminMarkup).toContain('role="tabpanel" aria-labelledby');
+    expect(adminMarkup).not.toContain("Counseling Status</p>");
+    expect(adminMarkup).toContain("Jordan Smith");
+    expect(adminMarkup).toContain("Casey Smith");
+    expect(adminMarkup).toContain("size-20 rounded-full");
+    expect(adminMarkup).not.toContain("View Homework");
 
     const nonAdminMarkup = renderToStaticMarkup(createElement(PeopleDetailPage, { ...props, context: null }));
+    expect(nonAdminMarkup).not.toContain('role="tablist"');
     expect(nonAdminMarkup).not.toContain("Communication Styles");
   });
 
-  it("keeps Prepare & Enrich after Counselor and preserves both document slots and actions", () => {
+  it("preserves Prepare & Enrich document slots and upload actions in separate cards", () => {
     const markup = renderToStaticMarkup(createElement(PeopleDetailPage, {
       detail,
       context,
@@ -97,15 +123,43 @@ describe("Admin Couple detail right rail", () => {
         documents: [{ id: "document-1", slot: "counselor", fileName: "counselor.pdf", contentType: "application/pdf", sizeBytes: 12 }],
       },
     }));
-    const rail = markup.slice(markup.indexOf("<aside"), markup.indexOf("</aside>"));
+    expect(markup).not.toContain("Counselor Version");
+    const managerMarkup = renderToStaticMarkup(createElement(PrepareEnrichAdminManager, {
+      coupleGroupId: detail.id,
+      counselingCaseId: "case-1",
+      documents: [{ id: "document-1", slot: "counselor", fileName: "counselor.pdf", contentType: "application/pdf", sizeBytes: 12 }],
+    }));
+    expect(managerMarkup).toContain("Counselor Version");
+    expect(managerMarkup).toContain("Couple Version");
+    expect(managerMarkup).toContain("counselor.pdf");
+    expect(managerMarkup).toContain(">Replace<");
+    expect(managerMarkup).toContain(">Upload<");
+    expect(markup).toContain('aria-label="Couple details sections"');
+  });
 
-    expect(rail.indexOf("Counseling Status")).toBeLessThan(rail.indexOf("Counselor"));
-    expect(rail.indexOf("Counselor")).toBeLessThan(rail.indexOf("Prepare &amp; Enrich"));
-    expect(rail).toContain("Counselor Version");
-    expect(rail).toContain("Couple Version");
-    expect(rail).toContain("counselor.pdf");
-    expect(rail).toContain(">Replace<");
-    expect(rail).toContain(">Upload<");
+  it("shows per-partner Homework status in the Sessions tab without adding an Admin review link", () => {
+    const sessionSummary = {
+      homeworkSessions: [{ caseSessionId: "case-session-1", sessionId: "session-1", title: "Communication", actualSequence: 1, templateSequence: 1, status: "active" as const, revisionAssigned: true, partners: [{ progressId: "progress-1", profileId: "partner-1", name: "Jordan Smith", status: "submitted" as const }, { progressId: "progress-2", profileId: "partner-2", name: "Casey Smith", status: "not_started" as const }] }],
+    } as never;
+    const markup = renderToStaticMarkup(createElement(CoupleSessionsTab, { sessionSummary }));
+    expect(markup).toContain("Session 1: Communication");
+    expect(markup).toContain("Jordan Smith");
+    expect(markup).toContain("Casey Smith");
+    expect(markup).toContain("Submitted");
+    expect(markup).toContain("Not Started");
+    expect(markup).not.toContain("View Homework");
+  });
+
+  it("keeps Super Admin deletion discoverable in the danger area", () => {
+    const markup = renderToStaticMarkup(createElement(PeopleDetailPage, {
+      detail,
+      context,
+      breadcrumbs: [{ label: detail.name, current: true }],
+      trail: [detail.id],
+      isSuperAdmin: true,
+    }));
+    const danger = markup.slice(markup.indexOf("Danger Zone"));
+    expect(danger).toContain("Permanently Delete");
   });
 });
 

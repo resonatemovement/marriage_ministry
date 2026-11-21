@@ -35,27 +35,30 @@ export function projectCounselingHomeworkProgress(
 
   const progressByCase = new Map<string, { sessionId: string; complete: boolean }[]>();
   const homeworkByRevision = new Map<string, CounselingHomeworkProgress>();
+  const homeworkHistoryByRevision = new Map<string, CounselingHomeworkProgress>();
 
   for (const assignment of assignments) {
     for (const revision of assignment.homework_assignment_revisions ?? []) {
-      if (revision.ended_at !== null) continue;
-
       const pinnedSession = pinnedRevisions.get(revision.id);
       if (!pinnedSession || pinnedSession.counselingCaseId !== assignment.counseling_case_id) continue;
 
       const progress = revision.homework_participant_progress ?? [];
       const complete = progress.length === 2 && progress.every(({ status }) => status === "submitted" || status === "reviewed");
+      const projected: CounselingHomeworkProgress = {
+        sessionId: pinnedSession.sessionId,
+        complete,
+        progress: progress.flatMap(({ id, profile_id, status }) => id && profile_id ? [{ progressId: id, profileId: profile_id, status }] : []),
+      };
+      homeworkHistoryByRevision.set(revision.id, projected);
+      if (revision.ended_at !== null) continue;
+
       const caseProgress = progressByCase.get(assignment.counseling_case_id) ?? [];
       caseProgress.push({ sessionId: pinnedSession.sessionId, complete });
       progressByCase.set(assignment.counseling_case_id, caseProgress);
 
-      homeworkByRevision.set(revision.id, {
-        sessionId: pinnedSession.sessionId,
-        complete,
-        progress: progress.flatMap(({ id, profile_id, status }) => id && profile_id ? [{ progressId: id, profileId: profile_id, status }] : []),
-      });
+      homeworkByRevision.set(revision.id, projected);
     }
   }
 
-  return { progressByCase, homeworkByRevision };
+  return { progressByCase, homeworkByRevision, homeworkHistoryByRevision };
 }

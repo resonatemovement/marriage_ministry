@@ -21,6 +21,7 @@ const card: CounselingSessionCard = {
   team: { campusLead: null, coach: { id: "coach-team", name: "Coach Team" }, counselor: null },
   homework: null,
   materialSessions: [],
+  homeworkSessions: [],
 };
 
 describe("SessionsWorkspace", () => {

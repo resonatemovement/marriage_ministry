@@ -16,6 +16,7 @@ import type { PeopleBreadcrumb } from "@/features/people/breadcrumbs";
 import type { PeopleDetailMember } from "@/features/people/detail-model";
 import { getCounselorAssessmentManagement } from "@/features/assessments/counselor-management-queries";
 import { orderCouplePartners } from "@/features/people/partner-order";
+import { getCounselingSessionCard } from "@/features/counseling-sessions/queries";
 
 async function withAdminOnboardingReadiness(member: PeopleDetailMember): Promise<PeopleDetailMember> {
   if (member.pending || member.accountAccessState !== "active_account" || member.onboardingComplete) return member;
@@ -51,14 +52,19 @@ export default async function PeopleDetailRoute({ params, searchParams }: { para
     detail.kind === "group" && detail.type !== "couples" ? getCounselingOversightProgress(detail.id) : null,
     detail.kind === "group" && detail.type === "coaches" ? getOversightCounselorNodes(detail.id, "people") : [],
   ]);
-  const assessmentManagement = isAdmin && detail.kind === "group" && detail.type === "couples" && prepareEnrich?.counselingCaseId
-    ? await getCounselorAssessmentManagement(
-      prepareEnrich.counselingCaseId,
-      orderCouplePartners(detail.members.map(({ id, name, gender }) => ({ id, name, gender }))),
-      true,
-      null,
-    )
-    : null;
+  const [assessmentManagement, sessionSummary] = await Promise.all([
+    isAdmin && detail.kind === "group" && detail.type === "couples" && prepareEnrich?.counselingCaseId
+      ? getCounselorAssessmentManagement(
+        prepareEnrich.counselingCaseId,
+        orderCouplePartners(detail.members.map(({ id, name, gender }) => ({ id, name, gender }))),
+        true,
+        null,
+      )
+      : null,
+    isAdmin && detail.kind === "group" && detail.type === "couples" && prepareEnrich?.counselingCaseId
+      ? getCounselingSessionCard(prepareEnrich.counselingCaseId, "admin")
+      : null,
+  ]);
   const availabilityTrail: PeopleBreadcrumb[] | null = from === "team-availability" && detail.kind === "group" && detail.type !== "couples"
     ? [
       { label: "Dashboard", href: "/dashboard" },
@@ -67,5 +73,5 @@ export default async function PeopleDetailRoute({ params, searchParams }: { para
     ]
     : null;
 
-  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeopleDetailPage detail={detail} context={context} hierarchy={hierarchy} breadcrumbs={availabilityTrail ?? buildPeopleBreadcrumbs(detail, parents, trail, validatePeopleReturnTo(returnTo))} trail={[...trail, recordId]} isSuperAdmin={identity.roles.includes("super_admin")} prepareEnrich={prepareEnrich} assessmentManagement={assessmentManagement} oversightProgress={oversightProgress} oversightChildren={oversightChildren} /></WorkspaceShell>;
+  return <WorkspaceShell workspace={isAdmin ? "admin" : "campus_lead"} activeHref="/people" identity={identity}><PeopleDetailPage detail={detail} context={context} hierarchy={hierarchy} breadcrumbs={availabilityTrail ?? buildPeopleBreadcrumbs(detail, parents, trail, validatePeopleReturnTo(returnTo))} trail={[...trail, recordId]} isSuperAdmin={identity.roles.includes("super_admin")} prepareEnrich={prepareEnrich} assessmentManagement={assessmentManagement} sessionSummary={sessionSummary} oversightProgress={oversightProgress} oversightChildren={oversightChildren} /></WorkspaceShell>;
 }
