@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsListViewport, TabsTrigger } from "@/components/ui/tabs";
 import { CaseLifecycleRealtime } from "@/features/counseling-sessions/case-lifecycle-realtime";
 import { homeworkProgressBadgeClass, homeworkProgressLabel, participantHomeworkTitle } from "@/features/homework/presentation";
 import { SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
@@ -44,10 +44,12 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
       setActiveTab(value as "material" | "homework");
     }}>
       <div className="flex w-full flex-wrap items-center justify-between gap-3">
-        <TabsList aria-label="Session sections" className="w-full sm:w-auto">
-          <TabsTrigger value="material" className="flex-1 sm:flex-none">Session Material</TabsTrigger>
-          <TabsTrigger value="homework" className="flex-1 sm:flex-none">Homework</TabsTrigger>
-        </TabsList>
+        <TabsListViewport className="w-full sm:w-auto">
+          <TabsList aria-label="Session sections" className="w-full sm:w-auto">
+            <TabsTrigger value="material" className="flex-1 sm:flex-none">Session Material</TabsTrigger>
+            <TabsTrigger value="homework" className="flex-1 sm:flex-none">Homework</TabsTrigger>
+          </TabsList>
+        </TabsListViewport>
         {activeTab === "material" ? <ExportSessionMaterialsButton caseSessionId={session.id} sessionLabel={`Session ${session.number}: ${session.title}`} className="ml-auto" /> : null}
         {activeTab === "material" && totalPages > 0 ? <p className="ml-auto text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</p> : null}
       </div>

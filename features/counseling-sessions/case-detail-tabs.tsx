@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsListViewport, TabsTrigger } from "@/components/ui/tabs";
 
 export function CaseDetailTabs({ session, homework, meetings, settings, defaultTab = "session" }: {
   session: ReactNode;
@@ -12,14 +12,14 @@ export function CaseDetailTabs({ session, homework, meetings, settings, defaultT
   defaultTab?: "session" | "homework" | "meetings" | "settings";
 }) {
   return <Tabs defaultValue={defaultTab} className="min-w-0">
-    <div className="-mx-1 overflow-x-auto pb-1">
+    <TabsListViewport>
       <TabsList aria-label="Counseling case sections" className="min-w-max justify-start">
         <TabsTrigger value="session">Session</TabsTrigger>
         <TabsTrigger value="homework">Homework</TabsTrigger>
         <TabsTrigger value="meetings">Meetings &amp; Reminders</TabsTrigger>
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
-    </div>
+    </TabsListViewport>
     <TabsContent value="session">{session}</TabsContent>
     <TabsContent value="homework">{homework}</TabsContent>
     <TabsContent value="meetings">{meetings}</TabsContent>

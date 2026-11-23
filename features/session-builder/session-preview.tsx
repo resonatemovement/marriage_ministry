@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsListViewport, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import { HomeworkPreviewContent, VideoLinkPreview } from "@/features/homework/homework-preview";
 import type { StagedHomeworkBlock } from "@/features/homework/homework-editor-model";
@@ -36,7 +36,7 @@ export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialB
       </SheetHeader>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8 sm:py-7">
         <Tabs value={tab} onValueChange={(value) => onTabChange(value as "material" | "homework")}>
-          <TabsList aria-label="Preview sections"><TabsTrigger value="material">Session Material</TabsTrigger><TabsTrigger value="homework">Homework</TabsTrigger></TabsList>
+          <TabsListViewport><TabsList aria-label="Preview sections"><TabsTrigger value="material">Session Material</TabsTrigger><TabsTrigger value="homework">Homework</TabsTrigger></TabsList></TabsListViewport>
           <TabsContent value="material"><SessionMaterialPreviewContent blocks={materialBlocks} resourceAccess={resourceAccess} /></TabsContent>
           <TabsContent value="homework"><HomeworkPreviewContent blocks={homeworkBlocks} /></TabsContent>
         </Tabs>
