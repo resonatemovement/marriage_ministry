@@ -144,7 +144,7 @@ export function CounselorAssessmentSchedulingSettings({ caseId, assessments, ses
     </section>;
 }
 
-export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId, partnerOrder = [], showHeading = true }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId"> & { partnerOrder?: { id: string; name: string; gender: PartnerGender }[]; showHeading?: boolean }) {
+export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId, partnerOrder = [], showHeading = true, compactSummary = false }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId"> & { partnerOrder?: { id: string; name: string; gender: PartnerGender }[]; showHeading?: boolean; compactSummary?: boolean }) {
   if (!assessments.length) return <Card className="p-5"><section aria-label="Assessments">{showHeading ? <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3> : null}<p className={`${showHeading ? "mt-2 " : ""}text-sm text-text-muted`}>No Assessments are configured.</p></section></Card>;
   return <Card className="p-5"><section aria-label="Assessments">
       {showHeading ? <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3> : null}
@@ -156,19 +156,19 @@ export function CounselorAssessmentCards({ assessments, canReadResults, activeCa
           ...partner,
           gender: partnerOrder.find(({ id }) => id === partner.profileId)?.gender ?? null,
         })));
-        return <div key={assessment.id} className="py-3 first:pt-0 last:pb-0">
+        return <div key={assessment.id} className={`${compactSummary ? "py-2" : "py-3"} first:pt-0 last:pb-0`}>
           <AssessmentSummary
             title={assessment.title}
             requirement={assessment.schedule ? assessment.schedule.requiredForProgression ? "Required" : "Optional" : "Available"}
             progress={assessment.schedule && canReadResults ? `${completion} of ${assessment.partners.length} submitted` : undefined}
-            participants={canReadResults && assessment.schedule ? orderedPartners.map((partner) => ({
+            participants={!compactSummary && canReadResults && assessment.schedule ? orderedPartners.map((partner) => ({
               id: partner.profileId,
               name: partner.name,
               status: allPartnersSubmitted ? undefined : statusLabel(partner.status),
               primaryResults: partner.latestScores.filter((score) => score.isPrimary).map(({ label }) => label),
             })) : []}
           >
-            {blocking ? <Badge className="mt-2 bg-amber-50 text-amber-900">Blocking Session advancement</Badge> : null}
+            {blocking && !compactSummary ? <Badge className="mt-2 bg-amber-50 text-amber-900">Blocking Session advancement</Badge> : null}
             {canReadResults && assessment.schedule ? <AssessmentResultsDialog assessment={{ ...assessment, partners: orderedPartners }} /> : null}
           </AssessmentSummary>
           {assessment.schedule && !canReadResults ? <p className="mt-2 text-sm text-text-muted">Partner completion status and results are unavailable in this view.</p> : null}

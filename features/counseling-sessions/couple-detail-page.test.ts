@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./homework-reopen-button", () => ({ ReopenHomeworkButton: ({ partnerName, viewAnswersHref, canReopen }: { partnerName: string; viewAnswersHref?: string; canReopen: boolean }) => createElement("div", null, viewAnswersHref ? createElement("a", { href: viewAnswersHref }, "View Answers") : null, canReopen ? `Reopen Homework for ${partnerName}` : null) }));
 vi.mock("@/features/assessments/counselor-assessment-management", () => ({
   CounselorAssessmentSchedulingSettings: () => createElement("section", { "aria-label": "Scheduling Settings" }, "Scheduling settings"),
-  CounselorAssessmentCards: () => createElement("section", { "aria-label": "Assessments" }, "Assessment management"),
+  CounselorAssessmentCards: ({ compactSummary }: { compactSummary?: boolean }) => createElement("section", { "aria-label": "Assessments", "data-compact-summary": compactSummary }, "Assessment management"),
 }));
 import type { CounselingSessionCard } from "./queries";
 
@@ -277,6 +277,7 @@ describe("Counseling couple detail foundation", () => {
     }));
     expect(markup.indexOf("Counseling Progress")).toBeLessThan(markup.indexOf('aria-label="Assessments"'));
     expect(markup.indexOf('aria-label="Assessments"')).toBeLessThan(markup.indexOf("Prepare &amp; Enrich"));
+    expect(markup).toContain('aria-label="Assessments" data-compact-summary="true"');
     expect(markup.indexOf("Prepare &amp; Enrich")).toBeLessThan(markup.indexOf("Case Actions"));
     expect(markup).toContain('aria-label="Case Actions"');
     expect(markup).not.toContain("Complete Session &amp; Schedule Next");

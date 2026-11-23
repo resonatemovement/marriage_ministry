@@ -103,6 +103,29 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).toContain("View Results");
   });
 
+  it("renders a compact case-rail summary without participant names or individual results", () => {
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
+      assessments: [assessment], canReadResults: true, activeCaseSessionId: "case-session-1", compactSummary: true,
+    }));
+
+    expect(markup).toContain(">Assessments</h3>");
+    expect(markup).toContain("Love Languages");
+    expect(markup).toContain("Required");
+    expect(markup).toContain("1 of 2 submitted");
+    expect(markup).toContain("View Results");
+    const dialogIndex = markup.indexOf('role="dialog"');
+    expect(dialogIndex).toBeGreaterThan(0);
+    const summary = markup.slice(0, dialogIndex);
+    const resultsDialog = markup.slice(dialogIndex);
+    expect(summary).not.toContain("Alex A");
+    expect(summary).not.toContain("Blake B");
+    expect(summary).not.toContain("Words");
+    expect(resultsDialog).toContain("Alex A");
+    expect(resultsDialog).toContain("Words");
+    expect(markup).not.toContain("Blocking Session advancement");
+    expect(markup).not.toContain("participant progress");
+  });
+
   it("renders partner status and full-width numeric score rows in responsive results content", () => {
     const markup = renderToStaticMarkup(createElement(AssessmentResultsContent, { assessment }));
     expect(markup).toContain("Alex A");
