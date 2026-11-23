@@ -13,7 +13,7 @@ describe("Prepare & Enrich Admin manager", () => {
       coupleGroupId: "couple-1", counselingCaseId: "case-1",
       documents: [{ id: "document-1", slot: "counselor", fileName: "counselor.pdf", contentType: "application/pdf", sizeBytes: 10 }],
     }));
-    expect(markup).toContain("Prepare &amp; Enrich");
+    expect(markup).toContain('aria-label="Prepare &amp; Enrich document controls"');
     expect((markup.match(/Counselor Version/g) ?? [])).toHaveLength(1);
     expect((markup.match(/Couple Version/g) ?? [])).toHaveLength(1);
     expect(markup).toContain("counselor.pdf");

@@ -83,7 +83,7 @@ describe("Admin Couple detail tabs and rail", () => {
       assessmentManagement: { assessments: [assessmentSummaryFixture], sessions: [], preferences: {} },
       prepareEnrich: { counselingCaseId: "case-1", documents: [] },
       sessionSummary: {
-        caseId: "case-1", coupleId: detail.id, coupleName: detail.name, partners: [], status: "active", state: { label: "SESSION 1", detail: "Communication", caseSession: null, session: null }, publishedSessions: [], team: { campusLead: null, coach: null, counselor: null }, homework: null, materialSessions: [],
+        caseId: "case-1", coupleId: detail.id, coupleName: detail.name, partners: [], status: "active", state: { label: "SESSION 1", detail: "Communication", caseSession: { title: "Communication" }, session: null }, publishedSessions: [], team: { campusLead: null, coach: null, counselor: null }, homework: null, materialSessions: [],
         homeworkSessions: [{ caseSessionId: "case-session-1", sessionId: "session-1", title: "Communication", actualSequence: 1, templateSequence: 1, status: "active" as const, revisionAssigned: true, partners: [{ progressId: "progress-1", profileId: "partner-1", name: "Jordan", status: "submitted" as const }, { progressId: "progress-2", profileId: "partner-2", name: "Casey", status: "not_started" as const }] }],
       } as never,
     };
@@ -97,6 +97,8 @@ describe("Admin Couple detail tabs and rail", () => {
     expect(adminMarkup).toContain("Prepare &amp; Enrich");
     expect(adminMarkup).toContain("Counseling: In Progress");
     expect(adminMarkup).toContain("Current Session");
+    expect(adminMarkup).toContain("SESSION 1: Communication");
+    expect((adminMarkup.match(/Communication/g) ?? [])).toHaveLength(1);
     expect(adminMarkup).toContain("0 of 1 required complete");
     expect(adminMarkup).not.toContain("Communication Styles");
     expect(adminMarkup).toContain('role="tabpanel"');
@@ -143,11 +145,24 @@ describe("Admin Couple detail tabs and rail", () => {
     } as never;
     const markup = renderToStaticMarkup(createElement(CoupleSessionsTab, { sessionSummary }));
     expect(markup).toContain("Session 1: Communication");
+    expect(markup).not.toContain("Sessions &amp; Homework</h2>");
+    expect(markup).toContain("Counseling: Current");
+    expect(markup).not.toContain("Counseling sequence");
     expect(markup).toContain("Jordan Smith");
     expect(markup).toContain("Casey Smith");
     expect(markup).toContain("Submitted");
     expect(markup).toContain("Not Started");
     expect(markup).not.toContain("View Homework");
+  });
+
+  it("only shows a separate counseling sequence when it differs from the program Session number", () => {
+    const markup = renderToStaticMarkup(createElement(CoupleSessionsTab, { sessionSummary: {
+      homeworkSessions: [{ caseSessionId: "case-session-2", sessionId: "session-2", title: "Repair", actualSequence: 3, templateSequence: 2, status: "completed", revisionAssigned: false, partners: [] }],
+    } as never }));
+    expect(markup).toContain("Session 2: Repair");
+    expect(markup).toContain("Counseling sequence: Session 3");
+    expect(markup).toContain("Counseling: Completed");
+    expect(markup).toContain("No Homework assignment for this Session.");
   });
 
   it("keeps Super Admin deletion discoverable in the danger area", () => {

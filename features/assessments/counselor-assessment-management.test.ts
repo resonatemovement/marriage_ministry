@@ -93,6 +93,16 @@ describe("Counselor Assessment management presentation", () => {
     expect(markup).not.toContain("Primary results:");
   });
 
+  it("can omit its section heading when embedded inside the matching Admin tab", () => {
+    const markup = renderToStaticMarkup(createElement(CounselorAssessmentCards, {
+      assessments: [assessment], canReadResults: true, activeCaseSessionId: null, showHeading: false,
+    }));
+    expect(markup).toContain('aria-label="Assessments"');
+    expect(markup).not.toContain(">Assessments</h3>");
+    expect(markup).toContain("Love Languages");
+    expect(markup).toContain("View Results");
+  });
+
   it("renders partner status and full-width numeric score rows in responsive results content", () => {
     const markup = renderToStaticMarkup(createElement(AssessmentResultsContent, { assessment }));
     expect(markup).toContain("Alex A");

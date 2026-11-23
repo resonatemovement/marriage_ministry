@@ -35,11 +35,11 @@ function DocumentSlot({ coupleGroupId, counselingCaseId, slot, document }: { cou
 }
 
 export function PrepareEnrichAdminManager({ coupleGroupId, counselingCaseId, documents }: { coupleGroupId: string; counselingCaseId: string | null; documents: PrepareEnrichDocument[] }) {
-  return <div className="space-y-4"><header><h2 className="font-heading text-lg font-bold text-text-primary">Prepare &amp; Enrich</h2><p className="mt-1 text-sm text-text-muted">Manage the current document for each Couple slot.</p></header>{(["counselor", "couple"] as const).map((slot) => {
+  return <section aria-label="Prepare & Enrich document controls" className="space-y-4"><p className="text-sm text-text-muted">Manage the current document for each Couple slot.</p>{(["counselor", "couple"] as const).map((slot) => {
     const document = documents.find((item) => item.slot === slot) ?? null;
     return <Card key={slot} className="p-5">
       <h2 className="font-heading text-lg font-bold text-text-primary">{labels[slot]}</h2>
       {counselingCaseId ? <div className="mt-4"><DocumentSlot coupleGroupId={coupleGroupId} counselingCaseId={counselingCaseId} slot={slot} document={document} /></div> : <p className="mt-2 text-sm text-text-muted">Documents can be added after this Couple has a counseling case.</p>}
     </Card>;
-  })}</div>;
+  })}</section>;
 }

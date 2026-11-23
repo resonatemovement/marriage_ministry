@@ -144,11 +144,11 @@ export function CounselorAssessmentSchedulingSettings({ caseId, assessments, ses
     </section>;
 }
 
-export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId, partnerOrder = [] }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId"> & { partnerOrder?: { id: string; name: string; gender: PartnerGender }[] }) {
-  if (!assessments.length) return <Card className="p-5"><section aria-label="Assessments"><h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3><p className="mt-2 text-sm text-text-muted">No Assessments are configured.</p></section></Card>;
+export function CounselorAssessmentCards({ assessments, canReadResults, activeCaseSessionId, partnerOrder = [], showHeading = true }: Pick<CounselorAssessmentManagementProps, "assessments" | "canReadResults" | "activeCaseSessionId"> & { partnerOrder?: { id: string; name: string; gender: PartnerGender }[]; showHeading?: boolean }) {
+  if (!assessments.length) return <Card className="p-5"><section aria-label="Assessments">{showHeading ? <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3> : null}<p className={`${showHeading ? "mt-2 " : ""}text-sm text-text-muted`}>No Assessments are configured.</p></section></Card>;
   return <Card className="p-5"><section aria-label="Assessments">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3>
-      <div className="mt-3 divide-y divide-border">{assessments.map((assessment) => {
+      {showHeading ? <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assessments</h3> : null}
+      <div className={`${showHeading ? "mt-3 " : ""}divide-y divide-border`}>{assessments.map((assessment) => {
         const blocking = canReadResults && assessmentBlocksSessionAdvancement(assessment, activeCaseSessionId);
         const completion = assessment.partners.filter((partner) => partner.status === "completed").length;
         const allPartnersSubmitted = assessment.partners.length === 2 && completion === 2;
