@@ -37,7 +37,7 @@ describe("MeetingNotificationStatus", () => {
     const attempt = delivery({ id: "history", recipient_profile_id: "partner-one", event_type: "meeting.rescheduled", status: "delivered", created_at: "2026-10-13T16:17:00.000Z", attempt_number: 2 });
     expect(deliveryTime(attempt)).toBe("Oct 13 at 9:17 AM");
     expect(source).toContain("deliveryTime(attempt)");
-    expect(coupleDetailSource).toContain("formatCounselingMeetingDateTime(card.state.meeting.startsAt)");
+    expect(coupleDetailSource).toContain("formatCounselingMeetingDateTime(upcomingMeeting.startsAt)");
     expect(coupleDetailSource).toContain("formatCounselingMeetingDateTime(meeting.startsAt)");
     expect(source).not.toContain("toLocaleString");
     expect(coupleDetailSource).not.toContain("toLocaleString");
@@ -66,6 +66,11 @@ describe("MeetingNotificationStatus", () => {
     expect(markup).toContain('text-brand-secondary">Meeting invites</p>');
     expect(markup).not.toContain("Resend to this partner");
     expect(markup).not.toContain("<details");
+  });
+
+  it("supports compact card placement without changing the default history layout", () => {
+    const markup = renderToStaticMarkup(createElement(MeetingNotificationStatus, { partners: [partner("partner-one", "James")], deliveries: [], compact: true }));
+    expect(markup).toContain('class="border-t border-border pt-4" aria-label="Meeting invites"');
   });
 
   it("keeps all event and attempt details in a shared Sheet without exposing provider identifiers", () => {

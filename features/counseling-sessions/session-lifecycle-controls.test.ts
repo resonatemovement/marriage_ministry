@@ -125,7 +125,9 @@ describe("lifecycle scheduling date control", () => {
   });
 
   it("uses the Next Step hierarchy and preserves the underlying lifecycle flows", () => {
-    expect(controls).toContain(">Next Step</p>");
+    expect(controls).toContain('heading = "Next Step"');
+    expect(controls).toContain('<p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{heading}</p>');
+    expect(coupleDetail).toContain('heading="Case Actions"');
     expect(controls).toContain('const isFinalSession = Boolean(card.state.caseSession?.isFinal)');
     expect(controls).toContain(': isAuthored ? isFinalSession ? "complete-program" : "complete-session" : null');
     expect(controls).toContain(': isAuthored ? isFinalSession ? "Complete Program" : "Schedule Next Session" : null');

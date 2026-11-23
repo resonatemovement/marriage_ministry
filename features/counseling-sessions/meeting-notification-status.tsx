@@ -81,10 +81,10 @@ export function MeetingNotificationResendMenuItems({ caseId, meetingId, partners
   </>;
 }
 
-export function MeetingNotificationStatus({ partners, deliveries }: { partners: MeetingNotificationPartner[]; deliveries: MeetingNotificationDelivery[] }) {
+export function MeetingNotificationStatus({ partners, deliveries, compact = false }: { partners: MeetingNotificationPartner[]; deliveries: MeetingNotificationDelivery[]; compact?: boolean }) {
   const [historyPartner, setHistoryPartner] = useState<MeetingNotificationPartner | null>(null);
   const history = historyPartner ? latestPartnerDeliveries(historyPartner.id, deliveries) : [];
-  return <section className="mt-6 border-t border-border pt-6" aria-label="Meeting invites">
+  return <section className={compact ? "border-t border-border pt-4" : "mt-6 border-t border-border pt-6"} aria-label="Meeting invites">
     <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Meeting invites</p>
     <ul className="mt-1 divide-y divide-border">
       {partners.map((partner) => {

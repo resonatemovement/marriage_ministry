@@ -98,7 +98,7 @@ function AssessmentPrerequisiteNotice({ unavailable, assessments }: { unavailabl
   </div>;
 }
 
-export function SessionLifecycleControls({ card, partners = [], deliveries = [], assessmentPrerequisites = null }: { card: LifecycleCard; partners?: MeetingNotificationPartner[]; deliveries?: MeetingNotificationDelivery[]; assessmentPrerequisites?: AssessmentPrerequisites }) {
+export function SessionLifecycleControls({ card, partners = [], deliveries = [], assessmentPrerequisites = null, heading = "Next Step" }: { card: LifecycleCard; partners?: MeetingNotificationPartner[]; deliveries?: MeetingNotificationDelivery[]; assessmentPrerequisites?: AssessmentPrerequisites; heading?: string }) {
   const initialSessionId = card.state.nextSession?.id ?? card.publishedSessions[0]?.id ?? "";
   const initialSession = card.publishedSessions.find((session) => session.id === initialSessionId);
   const [mode, setMode] = useState<Mode | null>(null);
@@ -239,8 +239,8 @@ export function SessionLifecycleControls({ card, partners = [], deliveries = [],
   };
 
   return <>
-    <Card className="p-5" aria-label="Next Step">
-      <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Next Step</p>
+    <Card className="p-5" aria-label={heading}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{heading}</p>
       {primaryLabel && primaryMode ? <>
         <p className="mt-2 text-sm text-text-muted">{primaryDescription}</p>
         <div className="mt-4 flex w-full">

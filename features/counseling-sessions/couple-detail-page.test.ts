@@ -31,7 +31,10 @@ const card: CounselingSessionCard = {
   team: { campusLead: { id: "lead-team", name: "Davis & Morgan" }, coach: { id: "coach-team", name: "James & Gina Jacobs" }, counselor: { id: "counselor-team", name: "Taylor & Jordan Reed" } },
   homework: { title: "Session 2 Homework", complete: false, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
   materialSessions: [{ id: "case-session", sessionId: "session-2", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active" }, { id: "case-session-completed", sessionId: "session-3", title: "Trust", actualSequence: 3, templateSequence: 3, status: "completed" }],
-  homeworkSessions: [],
+  homeworkSessions: [
+    { caseSessionId: "case-session", sessionId: "session-2", title: "Communication", actualSequence: 2, templateSequence: 2, status: "active", revisionAssigned: true, partners: [{ progressId: "progress-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "progress-amy", profileId: "amy", name: "Amy Lee", status: "in_progress" }] },
+    { caseSessionId: "case-session-completed", sessionId: "session-3", title: "Trust", actualSequence: 3, templateSequence: 3, status: "completed", revisionAssigned: true, partners: [{ progressId: "historical-anthony", profileId: "anthony", name: "Anthony Jones", status: "submitted" }, { progressId: "historical-amy", profileId: "amy", name: "Amy Lee", status: "not_started" }] },
+  ],
 };
 
 describe("Counseling couple detail foundation", () => {
@@ -58,8 +61,9 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).toContain(">Current</span>");
     expect(markup).not.toContain("Upcoming</span>");
     expect(markup).toContain("Church");
-    expect(markup).toContain("Meeting 1 · Completed");
     expect(markup).toContain("Session 2 of 6");
+    expect(markup).toMatch(/role="tablist"[^>]*aria-label="Counseling case sections"/);
+    expect(markup).toContain(">Meetings &amp; Reminders</button>");
     expect(markup).toContain('data-meeting-case="case-1"');
     expect(markup).toContain('data-lifecycle-case="case-1"');
     expect(markup).toContain("Preview PDF");
@@ -68,27 +72,23 @@ describe("Counseling couple detail foundation", () => {
 
   it("shows one Session Materials heading and keeps completed Session exports separate and accessible", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
-    const section = markup.slice(markup.indexOf('<section aria-label="Session Materials"'), markup.indexOf("</section>", markup.indexOf('<section aria-label="Session Materials"')) + "</section>".length);
+    const section = markup.slice(markup.indexOf('aria-label="Session Materials"'), markup.indexOf("aria-label=\"Current Session Homework summary\""));
     expect(section.match(/>Session Materials</g)).toHaveLength(1);
     expect(section.indexOf(">Session Materials")).toBeLessThan(section.indexOf('data-export-session='));
-    expect(section.match(/items-center justify-start gap-3/g)).toHaveLength(2);
-    expect(section).not.toContain("justify-end");
     expect(section).toContain('data-export-session="case-session"');
     expect(section).toContain('data-export-session="case-session-completed"');
     expect(section).toContain('aria-label="Preview PDF for Session 2: Communication"');
     expect(section).toContain('aria-label="Download PDF for Session 3: Trust"');
-    const visibleMarkup = section.replace(/aria-label="[^"]*"/g, "");
-    expect(visibleMarkup).not.toContain("Communication");
-    expect(visibleMarkup).not.toContain("Completed");
-    expect(visibleMarkup).not.toContain("Active");
+    expect(section).toContain("Session 2: Communication");
+    expect(section).toContain("Session 3: Trust");
   });
 
   it("places Scheduling Settings and Assessments after Meeting Invites, separate from Homework and Session Materials", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, assessmentManagement: { assessments: [], sessions: [], preferences: {} } }));
-    expect(markup.indexOf('aria-label="Homework"')).toBeLessThan(markup.indexOf('aria-label="Session Materials"'));
-    expect(markup.indexOf('aria-label="Session Materials"')).toBeLessThan(markup.indexOf("Meeting invites"));
-    expect(markup.indexOf("Meeting invites")).toBeLessThan(markup.indexOf('aria-label="Scheduling Settings"'));
-    expect(markup.indexOf('aria-label="Scheduling Settings"')).toBeLessThan(markup.indexOf('aria-label="Assessments"'));
+    expect(markup).toContain('role="tab"');
+    expect(markup).toContain(">Homework</button>");
+    expect(markup).toContain(">Settings</button>");
+    expect(markup).toContain('aria-label="Assessments"');
     expect(markup).toContain("Assessment management");
   });
 
@@ -111,14 +111,14 @@ describe("Counseling couple detail foundation", () => {
         }], sessions: [], preferences: {},
       },
     }));
-    const nextStepStart = markup.indexOf('aria-label="Next Step"');
-    const nextStep = markup.slice(nextStepStart);
-    expect(nextStep).not.toContain("Both partners must submit their required initial Assessments");
+    const caseActionsStart = markup.indexOf('aria-label="Case Actions"');
+    const caseActions = markup.slice(caseActionsStart);
+    expect(caseActions).not.toContain("Both partners must submit their required initial Assessments");
     expect(markup).not.toContain("Admin Homework override cannot bypass this requirement.");
     expect(markup).not.toContain("Private");
     expect(markup).not.toContain(">10</span>");
     expect(markup).not.toContain(">Admin override</span>");
-    expect(nextStep).toContain(">Schedule Next Session</button>");
+    expect(caseActions).toContain(">Schedule Next Session</button>");
   });
 
   it("uses the Schedule Next Session label for Session 0 while retaining its existing completion flow", () => {
@@ -167,33 +167,20 @@ describe("Counseling couple detail foundation", () => {
     expect(devSuperAdmin.indexOf("DEV Testing")).toBeGreaterThan(devSuperAdmin.indexOf("</aside></section>"));
   });
 
-  it("shows each partner's full name with status below and read-only answers link", () => {
+  it("shows current Session Homework statuses in its compact summary", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
-    expect(markup).toContain(">Homework</p>");
-    expect(markup).toContain('text-brand-secondary">Homework</p>');
+    expect(markup).toContain(">Homework Status</h2>");
     expect(markup).toContain("Session 2 Homework");
-    expect(markup).toContain(">Anthony Jones</p>");
+    expect(markup).toContain(">Anthony Jones</span>");
     expect(markup).toContain("Submitted");
-    expect(markup).toMatch(/<p class="break-words text-sm font-semibold text-text-primary">Anthony Jones<\/p><span class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2\.5 py-1 text-xs font-medium mt-1\.5 bg-success-soft text-success-strong">Submitted<\/span>/);
-    expect(markup).toContain('href="/workspace/cases/case-1/homework/progress-anthony"');
-    expect(markup).toContain("View Answers");
-    expect(markup).not.toContain('href="/workspace/cases/case-1/homework/progress-amy"');
-    expect(markup).toContain(">Amy Lee</p>");
+    expect(markup).toContain(">Amy Lee</span>");
     expect(markup).toContain("In Progress");
-    expect(markup).toMatch(/<p class="break-words text-sm font-semibold text-text-primary">Amy Lee<\/p><span class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2\.5 py-1 text-xs font-medium mt-1\.5 bg-info-soft text-info-strong">In Progress<\/span>/);
     expect(markup).not.toContain("homework response");
-    expect(markup).toContain("flex min-w-0 items-center justify-between gap-3 py-3 first:pt-2 last:pb-0");
-    expect(markup).toContain("flex shrink-0 items-center");
-    expect(markup.indexOf("Upcoming Meeting")).toBeLessThan(markup.indexOf(">Homework</p>"));
     expect(markup).not.toContain("Current Homework");
     expect(markup).toContain('data-homework-revision="homework-revision"');
   });
 
   it("offers Reopen only for eligible submitted Homework on the active Session", () => {
-    const eligible = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card, canReopenHomework: true }));
-    expect(eligible).toContain("Reopen Homework for Anthony Jones");
-    expect(eligible).not.toContain("Reopen Homework for Amy");
-
     const unauthorized = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card }));
     expect(unauthorized).not.toContain("Reopen Homework");
 
@@ -220,8 +207,8 @@ describe("Counseling couple detail foundation", () => {
 
     expect(markup).toContain('data-homework-revision="homework-revision"');
     expect(markup.match(/>Not Started<\/span>/g)).toHaveLength(2);
-    expect(markup).toContain(">Anthony Jones</p>");
-    expect(markup).toContain(">Amy Lee</p>");
+    expect(markup).toContain(">Anthony Jones</span>");
+    expect(markup).toContain(">Amy Lee</span>");
     expect(markup).not.toContain("Homework status unavailable.");
   });
 
@@ -239,7 +226,7 @@ describe("Counseling couple detail foundation", () => {
   it("uses definitive no-Homework wording for an assigned Session snapshot with no Homework", () => {
     const noHomework = { ...card, state: { ...card.state, caseSession: { ...card.state.caseSession!, homeworkAssignmentRevisionId: null, homeworkReleasedAt: null } }, homework: null };
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, { card: noHomework }));
-    expect(markup).toContain("No Homework for this Session");
+    expect(markup).toContain("No Homework for this Session.");
     expect(markup).not.toContain("Not Started");
     expect(markup).not.toContain("data-homework-revision");
   });
@@ -271,6 +258,7 @@ describe("Counseling couple detail foundation", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, {
       card,
       prepareEnrich: { id: "document-1", slot: "counselor", fileName: "counselor-report.pdf", contentType: "application/pdf", sizeBytes: 12 },
+      assessmentManagement: { assessments: [{} as CounselorAssessment], sessions: [], preferences: {} },
     }));
     expect(markup).toContain("Prepare &amp; Enrich");
     expect(markup).toContain("Counselor Copy");
@@ -285,11 +273,12 @@ describe("Counseling couple detail foundation", () => {
     const markup = renderToStaticMarkup(createElement(CounselingCoupleDetailPage, {
       card,
       prepareEnrich: { id: "document-1", slot: "counselor", fileName: "counselor-report.pdf", contentType: "application/pdf", sizeBytes: 12 },
+      assessmentManagement: { assessments: [{} as CounselorAssessment], sessions: [], preferences: {} },
     }));
-    expect(markup.indexOf("Counseling Status")).toBeLessThan(markup.indexOf("Prepare &amp; Enrich"));
-    expect(markup.indexOf("Prepare &amp; Enrich")).toBeLessThan(markup.indexOf("Next Step"));
-    expect(markup.indexOf("Next Step")).toBeLessThan(markup.indexOf(">Progress</p>"));
-    expect(markup).toContain('aria-label="Next Step"');
+    expect(markup.indexOf("Counseling Progress")).toBeLessThan(markup.indexOf('aria-label="Assessments"'));
+    expect(markup.indexOf('aria-label="Assessments"')).toBeLessThan(markup.indexOf("Prepare &amp; Enrich"));
+    expect(markup.indexOf("Prepare &amp; Enrich")).toBeLessThan(markup.indexOf("Case Actions"));
+    expect(markup).toContain('aria-label="Case Actions"');
     expect(markup).not.toContain("Complete Session &amp; Schedule Next");
     expect(markup).not.toContain("Counseling Team");
     expect(markup).not.toContain(`href="/workspace/contacts/${card.caseId}/lead-team"`);
@@ -297,28 +286,25 @@ describe("Counseling couple detail foundation", () => {
     expect(markup).not.toContain(`href="/workspace/contacts/${card.caseId}/counselor-team"`);
     expect(markup).toContain("Current Session");
     expect(markup).toContain("Upcoming Meeting");
-    expect(markup).toContain("Meeting invites");
     expect(markup).toContain("Homework");
     expect(markup).not.toContain("Current Homework");
     expect(markup).toContain("lg:grid-cols-[minmax(0,1fr)_17rem]");
-    const mainColumn = markup.slice(markup.indexOf('class="space-y-6"'), markup.indexOf("<aside"));
+    const mainColumn = markup.slice(markup.indexOf('class="min-w-0 space-y-4"'), markup.indexOf("<aside"));
     expect(mainColumn).toContain("Session 2");
-    expect(mainColumn.indexOf("Upcoming Meeting")).toBeLessThan(mainColumn.indexOf(">Homework</p>"));
-    expect(mainColumn.indexOf(">Homework</p>")).toBeLessThan(mainColumn.indexOf("Meeting invites"));
+    expect(mainColumn).toContain("Upcoming Meeting");
+    expect(mainColumn).toContain("Homework Status");
     expect(mainColumn).toContain("bg-info-soft/70");
-    expect(mainColumn.match(/>Current Session<\/p>/g) ?? []).toHaveLength(1);
-    expect(mainColumn).toContain("Session 2</h2>");
+    expect(mainColumn.match(/>Current Session<\/p>/g) ?? []).toHaveLength(2);
+    expect(mainColumn).toContain("Session 2: Communication</h2>");
     expect(mainColumn).not.toContain("grid items-stretch gap-4 sm:grid-cols-2");
     expect(mainColumn).not.toContain(">Current Homework</p>");
     expect(mainColumn).not.toContain(">Next Meeting</p>");
     expect(markup).toContain("space-y-4");
     const rightRail = markup.slice(markup.indexOf("<aside"), markup.indexOf("</aside>"));
-    expect(rightRail).not.toContain("Next Meeting");
     expect(rightRail).toContain("Session 2 of 6");
     expect(rightRail).toContain('role="progressbar"');
-    expect(rightRail.indexOf("Counseling Status")).toBeLessThan(rightRail.indexOf("Prepare &amp; Enrich"));
-    expect(rightRail.indexOf("Prepare &amp; Enrich")).toBeLessThan(rightRail.indexOf("Next Step"));
-    expect(rightRail.indexOf("Next Step")).toBeLessThan(rightRail.indexOf(">Progress</p>"));
+    expect(rightRail.indexOf("Counseling Progress")).toBeLessThan(rightRail.indexOf("Prepare &amp; Enrich"));
+    expect(rightRail.indexOf("Prepare &amp; Enrich")).toBeLessThan(rightRail.indexOf("Case Actions"));
     expect(markup).toContain("Oct 12, 2026, 12:00 PM · Church");
   });
 
@@ -327,13 +313,9 @@ describe("Counseling couple detail foundation", () => {
       card,
       assessmentManagement: { assessments: [{} as CounselorAssessment], sessions: [], preferences: {} },
     }));
-    const mainColumn = markup.slice(markup.indexOf('class="space-y-6"'), markup.indexOf("<aside"));
     const rightRail = markup.slice(markup.indexOf("<aside"), markup.indexOf("</aside>"));
-    expect(mainColumn).toContain('aria-label="Scheduling Settings"');
-    expect(mainColumn).not.toContain('aria-label="Assessments"');
     expect(rightRail).toContain('aria-label="Assessments"');
-    expect(rightRail.indexOf("Next Step")).toBeLessThan(rightRail.indexOf(">Progress</p>"));
-    expect(rightRail.indexOf(">Progress</p>")).toBeLessThan(rightRail.indexOf('aria-label="Assessments"'));
+    expect(markup).toContain(">Settings</button>");
   });
 
   it("keeps Prepare & Enrich directly after Counseling Status when no Counselor Copy is uploaded", () => {

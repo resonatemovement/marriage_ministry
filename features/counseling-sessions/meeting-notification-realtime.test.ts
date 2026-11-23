@@ -131,7 +131,8 @@ describe("Meeting notification Realtime invalidation", () => {
     const integration = readFileSync(new URL("./meeting-notification-realtime.tsx", import.meta.url), "utf8");
     const query = readFileSync(new URL("../notifications/meeting-notifications.ts", import.meta.url), "utf8");
 
-    expect(caseView).toContain("<MeetingNotificationRealtime meetingId={card.state.meeting.id}");
+    expect(caseView).toContain("<MeetingNotificationRealtime meetingId={upcomingMeeting.id}");
+    expect(caseView).toContain("{upcomingMeeting ? <Card className=\"p-5\"><MeetingNotificationRealtime");
     expect(coupleView).not.toContain("MeetingNotificationRealtime");
     expect(integration).toContain("startFeatureRealtimeSubscription");
     expect(integration).toContain("startAuthReadyRealtimeSubscription");

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
 
 import { GroupedAvatars } from "@/components/shared/grouped-avatars";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +19,11 @@ import { formatCounselingMeetingDateTime } from "./meeting-date-time";
 import { HomeworkProgressRealtime } from "./homework-progress-realtime";
 import { MeetingRealtime } from "./meeting-realtime";
 import { CaseLifecycleRealtime } from "./case-lifecycle-realtime";
-import { ReopenHomeworkButton } from "./homework-reopen-button";
 import { CounselorAssessmentCards, CounselorAssessmentSchedulingSettings } from "@/features/assessments/counselor-assessment-management";
 import { assessmentBlocksSessionAdvancement, type CounselorAssessment, type CounselorAssessmentSession } from "@/features/assessments/counselor-management-model";
 import { orderCouplePartners } from "@/features/people/partner-order";
+import { CaseDetailTabs } from "./case-detail-tabs";
+import { HomeworkSessionBrowser } from "./homework-session-browser";
 
 function PartnerPhotos({ card }: { card: CounselingSessionCard }) {
   return <GroupedAvatars people={couplePhotoSlots(card.partners)} label={`${card.coupleName} partner photos`} />;
@@ -40,16 +40,10 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
   const progressPercent = counselingProgressPercent(presentation.progress, card.state.kind === "completed");
   const caseStatus = counselingStatusLabel(card.status, true, false) ?? card.status;
   const activeAuthoredSession = card.state.kind === "session";
-  const sessionHeading = activeAuthoredSession
-    ? `Session ${card.state.caseSession?.templateSequence ?? card.state.session?.number ?? 1}`
-    : card.state.kind === "initial"
-      ? "Initial Meeting"
-      : presentation.sessionTitle;
-  const sessionEyebrow = activeAuthoredSession
-    ? "Current Session"
-    : card.state.kind === "initial"
-      ? "Session 0"
-      : presentation.statusLabel;
+  const currentSessionNumber = card.state.caseSession?.templateSequence ?? card.state.session?.number ?? null;
+  const currentSessionTitle = activeAuthoredSession
+    ? `Session ${currentSessionNumber ?? 1}: ${card.state.caseSession?.title ?? card.state.session?.title ?? "In Progress"}`
+    : card.state.kind === "initial" ? "Initial Meeting" : "No active Session";
   const sessionStatus = activeAuthoredSession
     ? "Current"
     : card.state.kind === "initial"
@@ -82,85 +76,68 @@ export function CounselingCoupleDetailPage({ card, prepareEnrich = null, assessm
       <p className="mt-2 text-sm text-text-muted">Counseling Sessions and care details for this couple.</p>
     </div>
   </>;
+  const upcomingMeeting = card.state.meeting;
+  const sessionMaterialItems = [...card.materialSessions].sort((left, right) => {
+    if (left.id === activeCaseSessionId) return -1;
+    if (right.id === activeCaseSessionId) return 1;
+    return left.actualSequence - right.actualSequence;
+  });
+  const sessionTab = <div className="grid gap-4">
+    <Card className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Current Session</p><h2 className="font-heading mt-1 break-words text-xl font-bold text-text-primary">{currentSessionTitle}</h2>{activeAuthoredSession ? <p className="mt-1 text-sm text-text-muted">{presentation.progress}</p> : null}</div>
+        <Badge className={sessionStatusClass}>{sessionStatus}</Badge>
+      </div>
+      {upcomingMeeting ? <div className="mt-4 rounded-md bg-info-soft/70 p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-info-strong">Upcoming Meeting</p><p className="mt-1 break-words text-sm font-semibold text-text-primary">{formatCounselingMeetingDateTime(upcomingMeeting.startsAt)} · {upcomingMeeting.location}</p></div> : <p className="mt-3 text-sm text-text-muted">No upcoming meeting is scheduled.</p>}
+    </Card>
+    <Card className="p-5" aria-label="Session Materials">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Session Materials</h2>
+      {sessionMaterialItems.length ? <ul className="mt-2 divide-y divide-border">{sessionMaterialItems.map((session) => <li key={session.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-1 last:pb-0">
+        <span className="min-w-0 break-words text-sm font-semibold text-text-primary">Session {session.templateSequence}: {session.title}{session.id === activeCaseSessionId ? " · Current" : ""}</span>
+        <ExportSessionMaterialsButton caseSessionId={session.id} sessionLabel={`Session ${session.templateSequence}: ${session.title}`} />
+      </li>)}</ul> : <p className="mt-2 text-sm text-text-muted">No Session Materials are available.</p>}
+    </Card>
+    <Card className="p-5" aria-label="Current Session Homework summary">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Homework Status</h2>
+      {card.homework ? <><p className="mt-1 text-sm font-medium text-text-primary">{card.homework.title}</p><ul className="mt-2 divide-y divide-border">{card.homework.partners.map((partner) => <li key={partner.profileId} className="flex items-center justify-between gap-3 py-2 last:pb-0"><span className="min-w-0 break-words text-sm font-medium text-text-primary">{card.partners.find(({ id }) => id === partner.profileId)?.name ?? partner.name}</span><Badge className={homeworkProgressBadgeClass(partner.status)}>{homeworkProgressLabel(partner.status)}</Badge></li>)}</ul></> : <p className="mt-1 text-sm text-text-muted">{card.state.caseSession ? card.state.caseSession.homeworkAssignmentRevisionId ? "Homework status unavailable." : "No Homework for this Session." : "No Homework has been assigned yet."}</p>}
+    </Card>
+  </div>;
+  const meetingsTab = <div className="grid gap-4">
+    <Card className="p-5">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Meetings</h2>
+      {upcomingMeeting ? <div className="mt-3 rounded-md bg-info-soft/70 p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-info-strong">Upcoming Meeting</p><p className="mt-1 break-words text-sm font-semibold text-text-primary">{formatCounselingMeetingDateTime(upcomingMeeting.startsAt)} · {upcomingMeeting.location}</p></div> : <p className="mt-2 text-sm text-text-muted">No upcoming meeting is scheduled.</p>}
+      {card.state.pastMeetings.length ? <div className="mt-4 border-t border-border pt-3"><h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Meeting History</h3><ol className="mt-2 divide-y divide-border">{card.state.pastMeetings.map((meeting, index) => <li key={meeting.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2 text-sm"><span className="font-medium text-text-primary">Meeting {index + 1} · {meeting.completedAt ? "Completed" : "Scheduled"}</span><span className="text-text-muted">{formatCounselingMeetingDateTime(meeting.startsAt)} · {meeting.location}</span></li>)}</ol></div> : <p className="mt-3 border-t border-border pt-3 text-sm text-text-muted">No previous meetings.</p>}
+    </Card>
+    {upcomingMeeting ? <Card className="p-5"><MeetingNotificationRealtime meetingId={upcomingMeeting.id} /><MeetingNotificationStatus partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} compact /></Card> : <Card className="p-5"><h2 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Invitations &amp; Reminders</h2><p className="mt-2 text-sm text-text-muted">Delivery history is available when a Meeting has been scheduled.</p></Card>}
+  </div>;
+  const settingsTab = !assessmentManagement ? <p className="text-sm text-text-muted">Assessment scheduling settings are unavailable.</p>
+    : !canManageAssessmentSchedule ? <p className="text-sm text-text-muted">Assessment scheduling settings are not available in this workspace.</p>
+      : assessmentManagement.assessments.length === 0 ? <p className="text-sm text-text-muted">No Assessment schedules are available.</p>
+        : <CounselorAssessmentSchedulingSettings caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManageSchedule={canManageAssessmentSchedule} canManagePreference={canManageAssessmentPreference} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} />;
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <MeetingRealtime caseId={card.caseId} />
     <CaseLifecycleRealtime caseId={card.caseId} />
     {activeHomeworkRevisionId ? <HomeworkProgressRealtime assignmentRevisionId={activeHomeworkRevisionId} /> : null}
     <Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/workspace">Workspace</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href="/workspace">Sessions</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{card.coupleName}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
-    <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
-      <div className="space-y-6">
+    <section className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-6">
+      <div className="min-w-0 space-y-4">
         <Card className="p-5">
-          {showCoupleContactLink ? (
-            <Link href={`/workspace/contacts/${card.caseId}/${card.coupleId}`} className="flex flex-col gap-5 rounded-md sm:flex-row sm:items-center">
-              {coupleIdentityContent}
-            </Link>
-          ) : (
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              {coupleIdentityContent}
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{sessionEyebrow}</p>
-              <h2 className="font-heading mt-2 text-xl font-bold text-text-primary">{sessionHeading}</h2>
-              {activeAuthoredSession ? <p className="mt-1 text-base font-semibold text-text-secondary">{card.state.session?.title ?? card.state.detail}</p> : null}
-              {card.state.kind === "initial" ? <p className="mt-2 max-w-xl text-sm text-text-muted">Review Prepare &amp; Enrich results and discuss the couple’s assessment and goals.</p> : activeAuthoredSession ? <p className="mt-2 text-sm text-text-muted">Session Material and Homework released together.</p> : null}
-            </div>
-            <Badge className={sessionStatusClass}>{sessionStatus}</Badge>
+          {showCoupleContactLink ? <Link href={`/workspace/contacts/${card.caseId}/${card.coupleId}`} className="flex min-w-0 flex-col gap-4 rounded-md sm:flex-row sm:items-center">{coupleIdentityContent}</Link> : <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">{coupleIdentityContent}</div>}
+          <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
+            <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Counseling Status</p><p className="mt-1 truncate text-sm font-semibold text-text-primary">{caseStatus}</p></div>
+            <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Current Session</p><p className="mt-1 truncate text-sm font-semibold text-text-primary">{currentSessionTitle}</p></div>
+            <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Upcoming Meeting</p><p className="mt-1 truncate text-sm font-semibold text-text-primary">{upcomingMeeting ? `${formatCounselingMeetingDateTime(upcomingMeeting.startsAt)} · ${upcomingMeeting.location}` : "Not scheduled"}</p></div>
           </div>
-
-          {card.state.meeting ? <div className="mt-5 flex items-start gap-3 rounded-md bg-info-soft/70 p-3 sm:p-4">
-            <CalendarDays className="mt-0.5 size-5 shrink-0 text-info-strong" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-info-strong">Upcoming Meeting</p>
-              <p className="mt-1 break-words text-sm font-semibold text-text-primary">{formatCounselingMeetingDateTime(card.state.meeting.startsAt)} · {card.state.meeting.location}</p>
-            </div>
-          </div> : null}
-
-          {card.state.pastMeetings.length ? <div className="mt-4 border-t border-border pt-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Previous Meetings</p>
-            <ol className="mt-2 space-y-2">{card.state.pastMeetings.map((meeting, index) => <li key={meeting.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm"><span className="font-medium text-text-primary">Meeting {index + 1} · {meeting.completedAt ? "Completed" : "Scheduled"}</span><span className="text-text-muted">{formatCounselingMeetingDateTime(meeting.startsAt)}</span></li>)}</ol>
-          </div> : null}
-
-          <section id="homework" aria-label="Homework" className="mt-4 border-t border-border pt-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Homework</p>
-            {card.homework ? <>
-              <p className="mt-1 text-sm font-medium text-text-primary">{card.homework.title}</p>
-              <ul className="mt-2 divide-y divide-border">{card.homework.partners.map((partner) => {
-                const displayName = card.partners.find((casePartner) => casePartner.id === partner.profileId)?.name ?? partner.name;
-                const hasSubmittedAnswers = partner.status === "submitted" || partner.status === "reviewed";
-                const canReopenPartnerHomework = canReopenHomework && card.status === "active" && card.state.caseSession?.status === "active" && hasSubmittedAnswers;
-                return <li key={partner.profileId} className="flex min-w-0 items-center justify-between gap-3 py-3 first:pt-2 last:pb-0"><div className="min-w-0"><p className="break-words text-sm font-semibold text-text-primary">{displayName}</p><Badge className={`mt-1.5 ${homeworkProgressBadgeClass(partner.status)}`}>{homeworkProgressLabel(partner.status)}</Badge></div><div className="flex shrink-0 items-center">{hasSubmittedAnswers || canReopenPartnerHomework ? <ReopenHomeworkButton caseId={card.caseId} progressId={partner.progressId} partnerName={displayName} viewAnswersHref={hasSubmittedAnswers ? `/workspace/cases/${card.caseId}/homework/${partner.progressId}` : undefined} canReopen={canReopenPartnerHomework} /> : null}</div></li>;
-              })}</ul>
-            </> : <p className="mt-1 text-sm text-text-muted">{card.state.caseSession ? card.state.caseSession.homeworkAssignmentRevisionId ? "Homework status unavailable." : "No Homework for this Session" : "No homework assigned yet."}</p>}
-          </section>
-
-          {card.materialSessions.length ? <section aria-label="Session Materials" className="mt-4 border-t border-border pt-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Session Materials</h3>
-            <ul className="mt-1 divide-y divide-border">{card.materialSessions.map((session) => <li key={session.id} className="flex flex-wrap items-center justify-start gap-3 py-2 first:pt-1 last:pb-0">
-              <ExportSessionMaterialsButton caseSessionId={session.id} sessionLabel={`Session ${session.templateSequence}: ${session.title}`} />
-            </li>)}</ul>
-          </section> : null}
-
-          {card.state.meeting ? <>
-            <MeetingNotificationRealtime meetingId={card.state.meeting.id} />
-            <MeetingNotificationStatus partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} />
-          </> : null}
-
-          {assessmentManagement ? <CounselorAssessmentSchedulingSettings caseId={card.caseId} assessments={assessmentManagement.assessments} sessions={assessmentManagement.sessions} preferences={assessmentManagement.preferences} canManageSchedule={canManageAssessmentSchedule} canManagePreference={canManageAssessmentPreference} completedSessionIds={card.materialSessions.filter(({ status }) => status === "completed").map(({ sessionId }) => sessionId)} /> : null}
         </Card>
+        <Card className="min-w-0 p-5"><CaseDetailTabs session={sessionTab} homework={<HomeworkSessionBrowser key={activeCaseSessionId ?? "no-active-session"} card={card} canReopenHomework={canReopenHomework} />} meetings={meetingsTab} settings={settingsTab} /></Card>
       </div>
 
-      <aside className="space-y-4">
-        <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Counseling Status</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{caseStatus}</p></Card>
-        <PrepareEnrichCard caseId={card.caseId} document={prepareEnrich} />
-        <SessionLifecycleControls card={{ caseId: card.caseId, coupleName: card.coupleName, state: card.state, publishedSessions: card.publishedSessions, homework: card.homework, isAdmin }} partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} assessmentPrerequisites={assessmentPrerequisites} />
-        <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Progress</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{presentation.progress}</p>{progressPercent !== null ? <div role="progressbar" aria-label="Counseling program progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)} className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary" style={{ width: `${progressPercent}%` }} /></div> : null}</Card>
+      <aside className="min-w-0 space-y-4">
+        <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Counseling Progress</p><p className="font-heading mt-2 text-base font-bold text-text-primary">{presentation.progress}</p>{progressPercent !== null ? <div role="progressbar" aria-label="Counseling program progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)} className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full bg-brand-primary" style={{ width: `${progressPercent}%` }} /></div> : null}</Card>
         {assessmentManagement ? <CounselorAssessmentCards assessments={assessmentManagement.assessments} canReadResults={canReadAssessmentResults} activeCaseSessionId={card.state.caseSession?.status === "active" ? card.state.caseSession.id : null} partnerOrder={assessmentPartnerOrder} /> : null}
+        <PrepareEnrichCard caseId={card.caseId} document={prepareEnrich} />
+        <SessionLifecycleControls card={{ caseId: card.caseId, coupleName: card.coupleName, state: card.state, publishedSessions: card.publishedSessions, homework: card.homework, isAdmin }} partners={card.partners.map(({ id, firstName, name }) => ({ id, firstName, name }))} deliveries={meetingNotifications} assessmentPrerequisites={assessmentPrerequisites} heading="Case Actions" />
       </aside>
     </section>
     {canResetCounselingJourney ? <DevResetControl caseId={card.caseId} /> : null}
