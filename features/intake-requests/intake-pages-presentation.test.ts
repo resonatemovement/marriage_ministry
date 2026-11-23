@@ -6,7 +6,7 @@ vi.mock("./status-manager", () => ({
   IntakeStatusManager: ({ isSuperAdmin }: { isSuperAdmin: boolean }) => createElement("section", null, "Start Review", "Send Invite", "Close Request", "Reopen for Review", isSuperAdmin ? "Delete" : null),
 }));
 
-import { IntakeRequestReview } from "./intake-pages";
+import { IntakeRequestQueue, IntakeRequestReview } from "./intake-pages";
 import type { IntakeRequestDetail } from "./types";
 
 const request: IntakeRequestDetail = {
@@ -25,6 +25,21 @@ function render(capabilities: Pick<ComponentProps<typeof IntakeRequestReview>, "
 }
 
 describe("Intake request presentation capabilities", () => {
+  it("renders URL-preserving Intake views as accessible segmented navigation", () => {
+    const markup = renderToStaticMarkup(createElement(IntakeRequestQueue, {
+      requests: [], search: "Rivera", status: "ready_for_review", view: "open", error: null,
+    }));
+
+    expect(markup).toContain('aria-label="Intake request views"');
+    expect(markup).toContain('href="/intake-requests?q=Rivera&amp;status=ready_for_review&amp;view=open"');
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("bg-surface-muted p-1");
+    expect(markup).toContain("Open Requests");
+    expect(markup).toContain("Added");
+    expect(markup).toContain(">All</a>");
+    expect(markup).toContain('name="q" value="Rivera"');
+  });
+
   it("gives a Campus Lead normal workflow controls without permanent deletion", () => {
     const page = render({ canManageIntake: true, canDeleteIntake: false });
 

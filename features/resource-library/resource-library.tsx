@@ -5,6 +5,7 @@ import { FolderOpen, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
+import { segmentedNavigationItemClassName, segmentedNavigationTrackClassName } from "@/components/ui/segmented-navigation";
 import { formatResourceFileSize } from "./policy";
 import { filterResourceItems, RESOURCE_CATEGORY_FILTERS, resourceEmptyState, type ResourceCategoryFilter, type ResourceLibraryItem } from "./presentation";
 import { reloadResourceLibrary } from "./actions";
@@ -126,8 +127,8 @@ export function ResourceLibrary({ initialResources, initialCount, initialError, 
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search resources..." className="h-11 w-full rounded-md border border-border bg-white pl-10 pr-3 text-sm text-text-primary outline-none focus:border-brand-primary" />
           </label>
-          {isAdmin ? <div role="group" aria-label="Resource status" className="flex rounded-md bg-surface-muted p-1">
-            {[{ value: false, label: "Active" }, { value: true, label: "Archived" }].map((view) => <button key={view.label} type="button" aria-pressed={archived === view.value} disabled={loading} onClick={() => void changeArchiveView(view.value)} className={`min-h-9 flex-1 rounded px-3 text-sm font-semibold transition focus-visible:bg-white ${archived === view.value ? "bg-white text-brand-primary shadow-sm" : "text-text-muted hover:text-text-primary"}`}>{view.label}</button>)}
+          {isAdmin ? <div role="group" aria-label="Resource status" className={segmentedNavigationTrackClassName}>
+            {[{ value: false, label: "Active" }, { value: true, label: "Archived" }].map((view) => <button key={view.label} type="button" aria-pressed={archived === view.value} disabled={loading} onClick={() => void changeArchiveView(view.value)} className={`${segmentedNavigationItemClassName(archived === view.value)} min-h-9 flex-1`}>{view.label}</button>)}
           </div> : null}
         </div>
         <div role="group" aria-label="Filter by category" className="mt-4 flex gap-2 overflow-x-auto pb-1">

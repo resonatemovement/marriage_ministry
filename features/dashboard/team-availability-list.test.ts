@@ -11,6 +11,10 @@ const teams = [
 describe("Team Availability list", () => {
   it("renders the default accepting, zero-Couple filter and clickable list rows", () => {
     const html = renderToStaticMarkup(createElement(TeamAvailabilityList, { teams, view: "available", search: "" }));
+    expect(html).toContain('aria-label="Team availability filters"');
+    expect(html).toContain('href="/dashboard/team-availability"');
+    expect(html).toContain('aria-current="page"');
+    expect(html).toContain("bg-surface-muted p-1");
     expect(html).toContain("Accepting · 0 Couples");
     expect(html).toContain("No teams match these filters");
     expect(html).not.toContain("Fremont Coach Team");
@@ -18,6 +22,8 @@ describe("Team Availability list", () => {
 
   it("renders All Teams with a dedicated Couple count and context-preserving detail links", () => {
     const html = renderToStaticMarkup(createElement(TeamAvailabilityList, { teams, view: "all", search: "Fremont" }));
+    expect(html).toContain('href="/dashboard/team-availability?view=all&amp;q=Fremont"');
+    expect(html).toContain('aria-current="page"');
     expect(html).toContain('href="/people/coach-id?from=team-availability&amp;returnTo=%2Fdashboard%2Fteam-availability%3Fview%3Dall%26q%3DFremont"');
     expect(html).toContain("Fremont Coach Team");
     expect(html).toContain("1 Couple");

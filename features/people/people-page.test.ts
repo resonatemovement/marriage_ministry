@@ -31,6 +31,8 @@ describe("Admin filtered Couple list", () => {
     expect(markup).toContain("Back to Dashboard");
     expect(markup).toContain('href="/dashboard"');
     expect(markup).toContain('name="caseStatus" value="unassigned"');
+    expect(markup).toContain('aria-label="Couple status filters"');
+    expect(markup).toContain('href="/people?filter=couples&amp;q=Jordan&amp;caseStatus=unassigned" aria-current="page"');
     expect(markup).toContain('href="/people?filter=couples&amp;q=Jordan&amp;caseStatus=interviewed"');
     expect(markup).toContain('href="/people/couple-id?returnTo=');
     expect(markup).toContain("Unassigned · Interviewed");

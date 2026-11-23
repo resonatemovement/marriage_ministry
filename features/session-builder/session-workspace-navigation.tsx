@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { SegmentedNavigation, segmentedNavigationItemClassName } from "@/components/ui/segmented-navigation";
 import { sessionWorkspaceHref, type SessionWorkspace } from "./workspace";
 
 export function SessionWorkspaceNavigation({ sessionId, activeWorkspace }: {
@@ -19,13 +20,13 @@ export function SessionWorkspaceNavigation({ sessionId, activeWorkspace }: {
     startTransition(() => router.push(sessionWorkspaceHref(sessionId, workspace), { scroll: false }));
   }
 
-  return <nav aria-label="Session authoring workspaces" className="mb-6 flex gap-2 border-b border-border">
-    <button type="button" aria-current={activeWorkspace === "material" ? "page" : undefined} onClick={() => selectWorkspace("material")} className={`min-h-10 border-b-2 px-4 py-2 text-sm font-semibold transition focus-visible:bg-sidebar-accent focus-visible:text-brand-primary ${activeWorkspace === "material" ? "border-brand-primary text-brand-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}>
+  return <SegmentedNavigation label="Session authoring workspaces" className="mb-6">
+    <button type="button" aria-current={activeWorkspace === "material" ? "page" : undefined} onClick={() => selectWorkspace("material")} className={segmentedNavigationItemClassName(activeWorkspace === "material")}>
       Session Material
     </button>
-    <button type="button" disabled={isPending && pendingWorkspace !== "homework"} aria-current={activeWorkspace === "homework" ? "page" : undefined} onClick={() => selectWorkspace("homework")} className={`min-h-10 border-b-2 px-4 py-2 text-sm font-semibold transition focus-visible:bg-sidebar-accent focus-visible:text-brand-primary disabled:cursor-wait ${activeWorkspace === "homework" ? "border-brand-primary text-brand-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}>
+    <button type="button" disabled={isPending && pendingWorkspace !== "homework"} aria-current={activeWorkspace === "homework" ? "page" : undefined} onClick={() => selectWorkspace("homework")} className={`${segmentedNavigationItemClassName(activeWorkspace === "homework")} disabled:cursor-wait`}>
       Homework
     </button>
     {isPending ? <span className="sr-only" role="status">Loading {pendingWorkspace === "homework" ? "Homework" : "Session Material"}</span> : null}
-  </nav>;
+  </SegmentedNavigation>;
 }

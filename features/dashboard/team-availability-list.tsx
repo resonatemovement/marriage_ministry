@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SegmentedNavigation, segmentedNavigationItemClassName } from "@/components/ui/segmented-navigation";
 import { filterDashboardAvailabilityTeams, teamAvailabilityDetailHref, teamAvailabilityListHref, teamCoupleCountLabel, type DashboardAvailabilityTeam, type TeamAvailabilityView } from "./team-availability";
 
 const views: readonly { id: TeamAvailabilityView; label: string }[] = [
@@ -35,7 +36,7 @@ export function TeamAvailabilityList({ teams, view, search, error = false }: { t
     <header><p className="font-heading text-xs font-extrabold uppercase tracking-widest text-brand-secondary">Dashboard</p><h1 className="font-heading mt-1 text-2xl font-bold text-text-primary">Team Availability</h1><p className="mt-2 text-sm text-text-muted">Active Campus Lead, Coach, and Counselor teams, ordered by directly assigned Couples.</p></header>
 
     <Card className="mt-7 p-5">
-      <nav aria-label="Team availability filters" className="flex flex-wrap gap-2">{views.map((item) => <Link key={item.id} aria-current={view === item.id ? "page" : undefined} href={teamAvailabilityListHref(item.id, search)} className={view === item.id ? "rounded-md bg-sidebar-accent px-3 py-2 text-sm font-bold text-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30" : "rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"}>{item.label}</Link>)}</nav>
+      <SegmentedNavigation label="Team availability filters">{views.map((item) => <Link key={item.id} aria-current={view === item.id ? "page" : undefined} href={teamAvailabilityListHref(item.id, search)} className={segmentedNavigationItemClassName(view === item.id)}>{item.label}</Link>)}</SegmentedNavigation>
       <form action="/dashboard/team-availability" method="get" className="mt-4 flex flex-col gap-3 sm:flex-row">
         {view === "all" ? <input type="hidden" name="view" value="all" /> : null}
         <label className="relative flex-1"><span className="sr-only">Search teams</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" /><Input name="q" defaultValue={search} placeholder="Search team or campus" className="pl-10" /></label>

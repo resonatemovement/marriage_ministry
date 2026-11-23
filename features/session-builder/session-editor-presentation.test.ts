@@ -58,7 +58,8 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain("Homework");
     expect(markup).toContain("Save Changes");
     expect(markup).toContain("Publish Session");
-    expect(markup).toContain("mb-6 flex gap-2 border-b border-border");
+    expect(markup).toContain('aria-label="Session authoring workspaces"');
+    expect(markup).toContain("bg-surface-muted p-1");
     expect(markup).not.toContain("mt-8 border-t border-border pt-6");
   });
 
