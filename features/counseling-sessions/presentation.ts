@@ -1,17 +1,10 @@
 import type { SessionCardState } from "./model";
 import type { CounselingSessionPartner } from "./queries";
 
-export const counselingSessionsGridClassName = "mt-4 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2";
-export function counselingSessionsOversightGridClassName(coupleCount: number) {
-  return coupleCount >= 2
-    ? "grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
-    : "grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-2";
-}
-export function counselingSessionsRailClassName(coupleCount: number) {
-  return coupleCount >= 2
-    ? "min-w-0 self-start md:col-start-2 md:row-start-1 xl:col-start-3 xl:row-start-1"
-    : "min-w-0 self-start";
-}
+export const counselingSessionsGridClassName = "mt-4 grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2";
+export const counselingSessionsOversightGridClassName = "grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_17rem]";
+export const counselingSessionsOversightCardsGridClassName = "grid min-w-0 auto-rows-fr grid-cols-1 items-stretch gap-4 xl:grid-cols-2";
+export const counselingSessionsRailClassName = "min-w-0";
 export const sessionCardContainerClassName = "relative flex h-full flex-col overflow-hidden p-5 transition-all duration-150 has-[>a:hover]:-translate-y-px has-[>a:hover]:border-brand-primary/35 has-[>a:hover]:shadow-[0_4px_10px_rgba(43,45,42,0.08),0_12px_28px_rgba(43,45,42,0.07)] has-[>a:focus-visible]:border-brand-primary/60 has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-brand-primary/35";
 export const sessionCardNavigationClassName = "absolute inset-0 z-0 cursor-pointer rounded-lg transition-colors hover:bg-info-soft/35 focus:outline-none focus-visible:bg-info-soft/45";
 function counselingCaseHref(caseId: string) {

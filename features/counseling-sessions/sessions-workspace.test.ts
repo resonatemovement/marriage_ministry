@@ -73,37 +73,54 @@ describe("SessionsWorkspace", () => {
     expect(markup).not.toContain("Initial Meeting");
   });
 
-  it("keeps Coach/Campus Lead Couple cards at natural height alongside the hierarchy rail", () => {
+  it("keeps Coach/Campus Lead Couple cards equal-height in a separate grid from the hierarchy rail", () => {
     const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card], workspaceRail: createElement("aside", null, "Hierarchy") }));
-    expect(markup).toContain("h-auto");
-    expect(markup).toContain("self-start");
+    expect(markup).toContain("auto-rows-fr");
+    expect(markup).toContain("items-stretch");
+    expect(markup).toContain("relative flex h-full flex-col");
+    expect(markup).toContain("relative z-0 flex flex-1 flex-col");
+    expect(markup).toContain("mt-auto grid gap-2 border-t");
     expect(markup).toContain("xl:grid-cols-2");
+    expect(markup).toContain("md:grid-cols-[minmax(0,1fr)_17rem]");
     expect(markup).toContain('aria-label="Counseling workspace"');
     expect(markup).toContain("Hierarchy");
+    expect(markup).not.toContain("h-auto");
   });
 
-  it("keeps the empty state and hierarchy in the same two-column oversight grid", () => {
+  it("keeps the empty state in the card grid and hierarchy in its own column", () => {
     const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [], workspaceRail: createElement("aside", null, "Hierarchy"), isCoachWorkspace: true }));
     expect(markup).toContain("Pending couple assignment");
-    expect(markup).toContain("xl:grid-cols-2");
+    expect(markup).toContain("auto-rows-fr");
     expect(markup).toContain("Hierarchy");
-    expect(markup).not.toContain("sm:col-span-2");
+    expect(markup).toContain("md:grid-cols-[minmax(0,1fr)_17rem]");
   });
 
-  it("uses three equal wide-desktop columns for two Couples and the hierarchy", () => {
+  it("uses two Couple-card columns beside the hierarchy for two Couples", () => {
     const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card, { ...card, caseId: "case-2", coupleName: "Alex & Jordan" }], workspaceRail: createElement("aside", null, "Hierarchy") }));
-    expect(markup).toContain("xl:grid-cols-3");
+    expect(markup).toContain("xl:grid-cols-2");
     expect(markup).toContain("John Smith &amp; Stacy Miller");
     expect(markup).toContain("Alex &amp; Jordan");
-    expect(markup).toContain("xl:col-start-3 xl:row-start-1");
+    expect(markup).toContain("md:grid-cols-[minmax(0,1fr)_17rem]");
   });
 
-  it("pins the hierarchy in the first wide-desktop row when more than two Couples wrap", () => {
+  it("keeps three and additional Couple cards in equal-height rows without clipping long content", () => {
+    const longCard = {
+      ...card,
+      caseId: "case-2",
+      coupleName: "Alexandria and Jordan with a Longer Couple Display Name",
+      state: sessionCardState("active", [{ id: "session-1", number: 1, title: "A Session Title That Wraps Without Being Truncated", isFinal: false }], [], [], [{ id: "case-session-1", sessionId: "session-1", actualSequence: 1, templateSequence: 1, title: "A Session Title That Wraps Without Being Truncated", status: "active", isFinal: false, homeworkAssignmentRevisionId: null, materialReleasedAt: "2026-11-01T00:00:00Z", homeworkReleasedAt: null }]),
+    };
     const markup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card, { ...card, caseId: "case-2" }, { ...card, caseId: "case-3" }], workspaceRail: createElement("aside", null, "Hierarchy") }));
-    expect(markup).toContain("xl:grid-cols-3");
-    expect(markup).toContain("md:col-start-2 md:row-start-1 xl:col-start-3 xl:row-start-1");
+    const variedMarkup = renderToStaticMarkup(createElement(SessionsWorkspace, { cards: [card, longCard, { ...card, caseId: "case-3" }], workspaceRail: createElement("aside", null, "Hierarchy") }));
+    expect(markup).toContain("xl:grid-cols-2");
     expect((markup.match(/aria-label="Open counseling case for/g) ?? [])).toHaveLength(3);
-    expect(markup).toContain("h-auto");
+    expect(variedMarkup).toContain("Alexandria and Jordan with a Longer Couple Display Name");
+    expect(variedMarkup).toContain("A Session Title That Wraps Without Being Truncated");
+    expect(variedMarkup).toContain("min-h-14");
+    expect(variedMarkup).toContain("min-h-10");
+    expect(variedMarkup).toContain("mt-auto grid gap-2 border-t");
+    expect(variedMarkup).not.toContain("truncate");
+    expect(variedMarkup).not.toContain("h-auto");
   });
 
   it("retains the existing non-Coach empty state", () => {
