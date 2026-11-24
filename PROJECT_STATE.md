@@ -1,7 +1,14 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 24, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; Session Material PDF snapshot-link compatibility fix validated; authenticated browser verification pending)
+Current working branch: `feature/hw-01-multiple-homework-pages` (Couple Homework compact page navigation implemented and regression-tested; commit/push pending; authenticated browser verification pending)
 Repository: resonatemovement/marriage_ministry
+
+## HW-01 Couple Homework Compact Page Navigation (November 24, 2026)
+
+- Replaced the Couple Homework vertical page sidebar with a full-width question layout and compact navigation toolbar. Multi-page assignments show the current page title, “Page X of Y,” a page dropdown containing each page number/title, and Previous/Next controls with correct first/last-page disabling. Controls wrap into a two-column mobile layout without a fixed-width sidebar. Single-page assignments retain the page title but hide the unnecessary counter, dropdown, and navigation buttons. Session Builder navigation is unchanged.
+- Save Draft remains available on every editable page. Submit Homework appears only on the final page and remains disabled while any required answer anywhere in the assignment is missing/invalid; optional answers remain optional. Page changes update only the selected page index and preserve the existing assignment-wide answer state, draft-save feedback, and server-side validation. No database, permission, lifecycle, notification, or infrastructure changes.
+- Focused Couple Homework tests pass **19/19**; full Vitest suite passes **1,564/1,564 across 271 files**. Typecheck, lint, production build, and `git diff --check` pass. Responsive behavior is covered by rendered markup/class assertions; authenticated desktop/mobile browser verification was unavailable and remains a manual check.
+- The implementation, tests, and this state update are being committed and pushed on `feature/hw-01-multiple-homework-pages`. Preserve the existing unrelated dirty `.env.example` and `AGENTS.md` edits and all eight existing stash entries. No merge or deployment is authorized for this task.
 
 ## HW-01 Session Material PDF Preview HTTP 500 (November 24, 2026)
 

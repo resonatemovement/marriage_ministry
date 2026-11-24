@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { RadioGroup } from "radix-ui";
 
 import { Card } from "@/components/ui/card";
-import { PageNavigation } from "@/components/shared/page-navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { VideoLinkPreview } from "@/features/homework/homework-preview";
 import { homeworkProgressLabel, type HomeworkProgressStatus } from "@/features/homework/presentation";
@@ -298,36 +298,31 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
 
   return <section aria-label="Your Homework">
     {showHeader ? <header className="mb-6"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Session Homework</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{homework.title}</h2><p className="mt-2 text-sm text-text-muted">Status: <span className="font-medium text-text-primary">{homeworkProgressLabel(status)}</span></p></header> : null}
-    <div className="grid items-start gap-4 lg:grid-cols-[21rem_minmax(0,1fr)]">
-      <PageNavigation
-        ariaLabel="Your Homework pages"
-        pages={pages.map((page, index) => ({ id: page.id, title: page.title || `Page ${index + 1}` }))}
-        selectedPageId={currentPage.id}
-        emptyMessage="No pages are available."
-        onSelect={(pageId) => {
-          const nextPageIndex = pages.findIndex((page) => page.id === pageId);
-          if (nextPageIndex >= 0) setPageIndex(nextPageIndex);
-        }}
-      />
-      <div className="min-w-0">
-        <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div><p className="text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p><h3 className="font-heading mt-1 text-xl font-bold text-text-primary">{currentPage.title || `Page ${pageIndex + 1}`}</h3></div>
-          <nav aria-label="Homework page navigation" className="flex gap-2">
-            <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((index) => Math.max(0, index - 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Previous Page</button>
-            <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Next Page</button>
-          </nav>
-        </header>
-        <form noValidate onSubmit={(event) => event.preventDefault()}>
-          <div className="grid gap-4">{homework.blocks.filter((block) => (block.pageId ?? pages[0]!.id) === currentPage.id).map((block) => <Card key={block.id} className="p-5">
-            <HomeworkBlockContent block={block} answers={answers} errors={fieldErrors} locked={locked} updateAnswer={updateAnswer} />
-          </Card>)}</div>
-          {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <>
-            <div className="mt-5 flex flex-wrap items-center gap-3"><button type="button" onClick={() => persist("save")} disabled={pending || !dirty} className="min-h-10 cursor-pointer rounded-md border border-border bg-surface px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Saving…" : "Save Draft"}</button><button type="button" onClick={() => persist("submit")} disabled={pending || submitHasRequiredErrors} className="min-h-10 cursor-pointer rounded-md bg-brand-primary px-4 text-sm font-semibold text-white hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Submitting…" : "Submit Homework"}</button></div>
-            {missingRequirements.length ? <p className="mt-3 text-sm text-text-muted" role="status">Complete these required responses to submit: {missingRequirements.join("; ")}.</p> : null}
-          </>}
-          {message ? <p role={message.kind === "error" ? "alert" : "status"} className={`mt-3 text-sm ${message.kind === "error" ? "text-danger" : "text-success-strong"}`}>{message.text}</p> : null}
-        </form>
-      </div>
+    <div className="min-w-0">
+      <header className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0"><h3 className="font-heading break-words text-xl font-bold text-text-primary">{currentPage.title || `Page ${pageIndex + 1}`}</h3>{pages.length > 1 ? <p className="mt-1 text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p> : null}</div>
+        {pages.length > 1 ? <nav aria-label="Homework page navigation" className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <Select value={currentPage.id} onValueChange={(pageId) => {
+            const nextPageIndex = pages.findIndex((page) => page.id === pageId);
+            if (nextPageIndex >= 0) setPageIndex(nextPageIndex);
+          }}>
+            <SelectTrigger aria-label="Choose Homework page" className="col-span-2 min-w-0 sm:w-64"><SelectValue /></SelectTrigger>
+            <SelectContent>{pages.map((page, index) => <SelectItem key={page.id} value={page.id}>Page {index + 1}: {page.title || `Page ${index + 1}`}</SelectItem>)}</SelectContent>
+          </Select>
+          <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((index) => Math.max(0, index - 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Previous Page</button>
+          <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Next Page</button>
+        </nav> : null}
+      </header>
+      <form noValidate onSubmit={(event) => event.preventDefault()}>
+        <div className="grid gap-4">{homework.blocks.filter((block) => (block.pageId ?? pages[0]!.id) === currentPage.id).map((block) => <Card key={block.id} className="p-5">
+          <HomeworkBlockContent block={block} answers={answers} errors={fieldErrors} locked={locked} updateAnswer={updateAnswer} />
+        </Card>)}</div>
+        {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <>
+          <div className="mt-5 flex flex-wrap items-center gap-3"><button type="button" onClick={() => persist("save")} disabled={pending || !dirty} className="min-h-10 cursor-pointer rounded-md border border-border bg-surface px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Saving…" : "Save Draft"}</button>{pageIndex === pages.length - 1 ? <button type="button" onClick={() => persist("submit")} disabled={pending || submitHasRequiredErrors} className="min-h-10 cursor-pointer rounded-md bg-brand-primary px-4 text-sm font-semibold text-white hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Submitting…" : "Submit Homework"}</button> : null}</div>
+          {missingRequirements.length ? <p className="mt-3 text-sm text-text-muted" role="status">Complete these required responses to submit: {missingRequirements.join("; ")}.</p> : null}
+        </>}
+        {message ? <p role={message.kind === "error" ? "alert" : "status"} className={`mt-3 text-sm ${message.kind === "error" ? "text-danger" : "text-success-strong"}`}>{message.text}</p> : null}
+      </form>
     </div>
   </section>;
 }

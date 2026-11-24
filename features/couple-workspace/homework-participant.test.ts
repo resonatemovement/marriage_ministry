@@ -104,20 +104,32 @@ describe("participant Homework presentation", () => {
     const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: assignment }));
     expect(markup).toContain("Reflect");
     expect(markup).toContain("Page 1 of 2");
-    expect(markup).toContain('aside aria-label="Your Homework pages"');
-    expect(markup).toContain("lg:grid-cols-[21rem_minmax(0,1fr)]");
-    expect(markup).toContain("PAGE 1");
-    expect(markup).toContain("PAGE 2");
-    expect(markup).toContain("border-text-muted/30 bg-surface-muted");
-    expect(markup).not.toContain(">Add Page</button>");
+    expect(markup).toContain('aria-label="Choose Homework page"');
+    expect(markup).toContain('role="combobox"');
+    expect(markup).toContain("grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap");
+    expect(markup).not.toContain('aria-label="Your Homework pages"');
     expect(markup).toContain("Previous Page");
     expect(markup).toContain("Next Page");
     expect(markup).toContain("Save Draft");
-    expect(markup).toContain("Submit Homework");
+    expect(markup).not.toContain("Submit Homework");
     expect(markup).toContain("First prompt");
-    expect(markup).toContain("Respond");
     expect(markup).not.toContain('for="answer-second"');
+    expect(participantSource).toContain("pages.map((page, index) => <SelectItem");
+    expect(participantSource).toContain("setPageIndex(nextPageIndex)");
+    expect(participantSource).toContain("pageIndex === pages.length - 1 ? <button");
+    expect(participantSource).toContain("const [answers, setAnswers] = useState(initialAnswers)");
     expect(participantMissingRequirements(assignment, {})).toEqual(["First prompt", "Second prompt"]);
+  });
+
+  it("keeps single-page Homework full-width without page controls or a counter", () => {
+    const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: homework([block({ title: "One page only" })]) }));
+    expect(markup).toContain("One page only");
+    expect(markup).not.toContain("Page 1 of 1");
+    expect(markup).not.toContain("Choose Homework page");
+    expect(markup).not.toContain("Previous Page");
+    expect(markup).not.toContain("Next Page");
+    expect(markup).toContain("Save Draft");
+    expect(markup).toContain("Submit Homework");
   });
 
   it("adds and removes independent Checkbox selections in published choice order", () => {
