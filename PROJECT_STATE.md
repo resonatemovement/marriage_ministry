@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 24, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; shared Session Material/Homework navigation refinement validated, pending commit/push)
+Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; shared Session Material/Homework navigation refinement committed and pushed)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Shared Page Navigation Design (November 24, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - Session Material and Homework now render their page selectors through `components/shared/page-navigation.tsx`. Both use the existing 336px desktop column and stacked mobile layout, full-width controls, identical spacing/typography/focus treatment, `PAGE n` above the title, and a consistently placed outlined Add Page action.
 - The active page uses the shared neutral `bg-surface-muted` background and subtle `border-text-muted/30` border. Page block counts and visual selected labels were removed. Selection semantics remain accessible through `aria-current="page"`; builder-specific selection, editing, deletion, ordering, and Add Page behavior remain owned by their existing state/actions.
 - No schema, RPC, page data, business logic, preview, publishing, PDF, or Homework lifecycle changes. Focused navigation tests pass **25/25** across the shared component and both builders; full Vitest suite passes **1,561/1,561**. Typecheck, lint, production build, and `git diff --check` pass.
-- Desktop/mobile visual browser review was not available in this environment; responsive layout is preserved and markup/classes are regression-tested. Existing unrelated dirty `.env.example` and `AGENTS.md` edits and all eight stashes are preserved. This refinement is not merged or deployed.
+- Desktop/mobile visual browser review was not available in this environment; responsive layout is preserved and markup/classes are regression-tested. Implementation commit `9b7ecdb7609fbcfb6f649cb2e29da027fc127383` is pushed to `origin/feature/hw-01-multiple-homework-pages`. Existing unrelated dirty `.env.example` and `AGENTS.md` edits and all eight stashes are preserved. This refinement is not merged or deployed.
 
 ## HW-01 Multiple Homework Pages (November 24, 2026)
 
