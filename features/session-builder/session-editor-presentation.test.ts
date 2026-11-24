@@ -10,7 +10,7 @@ vi.mock("./resource-actions", () => ({ findSessionResources: vi.fn(), refreshSes
 import { SessionEditor } from "./session-editor";
 
 describe("unified Session editor presentation", () => {
-  it("shows one Session-level Preview action and keeps Session Material actions in its header", () => {
+  it("places Preview beside Session Material and keeps its authoring actions in the same header", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, { session: null }));
     expect(markup).toContain("Session title");
     expect(markup).toContain("Final Session");
@@ -27,7 +27,7 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain("Create and organize the reading material for this Session.");
     expect(markup).toContain("Add supporting videos, links, and other resources for this Session.");
     expect(markup.match(/>Preview<\/button>/g)).toHaveLength(1);
-    expect(markup.indexOf(">Preview</button>")).toBeLessThan(markup.indexOf("Session Material</h2>"));
+    expect(markup.indexOf("Session Material</h2>")).toBeLessThan(markup.indexOf(">Preview</button>"));
     expect(markup.indexOf(">Add Page</button>")).toBeLessThan(markup.indexOf(">Pages</h2>"));
     expect(markup).toContain("mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3");
     expect(markup).not.toContain(">Rich Text</span>");

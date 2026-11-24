@@ -8,6 +8,7 @@ import { HomeworkBuilderContent } from "./homework-builder-content";
 import { HomeworkBuilderLoading } from "./homework-builder-loading";
 import { HomeworkEditorProvider } from "./homework-editor-state";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
+import { SessionPreviewProvider } from "@/features/session-builder/session-preview-context";
 
 const emptyDraft = { id: "draft-id", status: "draft" as const, basedOnVersionNumber: 1, blocks: [] };
 
@@ -33,12 +34,25 @@ describe("Homework Builder shell", () => {
     expect(markup).not.toContain("Changes are staged locally in this editor.");
     expect(markup).toContain('aside aria-label="Homework pages"');
     expect(markup).toContain('nav aria-label="Pages"');
+    expect(markup).toContain("lg:grid-cols-[21rem_minmax(0,1fr)]");
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain("Page 1");
     expect(markup).toContain(">Add Page</button>");
     expect(markup).toContain("Page title");
     expect(markup).toContain('aria-label="Move page up"');
     expect(markup).toContain('aria-label="Move page down"');
+    expect(markup).toContain("break-words");
+    expect(markup).toContain("min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left");
+  });
+
+  it("shows the existing Homework Preview action beside its section heading when a preview handler is available", () => {
+    const openPreview = vi.fn();
+    const markup = renderToStaticMarkup(createElement(HomeworkEditorProvider, { initialDraft: emptyDraft },
+      createElement(SessionPreviewProvider, { value: openPreview },
+        createElement(HomeworkBuilderContent, { result: { draft: emptyDraft } }))));
+    expect(markup.indexOf("Homework</h2>")).toBeLessThan(markup.indexOf(">Preview</button>"));
+    expect(markup).toContain(">Add Page</button>");
+    expect(markup).toContain(">Add Content</button>");
   });
 
   it("renders loaded legacy and selection-question blocks with their saved authoring summary", () => {

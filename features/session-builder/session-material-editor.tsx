@@ -24,10 +24,13 @@ import { SessionResourcePicker } from "./session-resource-picker";
 import { formatResourceFileSize, formatResourceFileType, type ResourceCategory } from "@/features/resource-library/policy";
 import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
 import { refreshSessionResourceAccess } from "./resource-actions";
+import { useSessionPreview } from "./session-preview-context";
+import { sessionPreviewTabForWorkspace } from "./workspace";
 
 type UpdateBlocks = (update: (blocks: StagedMaterialBlock[]) => StagedMaterialBlock[]) => void;
 
 export function SessionMaterialEditor({ blocks, archived, canManageRecommendations, updateBlocks }: { blocks: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks }) {
+  const openPreview = useSessionPreview();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -100,7 +103,7 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
 
   return <section className="mt-6 grid gap-8" aria-labelledby="session-material-heading">
     <AuthoringSectionHeader headingId="session-material-heading" title="Session Material" description="Build and organize the material participants will use."
-      action={!archived && !editing ? <button type="button" onClick={() => add("rich_text")} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Page</button> : undefined} />
+      action={<div className="flex flex-wrap items-center gap-2">{openPreview ? <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace("material"))} className="min-h-10 shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Preview</button> : null}{!archived && !editing ? <button type="button" onClick={() => add("rich_text")} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Page</button> : null}</div>} />
 
     <section aria-labelledby="session-pages-heading">
       <AuthoringSectionHeader headingId="session-pages-heading" title="Pages" description="Create and organize the reading material for this Session." />

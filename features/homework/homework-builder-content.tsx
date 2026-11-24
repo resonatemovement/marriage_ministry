@@ -24,6 +24,8 @@ import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkMoveTa
 import type { SideBySideResponseConfig } from "./side-by-side-response";
 import { SideBySideResponseFields } from "./side-by-side-response-fields";
 import { useHomeworkEditorState } from "./homework-editor-state";
+import { useSessionPreview } from "@/features/session-builder/session-preview-context";
+import { sessionPreviewTabForWorkspace } from "@/features/session-builder/workspace";
 import { isValidHomeworkVideoUrl } from "./homework-url";
 import type { HomeworkDraftLoadResult } from "./queries";
 
@@ -36,6 +38,7 @@ function errorMessage(error: "withdrawn" | "unavailable") {
 export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadResult }) {
   const router = useRouter();
   const homeworkEditor = useHomeworkEditorState();
+  const openPreview = useSessionPreview();
   const { initialize } = homeworkEditor;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [urlMessage, setUrlMessage] = useState<string | null>(null);
@@ -118,8 +121,9 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   }
 
   return <section aria-labelledby="homework-builder-heading" className="mt-6">
-    <AuthoringSectionHeader headingId="homework-builder-heading" title="Homework" description="Build the homework participants will complete for this Session." />
-    <div className="mt-5 grid items-start gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+    <AuthoringSectionHeader headingId="homework-builder-heading" title="Homework" description="Build the homework participants will complete for this Session."
+      action={openPreview ? <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace("homework"))} className="min-h-10 shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Preview</button> : undefined} />
+    <div className="mt-5 grid items-start gap-4 lg:grid-cols-[21rem_minmax(0,1fr)]">
       <aside aria-label="Homework pages" className="rounded-lg border border-border bg-white p-3">
         <nav aria-label="Pages" className="grid gap-2">
           {pages.map((page, index) => {

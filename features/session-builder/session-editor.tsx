@@ -13,7 +13,7 @@ import { SessionWorkspaceNavigation } from "./session-workspace-navigation";
 import { eligibleInternalNavigation } from "./navigation-guard";
 import { SessionPreviewProvider, type SessionPreviewTab } from "./session-preview-context";
 import { SessionPreview } from "./session-preview";
-import { sessionPreviewTabForWorkspace, type SessionWorkspace } from "./workspace";
+import type { SessionWorkspace } from "./workspace";
 import type { SessionMaterialBlock, SessionSummary } from "./types";
 import { refreshSessionResourceAccess } from "./resource-actions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -181,7 +181,6 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
         </label>
         <p className="text-xs text-text-muted">Completing this Session ends the counseling program instead of scheduling another Session.</p>
       </div>
-      <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace(activeWorkspace))} className="min-h-10 shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Preview</button>
     </div>
 
     <SessionPreviewProvider value={openPreview}>
