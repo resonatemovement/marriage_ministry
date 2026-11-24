@@ -93,6 +93,24 @@ describe("participant Homework presentation", () => {
     expect(participantSource).toContain('compact contentClassName="p-0"');
   });
 
+  it("shows one page at a time while retaining required-answer validation across every page", () => {
+    const pages = [
+      { id: "page-one", title: "Reflect", position: 0 },
+      { id: "page-two", title: "Respond", position: 1 },
+    ];
+    const first = block({ id: "first", pageId: "page-one", title: "First prompt" });
+    const second = block({ id: "second", pageId: "page-two", title: "Second prompt" });
+    const assignment = { ...homework([first, second]), pages };
+    const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: assignment }));
+    expect(markup).toContain("Reflect");
+    expect(markup).toContain("Page 1 of 2");
+    expect(markup).toContain("Previous Page");
+    expect(markup).toContain("Next Page");
+    expect(markup).toContain("First prompt");
+    expect(markup).not.toContain('for="answer-second"');
+    expect(participantMissingRequirements(assignment, {})).toEqual(["First prompt", "Second prompt"]);
+  });
+
   it("adds and removes independent Checkbox selections in published choice order", () => {
     const first = nextCheckboxAnswer([], "choice-two", true, choices);
     expect(first).toEqual(["choice-two"]);

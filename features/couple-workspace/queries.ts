@@ -219,11 +219,12 @@ export async function getCoupleSessionViewData(authenticatedProfileId: string, c
 async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, authenticatedProfileId: string, revisionId: string, title: string): Promise<ParticipantHomework | null> {
   const { data: revision, error: revisionError } = await supabase.from("homework_assignment_revisions").select("id,homework_version_id").eq("id", revisionId).maybeSingle();
   if (revisionError || !revision) return null;
-  const [{ data: progress, error: progressError }, { data: content, error: contentError }] = await Promise.all([
+  const [{ data: progress, error: progressError }, { data: content, error: contentError }, { data: version, error: versionError }] = await Promise.all([
     supabase.from("homework_participant_progress").select("id,status").eq("assignment_revision_id", revision.id).eq("profile_id", authenticatedProfileId).maybeSingle(),
-    supabase.from("homework_version_blocks").select("id,block_type,position,title,rich_text_content,url,description,question_choices,is_required").eq("homework_version_id", revision.homework_version_id).order("position"),
+    supabase.from("homework_version_blocks").select("*").eq("homework_version_id", revision.homework_version_id).order("position"),
+    supabase.from("homework_versions").select("*").eq("id", revision.homework_version_id).maybeSingle(),
   ]);
-  if (progressError || contentError) throw new Error("Homework is unavailable.");
+  if (progressError || contentError || versionError) throw new Error("Homework is unavailable.");
   if (!progress || !content?.length) return null;
   const { data: answers, error: answersError } = await supabase.from("homework_answers").select("homework_version_block_id,answer_text,answer_value").eq("participant_progress_id", progress.id);
   if (answersError) throw new Error("Homework responses are unavailable.");
@@ -241,6 +242,7 @@ async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof creat
       answer: participantAnswerFromRow(block.block_type, answerMap.get(block.id), questionChoices),
       questionChoices,
       isRequired: block.is_required,
+      pageId: (block as unknown as { page_id?: string | null }).page_id ?? "00000000-0000-4000-8000-000000000001",
     };
   });
   const groupedBlocks = groupSideBySideRows(rows).map((group) => group.kind === "pair" ? {
@@ -260,13 +262,19 @@ async function loadParticipantHomework(supabase: Awaited<ReturnType<typeof creat
       typeof group.right.answer === "string" ? group.right.answer : "",
       group.config.groupId,
     ),
+    pageId: group.left.pageId,
   } : { ...group.row, sideBySideConfig: null, sideBySideResponseIds: null });
+  const savedPages = (version as unknown as { page_manifest?: unknown } | null)?.page_manifest;
+  const pages = Array.isArray(savedPages) ? savedPages.flatMap((page) => page && typeof page === "object" && !Array.isArray(page)
+    && typeof page.id === "string" && typeof page.title === "string" && typeof page.position === "number"
+    ? [{ id: page.id, title: page.title, position: page.position }] : []) : [];
   return {
     title,
     status: progress.status,
     progressId: progress.id,
     revisionId: revision.id,
     blocks: groupedBlocks,
+    pages,
   };
 }
 

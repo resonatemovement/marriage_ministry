@@ -22,7 +22,10 @@ export type StagedHomeworkBlock = {
   isRequired: boolean;
   sideBySideConfig?: Omit<SideBySideResponseConfig, "side"> | null;
   sideBySideResponseIds?: SideBySideResponseIds | null;
+  pageId?: string;
 };
+
+export type HomeworkPage = { id: string; title: string; position: number };
 
 export type { HomeworkAnswerChoice } from "./selection-question";
 
@@ -30,14 +33,20 @@ export type HomeworkEditorState = {
   versionId: string | null;
   versionStatus: "draft" | "published" | null;
   blocks: StagedHomeworkBlock[];
+  pages: HomeworkPage[];
+  selectedPageId: string;
   baseline: StagedHomeworkBlock[];
+  pageBaseline: HomeworkPage[];
+  deletedPageIds: string[];
+  pageDeletionConfirmed: boolean;
   editingKey: string | null;
   editingOriginal: StagedHomeworkBlock | null;
 };
 
 export const HOMEWORK_AUTHORING_BLOCK_TYPES = ["rich_text", "video_link", "long_answer", "checkbox_question", "radio_question", "side_by_side_response"] as const;
 
-export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDraftBlock[], versionStatus: "draft" | "published" = "draft"): HomeworkEditorState {
+export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDraftBlock[], versionStatus: "draft" | "published" = "draft", savedPages?: HomeworkPage[] | null): HomeworkEditorState {
+  const pages = savedPages?.length ? normalizeHomeworkPages(savedPages) : [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }];
   const blocks = groupSideBySideRows(rows.map((row) => ({ ...row, type: row.blockType }))).map((group) => {
     if (group.kind === "pair") return {
       key: group.config.groupId,
@@ -56,6 +65,7 @@ export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDra
         left: { snapshotId: group.left.id, homeworkBlockId: group.left.homeworkBlockId },
         right: { snapshotId: group.right.id, homeworkBlockId: group.right.homeworkBlockId },
       },
+      pageId: group.left.pageId ?? pages[0]!.id,
     };
     const row = group.row;
     return {
@@ -72,23 +82,24 @@ export function homeworkEditorStateFromRows(versionId: string, rows: HomeworkDra
       isRequired: row.isRequired ?? true,
       sideBySideConfig: null,
       sideBySideResponseIds: null,
+      pageId: row.pageId ?? pages[0]!.id,
     };
   });
   const normalizedBlocks = normalizeHomeworkBlockPositions(blocks);
-  return { versionId, versionStatus, blocks: normalizedBlocks, baseline: structuredClone(normalizedBlocks), editingKey: null, editingOriginal: null };
+  return { versionId, versionStatus, blocks: normalizedBlocks, pages, selectedPageId: pages[0]!.id, baseline: structuredClone(normalizedBlocks), pageBaseline: structuredClone(pages), deletedPageIds: [], pageDeletionConfirmed: false, editingKey: null, editingOriginal: null };
 }
 
-export function persistHomeworkEditorState(state: HomeworkEditorState, rows: HomeworkDraftBlock[], versionId: string, versionStatus: "draft" | "published"): HomeworkEditorState {
-  const next = homeworkEditorStateFromRows(versionId, rows, versionStatus);
+export function persistHomeworkEditorState(state: HomeworkEditorState, rows: HomeworkDraftBlock[], versionId: string, versionStatus: "draft" | "published", pages: HomeworkPage[] = state.pages): HomeworkEditorState {
+  const next = homeworkEditorStateFromRows(versionId, rows, versionStatus, pages);
   const blocks = next.blocks.map((block) => {
     const clientId = rows.find((row) => row.id === block.persistedId)?.clientId;
     const match = state.blocks.find((current) => current.persistedId === block.persistedId)
       ?? state.blocks.find((current) => current.sideBySideResponseIds?.left.snapshotId === block.persistedId)
       ?? state.blocks.find((current) => current.sideBySideConfig?.groupId === block.sideBySideConfig?.groupId)
       ?? state.blocks.find((current) => current.persistedId === null && current.key === clientId);
-    return match ? { ...block, key: match.key } : block;
+    return match ? { ...block, key: match.key, pageId: match.pageId } : block;
   });
-  return { versionId, versionStatus, blocks, baseline: structuredClone(blocks), editingKey: null, editingOriginal: null };
+  return { versionId, versionStatus, blocks, pages: structuredClone(next.pages), selectedPageId: state.selectedPageId, baseline: structuredClone(blocks), pageBaseline: structuredClone(next.pages), deletedPageIds: [], pageDeletionConfirmed: false, editingKey: null, editingOriginal: null };
 }
 
 export function initializeHomeworkEditorState(current: HomeworkEditorState, versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published" = "draft") {
@@ -120,15 +131,53 @@ export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPE
       responseMode: "paired_rows_v1",
     } : null,
     sideBySideResponseIds: null,
+    pageId: "00000000-0000-4000-8000-000000000001",
   };
 }
 
 export function addHomeworkBlock(state: HomeworkEditorState, block: StagedHomeworkBlock) {
-  return { ...state, blocks: normalizeHomeworkBlockPositions([...state.blocks, block]), editingKey: block.key, editingOriginal: null };
+  return { ...state, blocks: normalizeHomeworkBlockPositions([...state.blocks, { ...block, pageId: state.selectedPageId }]), editingKey: block.key, editingOriginal: null };
 }
 
 export function normalizeHomeworkBlockPositions(blocks: StagedHomeworkBlock[]) {
   return blocks.map((block, position) => block.position === position ? block : { ...block, position });
+}
+
+export function normalizeHomeworkPages(pages: HomeworkPage[]) {
+  return pages.map((page, position) => ({ ...page, position }));
+}
+
+export function addHomeworkPage(state: HomeworkEditorState, page: HomeworkPage = { id: crypto.randomUUID(), title: "", position: state.pages.length }) {
+  const pages = normalizeHomeworkPages([...state.pages, page]);
+  return { ...state, pages, selectedPageId: page.id };
+}
+
+export function renameHomeworkPage(state: HomeworkEditorState, pageId: string, title: string) {
+  return { ...state, pages: state.pages.map((page) => page.id === pageId ? { ...page, title } : page) };
+}
+
+export function reorderHomeworkPages(state: HomeworkEditorState, pageId: string, direction: -1 | 1) {
+  const index = state.pages.findIndex((page) => page.id === pageId);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= state.pages.length) return state;
+  const pages = [...state.pages];
+  [pages[index], pages[nextIndex]] = [pages[nextIndex]!, pages[index]!];
+  return { ...state, pages: normalizeHomeworkPages(pages) };
+}
+
+export function deleteHomeworkPage(state: HomeworkEditorState, pageId: string, confirmation: string) {
+  if (!isDeleteConfirmation(confirmation) || !state.pages.some((page) => page.id === pageId)) return state;
+  const pages = normalizeHomeworkPages(state.pages.filter((page) => page.id !== pageId));
+  const selectedPageId = state.selectedPageId === pageId ? pages[0]?.id ?? "" : state.selectedPageId;
+  const deletedPageIds = state.pageBaseline.some((page) => page.id === pageId)
+    ? [...new Set([...state.deletedPageIds, pageId])]
+    : state.deletedPageIds;
+  return { ...state, pages, selectedPageId, blocks: state.blocks.filter((block) => block.pageId !== pageId), deletedPageIds, pageDeletionConfirmed: true };
+}
+
+export function moveHomeworkBlockToPage(state: HomeworkEditorState, blockKey: string, pageId: string) {
+  if (!state.pages.some((page) => page.id === pageId)) return state;
+  return { ...state, blocks: state.blocks.map((block) => block.key === blockKey ? { ...block, pageId } : block) };
 }
 
 export function reorderHomeworkBlocks(blocks: StagedHomeworkBlock[], activeKey: string, overKey: string) {
@@ -136,6 +185,14 @@ export function reorderHomeworkBlocks(blocks: StagedHomeworkBlock[], activeKey: 
   const ordered = reorderedBlockIds(blocks.map((block) => block.key), activeKey, overKey)
     .map((key) => byKey.get(key)).filter((block): block is StagedHomeworkBlock => Boolean(block));
   return normalizeHomeworkBlockPositions(ordered);
+}
+
+export function reorderHomeworkBlocksOnPage(state: HomeworkEditorState, activeKey: string, overKey: string) {
+  const active = state.blocks.find((block) => block.key === activeKey);
+  if (!active || state.blocks.find((block) => block.key === overKey)?.pageId !== active.pageId) return state.blocks;
+  const orderedPage = reorderHomeworkBlocks(state.blocks.filter((block) => block.pageId === active.pageId), activeKey, overKey);
+  return normalizeHomeworkBlockPositions(state.pages.flatMap((page) => page.id === active.pageId
+    ? orderedPage : state.blocks.filter((block) => block.pageId === page.id)));
 }
 
 export function homeworkMoveTarget(blocks: StagedHomeworkBlock[], key: string, direction: -1 | 1) {
@@ -158,6 +215,7 @@ export function duplicateHomeworkBlock(blocks: StagedHomeworkBlock[], key: strin
     questionChoices: source.questionChoices.map((choice) => ({ ...choice, id: crypto.randomUUID() })),
     sideBySideConfig: source.sideBySideConfig ? { ...source.sideBySideConfig, groupId: crypto.randomUUID() } : null,
     sideBySideResponseIds: null,
+    pageId: source.pageId,
   };
   return { blocks: normalizeHomeworkBlockPositions([...blocks.slice(0, index + 1), duplicate, ...blocks.slice(index + 1)]), editingKey: duplicate.key };
 }
@@ -233,11 +291,19 @@ function comparable(block: StagedHomeworkBlock) {
     isRequired: block.isRequired,
     sideBySideConfig: block.sideBySideConfig,
     sideBySideResponseIds: block.sideBySideResponseIds,
+    pageId: block.pageId,
   };
 }
 
 export function homeworkEditorIsDirty(state: HomeworkEditorState) {
-  return JSON.stringify(state.blocks.map(comparable)) !== JSON.stringify(state.baseline.map(comparable));
+  return JSON.stringify(state.blocks.map(comparable)) !== JSON.stringify(state.baseline.map(comparable))
+    || JSON.stringify(state.pages) !== JSON.stringify(state.pageBaseline);
+}
+
+export function homeworkPagesArePublishable(state: HomeworkEditorState) {
+  if (state.blocks.length === 0 && !homeworkEditorIsDirty(state)) return true;
+  return state.pages.length > 0 && state.pages.every((page) => page.title.trim().length > 0
+    && state.blocks.some((block) => block.pageId === page.id)) && state.blocks.every(homeworkBlockIsComplete);
 }
 
 export function sideBySideHeadingsAreValid(config: StagedHomeworkBlock["sideBySideConfig"]) {
@@ -268,5 +334,5 @@ export function homeworkEditorCanCommit(state: HomeworkEditorState) {
 }
 
 export function restoreHomeworkEditorState(state: HomeworkEditorState) {
-  return { ...state, blocks: structuredClone(state.baseline), editingKey: null, editingOriginal: null };
+  return { ...state, blocks: structuredClone(state.baseline), pages: structuredClone(state.pageBaseline), selectedPageId: state.pageBaseline[0]?.id ?? state.selectedPageId, deletedPageIds: [], pageDeletionConfirmed: false, editingKey: null, editingOriginal: null };
 }

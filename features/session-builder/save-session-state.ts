@@ -16,6 +16,7 @@ type SavedHomeworkResult = {
   status: "draft" | "published" | null;
   versionNumber: number | null;
   blocks: HomeworkDraftBlock[];
+  pages: HomeworkEditorState["pages"];
 };
 type SaveSessionResult = {
   sessionState: PersistedResult | null;
@@ -66,6 +67,14 @@ const userFacingRpcErrors = new Set([
   "Complete each selection question before publishing",
   "Complete each Side-by-Side Response before publishing",
   "Complete both Side-by-Side column headings before saving",
+  "Invalid Homework page",
+  "Homework must have at least one page",
+  "Each Homework page must contain at least one content block",
+  "Homework content must belong to a page",
+  "Homework page IDs must be unique",
+  "Each Homework page needs a valid title and order",
+  "Homework page deletion confirmation is required",
+  "Only an unassigned Homework Draft can be changed",
 ]);
 
 function errorMessage(error: unknown) {
@@ -101,6 +110,7 @@ function serializeHomeworkBlocks(editor: HomeworkEditorState): Record<string, un
           rich_text_content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: heading }] }] },
           url: null,
           description: sideBySideResponseMetadata({ ...config, side }),
+          page_id: block.pageId,
         };
       });
     }
@@ -112,6 +122,7 @@ function serializeHomeworkBlocks(editor: HomeworkEditorState): Record<string, un
     rich_text_content: block.richTextContent,
     url: block.url,
     description: block.description,
+    page_id: block.pageId,
     ...(block.blockType === "checkbox_question" || block.blockType === "radio_question"
       ? { question_choices: block.questionChoices, is_required: block.isRequired }
       : {}),
@@ -126,6 +137,11 @@ function parseHomeworkResult(value: unknown): SavedHomeworkResult | null {
   if (data.status !== null && data.status !== "draft" && data.status !== "published") return null;
   if (data.version_number !== null && typeof data.version_number !== "number") return null;
   if (!Array.isArray(data.blocks)) return null;
+  const rawPages = Array.isArray(data.pages) ? data.pages : [];
+  const pages = rawPages.flatMap((page) => page && typeof page === "object" && !Array.isArray(page)
+    && typeof page.id === "string" && typeof page.title === "string" && typeof page.position === "number"
+    ? [{ id: page.id, title: page.title, position: page.position }] : []);
+  if (pages.length !== rawPages.length) return null;
   const blocks: HomeworkDraftBlock[] = [];
   for (const value of data.blocks) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -137,16 +153,17 @@ function parseHomeworkResult(value: unknown): SavedHomeworkResult | null {
       || block.url !== null && typeof block.url !== "string"
       || block.description !== null && typeof block.description !== "string"
       || block.client_id !== undefined && block.client_id !== null && typeof block.client_id !== "string"
+      || block.page_id !== undefined && block.page_id !== null && typeof block.page_id !== "string"
       || isSelectionQuestion && (!Array.isArray(block.question_choices) || typeof block.is_required !== "boolean")) return null;
     blocks.push({ id: block.id, homeworkBlockId: block.homework_block_id, blockType: block.block_type,
       position: block.position, title: block.title as string | null, richTextContent: (block.rich_text_content ?? null) as HomeworkDraftBlock["richTextContent"],
       url: block.url as string | null, description: block.description as string | null,
       questionChoices: (block.question_choices ?? null) as HomeworkDraftBlock["questionChoices"],
       isRequired: typeof block.is_required === "boolean" ? block.is_required : true,
-      clientId: block.client_id as string | null | undefined });
+      clientId: block.client_id as string | null | undefined, pageId: block.page_id as string | null | undefined });
   }
   return { versionId: data.version_id as string | null, status: data.status as "draft" | "published" | null,
-    versionNumber: data.version_number as number | null, blocks };
+    versionNumber: data.version_number as number | null, blocks, pages };
 }
 
 export async function saveSessionBuilderState(
@@ -158,7 +175,7 @@ export async function saveSessionBuilderState(
   const supabase = await createServerSupabaseClient();
   // The orchestration RPC is intentionally isolated here until generated types are refreshed.
   const invoke = supabase.rpc.bind(supabase) as unknown as RpcInvoker;
-  const { data, error } = await invoke("save_session_homework_authoring_state", {
+  const { data, error } = await invoke("save_session_homework_authoring_state_with_pages", {
     target_session_id: editor.sessionId,
     target_title: editor.title,
     target_is_final: editor.isFinal,
@@ -169,6 +186,9 @@ export async function saveSessionBuilderState(
     save_homework: options.saveHomework,
     publish_homework: options.publishHomework,
     target_session_intent: options.intent,
+    target_page_manifest: homeworkEditor.pages.map(({ id, title, position }) => ({ id, title, position })),
+    target_deleted_page_ids: homeworkEditor.deletedPageIds,
+    target_page_delete_confirmation: homeworkEditor.pageDeletionConfirmed ? "DELETE" : null,
   });
   if (error) return failureMessage(options.intent, error);
   if (!data || typeof data !== "object" || Array.isArray(data)) return operationFailure(options.intent);

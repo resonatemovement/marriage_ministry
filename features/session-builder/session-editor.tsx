@@ -37,7 +37,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
 }) {
   const router = useRouter();
   const homeworkEditor = useHomeworkEditorState();
-  const { dirty: homeworkDirty, canCommit: homeworkCanCommit } = homeworkEditor;
+  const { dirty: homeworkDirty, canCommit: homeworkCanCommit, canPublish: homeworkCanPublish } = homeworkEditor;
   const [editor, setEditor] = useState<SessionEditorState>(() => initialSessionEditorState(session, blocks));
   const [baseline, setBaseline] = useState<SessionEditorState>(() => initialSessionEditorState(session, blocks));
   const [pending, startTransition] = useTransition();
@@ -109,7 +109,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
   }
 
   function save(intent: "save" | "publish" | "publish_changes") {
-    if (pendingRef.current || archived || !homeworkCanCommit) return;
+    if (pendingRef.current || archived || !homeworkCanCommit || (intent !== "save" && !homeworkCanPublish)) return;
     const validation = intent === "publish" ? publishError : intent === "publish_changes" || (!dirty && !firstSave) ? null : saveError;
     if (validation) { setPublishActionError(validation); return; }
     setPublishActionError(null);
@@ -137,7 +137,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
         } satisfies SessionEditorState : null;
         if (next) { updateEditor(() => next); setBaseline(next); }
         if ((homeworkDirty || intent !== "save") && result.homework.versionId) {
-          homeworkEditor.acceptPersisted(result.homework.versionId, result.homework.blocks, result.homework.status ?? "draft");
+          homeworkEditor.acceptPersisted(result.homework.versionId, result.homework.blocks, result.homework.status ?? "draft", result.homework.pages);
         }
         const successMessage = intent === "publish" ? "Session published successfully."
           : intent === "publish_changes" ? "Homework published successfully."
@@ -190,7 +190,7 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
         ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} />
         : homework}
     </SessionPreviewProvider>
-    <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} resourceAccess={resourceAccess} />
+    <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} homeworkPages={homeworkEditor.state.pages} resourceAccess={resourceAccess} />
 
     <div className="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
       {pageDirty ? <span role="status" className="mr-auto text-xs font-medium text-text-muted">Unsaved changes</span> : null}
@@ -199,8 +199,8 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
         <button type="button" onClick={() => save("save")} disabled={pending || !homeworkCanCommit || Boolean((dirty || firstSave) && saveError) || (!firstSave && !pageDirty)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primary/90 disabled:opacity-60">
           {pending ? "Saving..." : firstSave ? "Save Draft" : "Save Changes"}
         </button>
-        {editor.status === "draft" ? <button type="button" onClick={() => save("publish")} disabled={pending || !homeworkCanCommit || Boolean(publishError)} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Session</button> : homeworkEditor.state.versionStatus === "draft" && homeworkEditor.state.baseline.length > 0 ? <button type="button" onClick={() => save("publish_changes")} disabled={pending || !homeworkCanCommit} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Changes</button> : null}
-        {editor.status === "draft" && publishMessage || editor.status !== "draft" && publishActionError ? <p role="status" className="basis-full text-right text-xs text-text-muted">{editor.status === "draft" ? publishMessage : publishActionError}</p> : null}
+        {editor.status === "draft" ? <button type="button" onClick={() => save("publish")} disabled={pending || !homeworkCanCommit || !homeworkCanPublish || Boolean(publishError)} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Session</button> : homeworkEditor.state.versionStatus === "draft" && homeworkEditor.state.baseline.length > 0 ? <button type="button" onClick={() => save("publish_changes")} disabled={pending || !homeworkCanCommit || !homeworkCanPublish} className="min-h-10 rounded-md border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-surface-muted disabled:opacity-60">Publish Changes</button> : null}
+        {editor.status === "draft" && publishMessage || editor.status !== "draft" && publishActionError || !homeworkCanPublish && homeworkDirty ? <p role="status" className="basis-full text-right text-xs text-text-muted">{editor.status === "draft" ? publishMessage : publishActionError}{!homeworkCanPublish ? " Complete every Homework page title and add at least one content block per page before publishing." : null}</p> : null}
       </> : null}
     </div>
 

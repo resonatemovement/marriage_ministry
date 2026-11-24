@@ -8,7 +8,7 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import { Tabs, TabsContent, TabsList, TabsListViewport, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import { HomeworkPreviewContent, VideoLinkPreview } from "@/features/homework/homework-preview";
-import type { StagedHomeworkBlock } from "@/features/homework/homework-editor-model";
+import type { HomeworkPage, StagedHomeworkBlock } from "@/features/homework/homework-editor-model";
 import type { StagedMaterialBlock } from "./editor-model";
 import { formatResourceFileSize, formatResourceFileType } from "@/features/resource-library/policy";
 
@@ -17,13 +17,14 @@ export function sessionPreviewTargetPage(pages: StagedMaterialBlock[], currentKe
   return pages[currentIndex + direction]?.key ?? null;
 }
 
-export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialBlocks, homeworkBlocks, resourceAccess = {} }: {
+export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialBlocks, homeworkBlocks, homeworkPages, resourceAccess = {} }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tab: "material" | "homework";
   onTabChange: (tab: "material" | "homework") => void;
   materialBlocks: StagedMaterialBlock[];
   homeworkBlocks: StagedHomeworkBlock[];
+  homeworkPages: HomeworkPage[];
   resourceAccess?: Record<string, string>;
 }) {
   const backToEditing = useRef<HTMLButtonElement>(null);
@@ -38,7 +39,7 @@ export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialB
         <Tabs value={tab} onValueChange={(value) => onTabChange(value as "material" | "homework")}>
           <TabsListViewport><TabsList aria-label="Preview sections"><TabsTrigger value="material">Session Material</TabsTrigger><TabsTrigger value="homework">Homework</TabsTrigger></TabsList></TabsListViewport>
           <TabsContent value="material"><SessionMaterialPreviewContent blocks={materialBlocks} resourceAccess={resourceAccess} /></TabsContent>
-          <TabsContent value="homework"><HomeworkPreviewContent blocks={homeworkBlocks} /></TabsContent>
+          <TabsContent value="homework"><HomeworkPreviewContent blocks={homeworkBlocks} pages={homeworkPages} /></TabsContent>
         </Tabs>
       </div>
     </SheetContent>

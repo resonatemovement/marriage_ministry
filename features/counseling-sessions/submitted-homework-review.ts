@@ -13,7 +13,11 @@ export type SubmittedHomeworkQuestion = {
   description?: string | null;
   answerText: string | null;
   answerValue: Json | null;
+  pageId?: string;
+  pageTitle?: string;
 };
+
+export type SubmittedHomeworkPage = { id: string; title: string; position: number };
 
 export type SubmittedHomeworkReview = {
   progressId: string;
@@ -23,6 +27,7 @@ export type SubmittedHomeworkReview = {
   sessionTitle: string;
   sessionSequence: number;
   questions: SubmittedHomeworkQuestion[];
+  pages: SubmittedHomeworkPage[];
 };
 
 export function homeworkReviewChoices(value: Json | null): HomeworkAnswerChoice[] {
@@ -49,4 +54,14 @@ export function groupSubmittedHomeworkQuestions(questions: SubmittedHomeworkQues
   return groupSideBySideRows(questions.map((question) => ({ ...question, id: question.blockId }))).map((group) => group.kind === "pair"
     ? { kind: "side_by_side" as const, config: group.config, left: group.left, right: group.right }
     : { kind: "question" as const, question: group.row });
+}
+
+export function groupSubmittedHomeworkByPage(questions: SubmittedHomeworkQuestion[], pages: SubmittedHomeworkPage[]) {
+  const groups = groupSubmittedHomeworkQuestions(questions);
+  const allPages = pages.length ? pages : [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }];
+  return allPages.map((page) => ({
+    ...page,
+    items: groups.filter((item) => (item.kind === "side_by_side" ? item.left.pageId : item.question.pageId) === page.id
+      || !(item.kind === "side_by_side" ? item.left.pageId : item.question.pageId) && page.position === 0),
+  }));
 }

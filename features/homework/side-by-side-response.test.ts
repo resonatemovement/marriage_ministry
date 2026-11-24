@@ -21,7 +21,8 @@ describe("Side-by-Side paired responses", () => {
 
   it.each([["", "Right"], ["Left", "   "], ["  ", " "]])("rejects missing or whitespace headings (%j)", (leftHeading, rightHeading) => {
     const block = newHomeworkBlock("side_by_side_response", 0);
-    expect(homeworkSideBySideHeadingsAreValid({ versionId: "draft", versionStatus: "draft", blocks: [{ ...block, sideBySideConfig: { ...block.sideBySideConfig!, leftHeading, rightHeading } }], baseline: [], editingKey: block.key, editingOriginal: null })).toBe(false);
+    const page = { id: "page-one", title: "Page 1", position: 0 };
+    expect(homeworkSideBySideHeadingsAreValid({ versionId: "draft", versionStatus: "draft", blocks: [{ ...block, sideBySideConfig: { ...block.sideBySideConfig!, leftHeading, rightHeading } }], pages: [page], selectedPageId: page.id, baseline: [], pageBaseline: [page], deletedPageIds: [], pageDeletionConfirmed: false, editingKey: block.key, editingOriginal: null })).toBe(false);
   });
 
   it("round-trips independently stored columns with stable pair IDs and multiline text", () => {

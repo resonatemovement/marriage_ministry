@@ -2,13 +2,15 @@ import "server-only";
 
 import { cache } from "react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Json } from "@/types/database.generated";
+import type { Database, Json } from "@/types/database.generated";
+import type { HomeworkPage } from "./homework-editor-model";
 
 export type HomeworkDraftContext = {
   id: string | null;
   status: "draft" | "published";
   basedOnVersionNumber: number | null;
   blocks: HomeworkDraftBlock[];
+  pages?: HomeworkPage[];
 };
 
 export type HomeworkDraftBlock = {
@@ -23,7 +25,15 @@ export type HomeworkDraftBlock = {
   questionChoices?: Json | null;
   isRequired?: boolean;
   clientId?: string | null;
+  pageId?: string | null;
 };
+
+function pageManifest(value: unknown): HomeworkPage[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => item && typeof item === "object" && !Array.isArray(item)
+    && typeof item.id === "string" && typeof item.title === "string" && typeof item.position === "number"
+    ? [{ id: item.id, title: item.title, position: item.position }] : []);
+}
 
 export type HomeworkDraftLoadResult =
   | { draft: HomeworkDraftContext }
@@ -38,13 +48,13 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
     if (homework?.withdrawn_at) return { error: "withdrawn" };
 
     if (!homework && sessionStatus === "published") {
-      return { draft: { id: null, status: "draft", basedOnVersionNumber: null, blocks: [] } };
+      return { draft: { id: null, status: "draft", basedOnVersionNumber: null, blocks: [], pages: [] } };
     }
 
-    let selectedVersion: { id: string; status: "draft" | "published"; based_on_version_id: string | null; version_number: number | null } | null = null;
+    let selectedVersion: { id: string; status: "draft" | "published"; based_on_version_id: string | null; version_number: number | null; page_manifest?: unknown } | null = null;
     if (homework) {
       const { data: versions, error: versionsError } = await supabase.from("homework_versions")
-        .select("id,status,based_on_version_id,version_number")
+        .select("*")
         .eq("homework_id", homework.id)
         .order("created_at", { ascending: false });
       if (versionsError) return { error: "unavailable" };
@@ -61,14 +71,14 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
       if (initializeError) return { error: initializeError.message.includes("Homework is withdrawn") ? "withdrawn" : "unavailable" };
       if (!draftId) return { error: "unavailable" };
       const { data: draft, error: draftError } = await supabase.from("homework_versions")
-        .select("id,status,based_on_version_id,version_number").eq("id", draftId).maybeSingle();
+        .select("*").eq("id", draftId).maybeSingle();
       if (draftError || !draft || draft.status !== "draft") return { error: "unavailable" };
       selectedVersion = draft;
     }
 
     const [{ data: blocks, error: blocksError }, sourceResult] = await Promise.all([
       supabase.from("homework_version_blocks")
-        .select("id,homework_block_id,block_type,position,title,rich_text_content,url,description,question_choices,is_required")
+        .select("*")
         .eq("homework_version_id", selectedVersion.id)
         .order("position", { ascending: true }),
       selectedVersion.based_on_version_id
@@ -83,7 +93,7 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
         id: selectedVersion.id,
         status: selectedVersion.status,
         basedOnVersionNumber: sourceResult.data?.version_number ?? selectedVersion.version_number ?? null,
-        blocks: (blocks ?? []).map((block) => ({
+        blocks: ((blocks ?? []) as Array<Database["public"]["Tables"]["homework_version_blocks"]["Row"] & { page_id?: string | null }>).map((block) => ({
           id: block.id,
           homeworkBlockId: block.homework_block_id,
           blockType: block.block_type,
@@ -94,7 +104,9 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
           description: block.description,
           questionChoices: block.question_choices,
           isRequired: block.is_required,
+          pageId: (block as unknown as { page_id?: string | null }).page_id,
         })),
+        pages: pageManifest(selectedVersion.page_manifest),
       },
     };
   } catch {

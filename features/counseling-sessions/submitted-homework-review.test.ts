@@ -17,6 +17,7 @@ const review: SubmittedHomeworkReview = {
   submittedAt: "2026-10-26T18:30:00.000Z",
   sessionTitle: "Communication",
   sessionSequence: 2,
+  pages: [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }],
   questions: [
     { blockId: "long", type: "long_answer", position: 0, title: null, content: { text: "Long prompt" }, choices: null, isRequired: true, answerText: "I want to be heard.", answerValue: null },
     { blockId: "check", type: "checkbox_question", position: 1, title: null, content: { text: "Checkbox prompt" }, choices: [{ id: "c1", label: "Pause first" }, { id: "c2", label: "Listen closely" }], isRequired: false, answerText: "", answerValue: ["c2", "c1"] },

@@ -36,11 +36,11 @@ describe("atomic Session and Homework RPC adapter", () => {
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(supabaseClient.rpc).toHaveBeenCalledTimes(1);
     expect(supabaseClient.rpc.mock.instances[0]).toBe(supabaseClient);
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
       target_session_id: "session-id", target_is_final: false, target_session_intent: "publish",
       save_session: true, save_homework: true, publish_homework: true,
       target_homework_version_id: "draft-id",
-      target_homework_blocks: [{ client_id: local.key, block_type: "video_link", title: "Watch", rich_text_content: null, url: "https://example.com/video", description: null }],
+      target_homework_blocks: [{ client_id: local.key, block_type: "video_link", title: "Watch", rich_text_content: null, url: "https://example.com/video", description: null, page_id: emptyHomework.pages[0]!.id }],
     }));
     expect(result).toMatchObject({ sessionState: { status: "published" }, homework: { status: "published", blocks: [{ id: "snapshot-id", clientId: local.key }] } });
   });
@@ -57,7 +57,7 @@ describe("atomic Session and Homework RPC adapter", () => {
       intent: "publish", saveSession: true, saveHomework: false, publishHomework: true,
     });
 
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
       target_session_intent: "publish", target_is_final: true,
       target_title: "Updated Session",
       target_material: [{ client_id: "local:page", block_type: "rich_text", title: "Updated Page", rich_text_content: page.richTextContent, url: null, description: null, is_recommended: false }],
@@ -106,7 +106,7 @@ describe("atomic Session and Homework RPC adapter", () => {
       intent: "save", saveSession: false, saveHomework: true, publishHomework: false,
     });
     expect(result).toMatchObject({ sessionState: null, homework: { versionId: "draft-id", status: "draft" } });
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
       save_session: false, save_homework: true, publish_homework: false, target_session_intent: "save",
     }));
   });
@@ -130,8 +130,8 @@ describe("atomic Session and Homework RPC adapter", () => {
 
     const result = await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
 
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
-      target_homework_blocks: [{ client_id: question.key, block_type: "radio_question", title: null,
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
+      target_homework_blocks: [{ client_id: question.key, block_type: "radio_question", title: null, page_id: staged.pages[0]!.id,
         rich_text_content: staged.blocks[0]!.richTextContent, url: null, description: null,
         question_choices: choices, is_required: false }],
     }));
@@ -148,16 +148,18 @@ describe("atomic Session and Homework RPC adapter", () => {
         block_type: "long_answer", position, title: side === "left" ? config.leftHeading : config.rightHeading,
         rich_text_content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: side === "left" ? config.leftHeading : config.rightHeading }] }] }, url: null,
         description: sideBySideResponseMetadata({ ...config, side }),
+        page_id: staged.pages[0]!.id,
       })),
     ] } }, error: null });
 
     await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
       target_homework_blocks: (["left", "right"] as const).map((side) => ({
         client_id: `side-by-side:${config.groupId}:${side}`, block_type: "long_answer",
         title: side === "left" ? config.leftHeading : config.rightHeading,
         rich_text_content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: side === "left" ? config.leftHeading : config.rightHeading }] }] }, url: null,
         description: sideBySideResponseMetadata({ ...config, side }),
+        page_id: staged.pages[0]!.id,
       })),
     }));
     const serialized = rpc.mock.calls[0]![1].target_homework_blocks as Array<{ rich_text_content: { content: Array<{ content: Array<{ text: string }> }> } }>;
@@ -194,7 +196,7 @@ describe("atomic Session and Homework RPC adapter", () => {
       intent: "publish_changes", saveSession: true, saveHomework: false, publishHomework: true,
     });
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
       target_session_intent: "publish_changes", save_session: true, save_homework: false, publish_homework: true,
     }));
   });
@@ -208,7 +210,7 @@ describe("atomic Session and Homework RPC adapter", () => {
       intent: "publish_changes", saveSession: true, saveHomework: false, publishHomework: true,
     });
     expect(requireAccess).toHaveBeenCalledWith("/session-builder/session-id");
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({ target_is_final: true }));
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({ target_is_final: true }));
     expect(result).toMatchObject({ sessionState: { isFinal: true } });
   });
 
@@ -234,11 +236,11 @@ describe("atomic Session and Homework RPC adapter", () => {
     const result = await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
       target_homework_blocks: [
-        { id: "snapshot-reading", homework_block_id: "logical-reading", block_type: "rich_text", title: "Reading", rich_text_content: reading, url: null, description: null },
-        { client_id: duplicate.key, block_type: "rich_text", title: "Reading", rich_text_content: reading, url: null, description: null },
-        { id: "snapshot-video", homework_block_id: "logical-video", block_type: "video_link", title: "Watch", rich_text_content: null, url: "https://example.com/watch", description: "Watch this" },
+        { id: "snapshot-reading", homework_block_id: "logical-reading", block_type: "rich_text", title: "Reading", rich_text_content: reading, url: null, description: null, page_id: staged.pages[0]!.id },
+        { client_id: duplicate.key, block_type: "rich_text", title: "Reading", rich_text_content: reading, url: null, description: null, page_id: staged.pages[0]!.id },
+        { id: "snapshot-video", homework_block_id: "logical-video", block_type: "video_link", title: "Watch", rich_text_content: null, url: "https://example.com/watch", description: "Watch this", page_id: staged.pages[0]!.id },
       ],
     }));
     expect(duplicate).toMatchObject({ key: expect.stringMatching(/^local:/), persistedId: null, homeworkBlockId: null });

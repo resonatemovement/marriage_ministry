@@ -4,7 +4,7 @@ import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import type { Json } from "@/types/database.generated";
 import { sideBySideAnswerRows } from "@/features/homework/side-by-side-response";
 
-import { groupSubmittedHomeworkQuestions, homeworkReviewAnswer, type SubmittedHomeworkQuestion, type SubmittedHomeworkReview } from "./submitted-homework-review";
+import { groupSubmittedHomeworkByPage, homeworkReviewAnswer, type SubmittedHomeworkQuestion, type SubmittedHomeworkReview } from "./submitted-homework-review";
 
 function isRichTextContent(value: SubmittedHomeworkQuestion["content"]): value is { [key: string]: Json | undefined } {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -68,10 +68,13 @@ export function SubmittedHomeworkReviewPage({ review, partnerName }: { review: S
       <p className="mt-2 text-sm text-text-secondary">Session {review.sessionSequence}: {review.sessionTitle}</p>
       <p className="mt-1 text-sm text-text-muted">Submitted {submittedDate}</p>
     </header>
-    {review.questions.length ? <section aria-label={`${partnerName}'s submitted answers`} className="grid gap-4">
-      {groupSubmittedHomeworkQuestions(review.questions).map((item) => item.kind === "side_by_side"
-        ? <ReviewSideBySide key={item.config.groupId} config={item.config} left={item.left} right={item.right} />
-        : <ReviewQuestion key={item.question.blockId} question={item.question} />)}
+    {review.questions.length ? <section aria-label={`${partnerName}'s submitted answers`} className="grid gap-6">
+      {groupSubmittedHomeworkByPage(review.questions, review.pages).map((page) => <section key={page.id} aria-label={page.title} className="grid gap-4">
+        <h2 className="font-heading text-xl font-bold text-text-primary">{page.title}</h2>
+        {page.items.map((item) => item.kind === "side_by_side"
+          ? <ReviewSideBySide key={item.config.groupId} config={item.config} left={item.left} right={item.right} />
+          : <ReviewQuestion key={item.question.blockId} question={item.question} />)}
+      </section>)}
     </section> : <Card className="p-5"><p className="text-sm text-text-muted">This Homework assignment has no questions to review.</p></Card>}
   </main>;
 }

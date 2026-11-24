@@ -1,9 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
 
-import { addHomeworkBlock, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkQuestionChoices, restoreHomeworkEditorState, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
 
 describe("staged Homework Rich Text model", () => {
+  it("adds, renames, reorders, moves, and permanently deletes draft pages without changing block identity", () => {
+    const firstPage = { id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 };
+    const initial = homeworkEditorStateFromRows("draft-id", [{ id: "snapshot-a", homeworkBlockId: "block-a", blockType: "long_answer", position: 0, title: "Prompt", richTextContent: { type: "doc", content: [] }, url: null, description: null, pageId: firstPage.id }], "draft", [firstPage]);
+    const added = addHomeworkPage(initial, { id: "00000000-0000-4000-8000-000000000002", title: "", position: 1 });
+    expect(added.selectedPageId).toBe("00000000-0000-4000-8000-000000000002");
+    expect(homeworkPagesArePublishable(added)).toBe(false);
+    const named = renameHomeworkPage(added, added.selectedPageId, "Reflection");
+    const moved = moveHomeworkBlockToPage(named, "snapshot-a", added.selectedPageId);
+    expect(moved.blocks[0]).toMatchObject({ persistedId: "snapshot-a", homeworkBlockId: "block-a", pageId: added.selectedPageId });
+    expect(reorderHomeworkPages(moved, added.selectedPageId, -1).pages.map((page) => page.title)).toEqual(["Reflection", "Page 1"]);
+    const deleted = deleteHomeworkPage(moved, added.selectedPageId, "DELETE");
+    expect(deleted.pages).toHaveLength(1);
+    expect(deleted.blocks).toHaveLength(0);
+    expect(deleteHomeworkPage(moved, added.selectedPageId, "delete")).toBe(moved);
+  });
+
+  it("keeps legacy snapshots on one implicit page and requires titled nonempty pages only for publication", () => {
+    const legacy = homeworkEditorStateFromRows("legacy-version", [{ id: "snapshot", homeworkBlockId: "logical", blockType: "long_answer", position: 0, title: "Prompt", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Answer this" }] }] }, url: null, description: null }], "published");
+    expect(legacy.pages).toEqual([{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }]);
+    expect(legacy.blocks[0]?.pageId).toBe(legacy.pages[0]?.id);
+    expect(homeworkPagesArePublishable(legacy)).toBe(true);
+    const incomplete = addHomeworkPage(legacy, { id: "00000000-0000-4000-8000-000000000002", title: "", position: 1 });
+    expect(homeworkEditorCanCommit(incomplete)).toBe(true);
+    expect(homeworkPagesArePublishable(incomplete)).toBe(false);
+    expect(homeworkPagesArePublishable(renameHomeworkPage(incomplete, incomplete.selectedPageId, "Second"))).toBe(false);
+  });
+
   it("loads persisted block IDs and retains unsupported future block types", () => {
     const state = homeworkEditorStateFromRows("draft-id", [
       { id: "version-block-1", homeworkBlockId: "block-1", blockType: "rich_text", position: 0, title: "Reading", richTextContent: { type: "doc", content: [] }, url: null, description: null },

@@ -36,7 +36,7 @@ describe("Homework version initialization", () => {
         { id: "vb-radio", homeworkBlockId: "block-radio", blockType: "radio_question", questionChoices: [{ id: "c1", label: "One" }, { id: "c2", label: "Two" }], isRequired: false },
       ] },
     });
-    expect(select).toHaveBeenCalledWith("id,homework_block_id,block_type,position,title,rich_text_content,url,description,question_choices,is_required");
+    expect(select).toHaveBeenCalledWith("*");
     expect(rpc).not.toHaveBeenCalled();
   });
 
@@ -45,7 +45,7 @@ describe("Homework version initialization", () => {
     order.mockResolvedValueOnce({ data: [{ id: "published-id", status: "published", based_on_version_id: null, version_number: 2 }], error: null })
       .mockResolvedValueOnce({ data: [], error: null });
     await expect(initializeHomeworkDraftForSession("session-id", "published")).resolves.toEqual({
-      draft: { id: "published-id", status: "published", basedOnVersionNumber: 2, blocks: [] },
+      draft: { id: "published-id", status: "published", basedOnVersionNumber: 2, blocks: [], pages: [] },
     });
     expect(rpc).not.toHaveBeenCalled();
   });
@@ -53,7 +53,7 @@ describe("Homework version initialization", () => {
   it("does not create a Homework root when an empty Published Session opens Homework", async () => {
     maybeSingle.mockResolvedValueOnce({ data: null, error: null });
     await expect(initializeHomeworkDraftForSession("session-id", "published")).resolves.toEqual({
-      draft: { id: null, status: "draft", basedOnVersionNumber: null, blocks: [] },
+      draft: { id: null, status: "draft", basedOnVersionNumber: null, blocks: [], pages: [] },
     });
     expect(rpc).not.toHaveBeenCalled();
     expect(order).not.toHaveBeenCalled();

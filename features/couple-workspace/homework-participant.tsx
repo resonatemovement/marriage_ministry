@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { VideoLinkPreview } from "@/features/homework/homework-preview";
 import { homeworkProgressLabel, type HomeworkProgressStatus } from "@/features/homework/presentation";
 import type { HomeworkAnswerChoice, HomeworkResponseValue } from "@/features/homework/selection-question";
+import type { HomeworkPage } from "@/features/homework/homework-editor-model";
 import { eligibleInternalNavigation } from "@/features/session-builder/navigation-guard";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
@@ -33,6 +34,7 @@ export type ParticipantHomeworkBlock = {
   sideBySideConfig?: Omit<SideBySideResponseConfig, "side"> | null;
   sideBySideResponseIds?: { left: string; right: string } | null;
   sideBySideRows?: SideBySideAnswerRow[] | null;
+  pageId?: string;
 };
 
 export type ParticipantHomework = {
@@ -41,6 +43,7 @@ export type ParticipantHomework = {
   progressId: string;
   revisionId: string;
   blocks: ParticipantHomeworkBlock[];
+  pages?: HomeworkPage[];
 };
 
 const responseBlockTypes = new Set(["long_answer", "checkbox_question", "radio_question"]);
@@ -220,6 +223,9 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
   const [answers, setAnswers] = useState(initialAnswers);
   const [savedAnswers, setSavedAnswers] = useState(initialAnswers);
   const [status, setStatus] = useState(homework.status);
+  const pages = homework.pages?.length ? homework.pages : [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }];
+  const [pageIndex, setPageIndex] = useState(0);
+  const currentPage = pages[Math.min(pageIndex, pages.length - 1)]!;
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -291,8 +297,15 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
 
   return <section aria-label="Your Homework">
     {showHeader ? <header className="mb-6"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Session Homework</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{homework.title}</h2><p className="mt-2 text-sm text-text-muted">Status: <span className="font-medium text-text-primary">{homeworkProgressLabel(status)}</span></p></header> : null}
+    <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div><p className="text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p><h3 className="font-heading mt-1 text-xl font-bold text-text-primary">{currentPage.title || `Page ${pageIndex + 1}`}</h3></div>
+      <nav aria-label="Homework page navigation" className="flex gap-2">
+        <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((index) => Math.max(0, index - 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Previous Page</button>
+        <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Next Page</button>
+      </nav>
+    </header>
     <form noValidate onSubmit={(event) => event.preventDefault()}>
-      <div className="grid gap-4">{homework.blocks.map((block) => <Card key={block.id} className="p-5">
+      <div className="grid gap-4">{homework.blocks.filter((block) => (block.pageId ?? pages[0]!.id) === currentPage.id).map((block) => <Card key={block.id} className="p-5">
         <HomeworkBlockContent block={block} answers={answers} errors={fieldErrors} locked={locked} updateAnswer={updateAnswer} />
       </Card>)}</div>
       {locked ? <p className="mt-5 text-sm text-text-muted">Submitted Homework is read-only.</p> : <>

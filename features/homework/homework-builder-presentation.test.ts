@@ -23,15 +23,15 @@ describe("Homework Builder shell", () => {
     expect(markup).toContain("Homework");
     expect(markup).not.toContain("Draft based on v1");
     expect(markup).not.toContain(">Draft<");
-    expect(markup).toContain("No homework content yet");
-    expect(markup).toContain("Add readings, videos, and questions");
+    expect(markup).toContain("No content on this page yet.");
+    expect(markup).toContain("Add Homework content to this page");
     expect(markup).not.toContain(">Preview</button>");
     expect(markup).toContain("Add Content");
     expect(markup.match(/>Add Content<\/button>/g)).toHaveLength(1);
     expect(markup.match(/>Homework</g)).toHaveLength(1);
     expect(markup).not.toContain("Homework content</h3>");
     expect(markup).not.toContain("Changes are staged locally in this editor.");
-    expect(markup).not.toContain("border-t border-border");
+    expect(markup).toContain("border-t border-border pt-3");
   });
 
   it("renders loaded legacy and selection-question blocks with their saved authoring summary", () => {
