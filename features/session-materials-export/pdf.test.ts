@@ -78,6 +78,26 @@ describe("assigned Session Materials PDF", () => {
     await expect(buildSessionMaterialsPdf("Session", [{ ...page("Bad", 1, "Unused"), richTextContent: { type: "doc", content: [{ type: "image", attrs: { src: "https://example.test/image.png" } }] } }], "https://app.example")).rejects.toThrow("unsupported content");
   });
 
+  it("preserves text from legacy link marks without an href as non-clickable content", async () => {
+    const block = {
+      ...page("Legacy link", 1, "ignored"),
+      richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "This link has no destination", marks: [{ type: "link", attrs: {} }] }] }] },
+    };
+    const { bytes } = await buildSessionMaterialsPdf("Session", [block], "https://app.example");
+
+    expect(decodedPdfText(bytes)).toContain("This link has no destination");
+    expect(bytes.toString("latin1")).not.toContain("/URI");
+  });
+
+  it("still rejects non-empty unsafe rich-text link destinations", async () => {
+    const block = {
+      ...page("Unsafe link", 1, "ignored"),
+      richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Unsafe destination", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }] }] },
+    };
+
+    await expect(buildSessionMaterialsPdf("Session", [block], "https://app.example")).rejects.toThrow("invalid link");
+  });
+
   it("flows long paragraphs and lists across measured pages with a footer on every content page", async () => {
     const longParagraph = "Long paragraph content wraps naturally and remains inside the printable page width. ".repeat(180);
     const longList = Array.from({ length: 28 }, (_, index) => ({

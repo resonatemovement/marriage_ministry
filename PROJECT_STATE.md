@@ -1,7 +1,17 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 24, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; shared authoring and Couple Homework page navigation committed and pushed)
+Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; Session Material PDF snapshot-link compatibility fix validated; authenticated browser verification pending)
 Repository: resonatemovement/marriage_ministry
+
+## HW-01 Session Material PDF Preview HTTP 500 (November 24, 2026)
+
+- Confirmed request: `GET /api/case-sessions/f98026d3-378a-451e-a545-91e263acf869/materials-pdf` against linked DEV `lctkqjjkhpyootwvttvj`. The requested Case Session is active, actual/template sequence 2, with a pinned snapshot of six ordered blocks: four rich-text pages, one video, and one audio resource. No Homework answers or counseling notes were queried.
+- The local Next log did not contain the specific request; the only nearby server errors were unrelated “destination stream closed early” entries. Reproducing the PDF generator directly against this exact DEV snapshot produced the actual exception: `Session text contains an invalid link`, thrown by `assertRichTextSupported` while validating a persisted TipTap `link` mark.
+- Root cause: five link marks in the first pinned rich-text block have no `attrs.href`. These legacy/dangling link marks are text formatting with no usable destination; they should render as ordinary text, not invalidate the entire PDF. A read-only DEV aggregate found 30 missing-href link marks across three of nine snapshots with links, so this is a pre-existing snapshot compatibility issue beyond this one Session, not an HW-01 regression (the HW-01 diff does not change the PDF route, loader, renderer, or snapshot model).
+- Minimal fix: rich-text link marks with a missing/null/blank destination are accepted as non-clickable text; non-empty unsafe destinations still fail closed. The renderer already adds a clickable PDF link only when `safeHttpUrl()` accepts the href, so no unsafe target is emitted. Snapshot bytes/order, access authorization, PDF styling, and export format are unchanged.
+- Regression coverage was added for a dangling link mark preserving its text without a PDF URI, and for rejecting a non-empty unsafe rich-text URL. Focused PDF renderer/loader/route tests pass **19/19**. A temporary, uncommitted read-only DEV snapshot smoke test passed and generated a valid 18,303-byte PDF from all six pinned blocks; the temporary test file was removed.
+- Preview and Download share the same API generator; only `Content-Disposition` differs. Route tests verify identical PDF bytes for inline Preview and attachment Download and correct inline/attachment headers. A direct authenticated local browser request could not be performed: no authenticated browser session is available, and unauthenticated localhost access correctly returned 404. Therefore affected-session authenticated Preview/Download remain manual browser checks, not claimed as passed.
+- Full Vitest suite passes **1,563/1,563 across 271 files**; typecheck, lint, production build, and `git diff --check` pass. No database writes, migration, notification, snapshot change, merge, or deployment occurred. The PDF fix and this state update are committed and pushed on `feature/hw-01-multiple-homework-pages`; do not merge/deploy until separately approved. Preserve the unrelated `.env.example` and `AGENTS.md` edits and every existing stash entry.
 
 ## HW-01 Couple Homework Page Navigation (November 24, 2026)
 

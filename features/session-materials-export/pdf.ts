@@ -51,7 +51,11 @@ function assertRichTextSupported(node: unknown): void {
   if (typeof value.type !== "string" || !supportedNodes.has(value.type)) throw new Error("Session text contains unsupported content");
   for (const mark of textMarks(value)) {
     if (!supportedMarks.has(mark.type)) throw new Error("Session text contains unsupported formatting");
-    if (mark.type === "link" && (typeof mark.attrs?.href !== "string" || !safeHttpUrl(mark.attrs.href))) throw new Error("Session text contains an invalid link");
+    if (mark.type === "link") {
+      const href = mark.attrs?.href;
+      const hasHref = href !== undefined && href !== null && !(typeof href === "string" && href.trim() === "");
+      if (hasHref && (typeof href !== "string" || !safeHttpUrl(href))) throw new Error("Session text contains an invalid link");
+    }
   }
   childrenOf(value).forEach(assertRichTextSupported);
 }
