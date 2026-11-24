@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 24, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; shared authoring and Couple Homework page navigation validated, pending commit/push)
+Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 implementation verified; DEV migration applied; shared authoring and Couple Homework page navigation committed and pushed)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Couple Homework Page Navigation (November 24, 2026)
@@ -8,7 +8,7 @@ Repository: resonatemovement/marriage_ministry
 - Couple Homework now reuses `components/shared/page-navigation.tsx` in the same responsive two-column layout as Session Builder: 336px page navigation on desktop, stacked above content on smaller screens, `PAGE n` and title, and the same neutral active treatment. No Add Page callback is provided, so authoring controls are not exposed to Couples.
 - Selecting any page updates the visible page while all responses remain in the existing assignment-wide state. Previous/Next Page remains available; Save Draft persists the complete answer state; submission still validates required answers across every page. Permissions, lifecycle, historical answers, notifications, and database schema are unchanged.
 - Focused Couple Homework, Session View, and shared navigation tests pass **31/31**. Full Vitest passes **1,561/1,561**; typecheck, lint, production build, and `git diff --check` pass. No authenticated browser/device was available for desktop/mobile visual review; responsive markup is covered by presentation tests.
-- Changes are UI-only and have not been committed or pushed yet. Preserve the existing unrelated `.env.example` and `AGENTS.md` edits and all eight stashes; do not merge or deploy.
+- Implementation commit `c9f79cc` updates the Couple Homework page navigation on `feature/hw-01-multiple-homework-pages` and is pushed. This state entry records that milestone; preserve the existing unrelated `.env.example` and `AGENTS.md` edits and all eight stashes; do not merge or deploy.
 
 ## HW-01 Shared Page Navigation Design (November 24, 2026)
 
