@@ -31,7 +31,14 @@ describe("Homework Builder shell", () => {
     expect(markup.match(/>Homework</g)).toHaveLength(1);
     expect(markup).not.toContain("Homework content</h3>");
     expect(markup).not.toContain("Changes are staged locally in this editor.");
-    expect(markup).toContain("border-t border-border pt-3");
+    expect(markup).toContain('aside aria-label="Homework pages"');
+    expect(markup).toContain('nav aria-label="Pages"');
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("Page 1");
+    expect(markup).toContain(">Add Page</button>");
+    expect(markup).toContain("Page title");
+    expect(markup).toContain('aria-label="Move page up"');
+    expect(markup).toContain('aria-label="Move page down"');
   });
 
   it("renders loaded legacy and selection-question blocks with their saved authoring summary", () => {
@@ -57,6 +64,7 @@ describe("Homework Builder shell", () => {
     expect(markup).toContain("Radio Question");
     expect(markup).toContain("Select one");
     expect(markup).toContain("2 choices · Optional");
+    expect(markup).toContain("5 content blocks");
     expect(markup).toContain("line-clamp-2");
     expect(markup).not.toContain("This block is preserved and is not editable in this pass.");
     expect(markup).toMatch(/Rich Text<\/p><div><h4/);

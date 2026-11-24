@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import type { HomeworkDraftBlock } from "./queries";
-import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocksOnPage, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocksOnPage, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, selectHomeworkPage, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
 import type { HOMEWORK_AUTHORING_BLOCK_TYPES } from "./homework-editor-model";
 
 type HomeworkAuthoringBlockType = typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number];
@@ -48,7 +48,7 @@ export function HomeworkEditorProvider({ children, initialDraft }: { children?: 
   const renamePage = useCallback((pageId: string, title: string) => setState((current) => renameHomeworkPage(current, pageId, title)), []);
   const reorderPage = useCallback((pageId: string, direction: -1 | 1) => setState((current) => reorderHomeworkPages(current, pageId, direction)), []);
   const deletePage = useCallback((pageId: string, confirmation: string) => setState((current) => deleteHomeworkPage(current, pageId, confirmation)), []);
-  const selectPage = useCallback((pageId: string) => setState((current) => current.pages.some((page) => page.id === pageId) ? { ...current, selectedPageId: pageId } : current), []);
+  const selectPage = useCallback((pageId: string) => setState((current) => selectHomeworkPage(current, pageId)), []);
   const moveBlockToPage = useCallback((blockKey: string, pageId: string) => setState((current) => moveHomeworkBlockToPage(current, blockKey, pageId)), []);
   const addBlock = useCallback((blockType: HomeworkAuthoringBlockType) => {
     const block = newHomeworkBlock(blockType, 0);

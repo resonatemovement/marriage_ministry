@@ -156,6 +156,10 @@ export function renameHomeworkPage(state: HomeworkEditorState, pageId: string, t
   return { ...state, pages: state.pages.map((page) => page.id === pageId ? { ...page, title } : page) };
 }
 
+export function selectHomeworkPage(state: HomeworkEditorState, pageId: string) {
+  return state.pages.some((page) => page.id === pageId) ? { ...state, selectedPageId: pageId } : state;
+}
+
 export function reorderHomeworkPages(state: HomeworkEditorState, pageId: string, direction: -1 | 1) {
   const index = state.pages.findIndex((page) => page.id === pageId);
   const nextIndex = index + direction;

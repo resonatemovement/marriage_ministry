@@ -68,7 +68,8 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   const { blocks, editingKey, pages, selectedPageId } = homeworkEditor.state;
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? pages[0];
   const visibleBlocks = selectedPage ? blocks.filter((block) => block.pageId === selectedPage.id) : [];
-  const editing = blocks.find((block) => block.key === editingKey);
+  const editingBlock = blocks.find((block) => block.key === editingKey);
+  const editing = editingBlock?.pageId === selectedPage?.id ? editingBlock : undefined;
   const richText = isRichTextContent(editing?.richTextContent) ? editing.richTextContent : { type: "doc", content: [{ type: "paragraph" }] };
 
   function addBlock(type: typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number]) {
@@ -117,23 +118,39 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   }
 
   return <section aria-labelledby="homework-builder-heading" className="mt-6">
-    <AuthoringSectionHeader headingId="homework-builder-heading" title="Homework" description="Build the homework participants will complete for this Session."
-      action={!editing ? <div className="flex flex-wrap gap-2"><button type="button" onClick={homeworkEditor.addPage} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold text-text-primary hover:bg-surface-muted"><Plus className="size-4" aria-hidden="true" />Add Page</button><button type="button" disabled={!selectedPage} onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Content</button></div> : undefined} />
-    <div className="mt-5 rounded-lg border border-border bg-white p-4">
-      <nav aria-label="Homework pages" className="flex gap-2 overflow-x-auto pb-2">
-        {pages.map((page, index) => <button key={page.id} type="button" aria-current={page.id === selectedPage?.id ? "page" : undefined} onClick={() => homeworkEditor.selectPage(page.id)} className={`min-h-10 shrink-0 rounded-md px-3 text-sm font-semibold ${page.id === selectedPage?.id ? "bg-brand-primary text-white" : "bg-surface-muted text-text-primary hover:bg-surface-muted/70"}`}>{page.title.trim() || `Untitled Page ${index + 1}`}</button>)}
-        {!pages.length ? <p className="px-2 py-2 text-sm text-text-muted">No pages yet. Add a page to begin.</p> : null}
-      </nav>
-      {selectedPage ? <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-border pt-3">
-        <label className="grid min-w-48 flex-1 gap-1 text-xs font-semibold text-text-muted">Page title
-          <Input aria-label="Page title" maxLength={120} value={selectedPage.title} onChange={(event) => homeworkEditor.renamePage(selectedPage.id, event.target.value)} placeholder="Untitled page" />
-        </label>
-        <button type="button" aria-label="Move page up" disabled={selectedPage.position === 0} onClick={() => homeworkEditor.reorderPage(selectedPage.id, -1)} className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"><ArrowUp className="size-4" aria-hidden="true" /></button>
-        <button type="button" aria-label="Move page down" disabled={selectedPage.position === pages.length - 1} onClick={() => homeworkEditor.reorderPage(selectedPage.id, 1)} className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"><ArrowDown className="size-4" aria-hidden="true" /></button>
-        <button type="button" onClick={() => { setDeleteConfirmation(""); setDeletePageTarget(selectedPage.id); }} className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-danger-strong hover:bg-danger-strong/5"><Trash2 className="size-4" aria-hidden="true" />Delete Page</button>
-      </div> : null}
-    </div>
-    <div className="mt-5">
+    <AuthoringSectionHeader headingId="homework-builder-heading" title="Homework" description="Build the homework participants will complete for this Session." />
+    <div className="mt-5 grid items-start gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+      <aside aria-label="Homework pages" className="rounded-lg border border-border bg-white p-3">
+        <nav aria-label="Pages" className="grid gap-2">
+          {pages.map((page, index) => {
+            const pageBlockCount = blocks.filter((block) => block.pageId === page.id).length;
+            const isSelected = page.id === selectedPage?.id;
+            return <button key={page.id} type="button" aria-current={isSelected ? "page" : undefined} onClick={() => homeworkEditor.selectPage(page.id)} className={`grid min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left text-sm font-semibold focus-visible:bg-brand-primary focus-visible:text-white ${isSelected ? "border-brand-primary bg-brand-primary text-white" : "border-border bg-white text-text-primary hover:bg-surface-muted"}`}>
+              <span className="flex min-w-0 items-start gap-2"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs tabular-nums">{index + 1}</span><span className="min-w-0 break-words">{page.title.trim() || `Untitled Page ${index + 1}`}</span></span>
+              <span className={`text-xs font-normal ${isSelected ? "text-white/80" : "text-text-muted"}`}>{pageBlockCount} {pageBlockCount === 1 ? "content block" : "content blocks"}</span>
+            </button>;
+          })}
+          {!pages.length ? <p className="px-2 py-2 text-sm text-text-muted">No pages yet. Add a page to begin.</p> : null}
+        </nav>
+        <button type="button" onClick={homeworkEditor.addPage} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted"><Plus className="size-4" aria-hidden="true" />Add Page</button>
+      </aside>
+      <div className="min-w-0 rounded-lg border border-border bg-white p-4">
+        {selectedPage ? <>
+          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end">
+            <label className="grid min-w-0 flex-1 gap-1 text-xs font-semibold text-text-muted">Page title
+              <Input aria-label="Page title" maxLength={120} value={selectedPage.title} onChange={(event) => homeworkEditor.renamePage(selectedPage.id, event.target.value)} placeholder="Untitled page" />
+            </label>
+            <div className="flex flex-wrap items-center gap-1">
+              <button type="button" aria-label="Move page up" disabled={selectedPage.position === 0} onClick={() => homeworkEditor.reorderPage(selectedPage.id, -1)} className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"><ArrowUp className="size-4" aria-hidden="true" /></button>
+              <button type="button" aria-label="Move page down" disabled={selectedPage.position === pages.length - 1} onClick={() => homeworkEditor.reorderPage(selectedPage.id, 1)} className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"><ArrowDown className="size-4" aria-hidden="true" /></button>
+              <button type="button" onClick={() => { setDeleteConfirmation(""); setDeletePageTarget(selectedPage.id); }} className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-danger-strong hover:bg-danger-strong/5"><Trash2 className="size-4" aria-hidden="true" />Delete Page</button>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button type="button" disabled={Boolean(editingBlock)} onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Content</button>
+          </div>
+        </> : <p className="text-sm text-text-muted">Select or add a page to begin.</p>}
+        <div className="mt-4">
       {selectedPage && visibleBlocks.length === 0 && !editing ? <div className="rounded-md border border-dashed border-border p-6"><h3 className="font-heading text-base font-bold text-text-primary">No content on this page yet.</h3><p className="mt-2 text-sm text-text-muted">Add Homework content to this page, or save it as a draft while it is in progress.</p></div> : null}
       {editing ? <div className="mt-5 grid gap-4 rounded-md border border-border bg-white p-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(editing.blockType)}</p>
@@ -188,6 +205,8 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
         duplicate={(key) => homeworkEditor.duplicateBlock(key)}
         requestDelete={requestDelete}
         moveToPage={homeworkEditor.moveBlockToPage} reorder={homeworkEditor.reorderBlocks} /> : null}
+        </div>
+      </div>
     </div>
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0"><SheetHeader className="border-b border-border px-6 py-5"><SheetTitle>Add Content</SheetTitle><SheetDescription>Choose the type of Homework content to add.</SheetDescription></SheetHeader><div className="grid gap-3 p-6">{HOMEWORK_AUTHORING_BLOCK_TYPES.map((type) => <button key={type} type="button" onClick={() => addBlock(type)} className="flex items-center gap-3 rounded-md border border-border p-4 text-left hover:bg-surface-muted">{blockTypeIcon(type)}<span className="grid gap-1"><span className="text-sm font-semibold text-text-primary">{blockTypeLabel(type)}</span>{type === "checkbox_question" ? <span className="text-xs text-text-muted">Allow multiple answers.</span> : type === "radio_question" ? <span className="text-xs text-text-muted">Allow one answer.</span> : null}</span></button>)}</div></SheetContent></Sheet>
     <AlertDialog open={deleteTarget !== null} onOpenChange={closeDeleteDialog}>

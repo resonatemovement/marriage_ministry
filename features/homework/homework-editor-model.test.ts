@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
 
-import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkEditorStateFromRows, homeworkMoveTarget, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, initializeHomeworkEditorState, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocks, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, selectHomeworkPage, sideBySideHeadingsAreValid, updateHomeworkBlock, updateHomeworkQuestionChoice } from "./homework-editor-model";
 
 describe("staged Homework Rich Text model", () => {
   it("adds, renames, reorders, moves, and permanently deletes draft pages without changing block identity", () => {
@@ -29,6 +29,23 @@ describe("staged Homework Rich Text model", () => {
     expect(homeworkEditorCanCommit(incomplete)).toBe(true);
     expect(homeworkPagesArePublishable(incomplete)).toBe(false);
     expect(homeworkPagesArePublishable(renameHomeworkPage(incomplete, incomplete.selectedPageId, "Second"))).toBe(false);
+  });
+
+  it("switches selected pages without resetting staged blocks or edits", () => {
+    const pageOne = { id: "page-one", title: "Reflection", position: 0 };
+    const pageTwo = { id: "page-two", title: "Practice", position: 1 };
+    const initial = homeworkEditorStateFromRows("draft-id", [{
+      id: "snapshot-a", homeworkBlockId: "block-a", blockType: "long_answer", position: 0,
+      title: "Question", richTextContent: { type: "doc", content: [] }, url: null, description: null,
+    }], "draft", [pageOne, pageTwo]);
+    const edited = updateHomeworkBlock(initial, "snapshot-a", { title: "Unsaved title" });
+
+    const secondPage = selectHomeworkPage(edited, pageTwo.id);
+    expect(secondPage.selectedPageId).toBe(pageTwo.id);
+    expect(secondPage.blocks).toBe(edited.blocks);
+    expect(secondPage.blocks[0]?.title).toBe("Unsaved title");
+    expect(selectHomeworkPage(secondPage, pageOne.id).blocks[0]?.title).toBe("Unsaved title");
+    expect(selectHomeworkPage(secondPage, "missing-page")).toBe(secondPage);
   });
 
   it("loads persisted block IDs and retains unsupported future block types", () => {
