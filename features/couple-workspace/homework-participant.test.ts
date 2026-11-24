@@ -104,9 +104,18 @@ describe("participant Homework presentation", () => {
     const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, { homework: assignment }));
     expect(markup).toContain("Reflect");
     expect(markup).toContain("Page 1 of 2");
+    expect(markup).toContain('aside aria-label="Your Homework pages"');
+    expect(markup).toContain("lg:grid-cols-[21rem_minmax(0,1fr)]");
+    expect(markup).toContain("PAGE 1");
+    expect(markup).toContain("PAGE 2");
+    expect(markup).toContain("border-text-muted/30 bg-surface-muted");
+    expect(markup).not.toContain(">Add Page</button>");
     expect(markup).toContain("Previous Page");
     expect(markup).toContain("Next Page");
+    expect(markup).toContain("Save Draft");
+    expect(markup).toContain("Submit Homework");
     expect(markup).toContain("First prompt");
+    expect(markup).toContain("Respond");
     expect(markup).not.toContain('for="answer-second"');
     expect(participantMissingRequirements(assignment, {})).toEqual(["First prompt", "Second prompt"]);
   });
