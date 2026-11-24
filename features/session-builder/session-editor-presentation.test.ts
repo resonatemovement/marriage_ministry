@@ -137,14 +137,18 @@ describe("unified Session editor presentation", () => {
       ],
     }));
     expect(markup).toContain('aside aria-label="Session Material Pages"');
-    expect(markup).toContain("Page 1");
-    expect(markup).toContain("Page 2");
+    expect(markup).toContain("PAGE 1");
+    expect(markup).toContain("PAGE 2");
     expect(markup).toContain("Welcome");
     expect(markup).toContain("First page body");
     expect(markup).not.toContain("Second page body");
     expect(markup).toContain("Watch");
     expect(markup).toContain("Video / Link");
     expect(markup).toContain('aria-current="page"');
+    const pageNavigation = markup.slice(markup.indexOf('<aside aria-label="Session Material Pages"'), markup.indexOf("</aside>") + 8);
+    expect(pageNavigation).not.toContain("content block");
+    expect(pageNavigation).not.toContain("Selected");
+    expect(pageNavigation).toContain("border-text-muted/30 bg-surface-muted");
   });
 
   it("allows Admins to edit default recommendations while Authors see them read-only", () => {

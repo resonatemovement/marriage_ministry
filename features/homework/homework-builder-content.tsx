@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AuthoringSectionHeader } from "@/components/shared/authoring-section-header";
+import { PageNavigation } from "@/components/shared/page-navigation";
 import { RichTextSummary } from "@/components/shared/rich-text-summary";
 import { VideoLinkFields } from "@/components/shared/video-link-fields";
 import { videoLinkIsComplete } from "@/components/shared/authoring-completion";
@@ -120,20 +121,14 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   return <section aria-labelledby="homework-builder-heading" className="mt-6">
     <AuthoringSectionHeader headingId="homework-builder-heading" title="Homework" description="Build the homework participants will complete for this Session." />
     <div className="mt-5 grid items-start gap-4 lg:grid-cols-[21rem_minmax(0,1fr)]">
-      <aside aria-label="Homework pages" className="rounded-lg border border-border bg-white p-3">
-        <nav aria-label="Pages" className="grid gap-2">
-          {pages.map((page, index) => {
-            const pageBlockCount = blocks.filter((block) => block.pageId === page.id).length;
-            const isSelected = page.id === selectedPage?.id;
-            return <button key={page.id} type="button" aria-current={isSelected ? "page" : undefined} onClick={() => homeworkEditor.selectPage(page.id)} className={`grid min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left text-sm font-semibold focus-visible:bg-brand-primary focus-visible:text-white ${isSelected ? "border-brand-primary bg-brand-primary text-white" : "border-border bg-white text-text-primary hover:bg-surface-muted"}`}>
-              <span className="flex min-w-0 items-start gap-2"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs tabular-nums">{index + 1}</span><span className="min-w-0 break-words">{page.title.trim() || `Untitled Page ${index + 1}`}</span></span>
-              <span className={`text-xs font-normal ${isSelected ? "text-white/80" : "text-text-muted"}`}>{pageBlockCount} {pageBlockCount === 1 ? "content block" : "content blocks"}</span>
-            </button>;
-          })}
-          {!pages.length ? <p className="px-2 py-2 text-sm text-text-muted">No pages yet. Add a page to begin.</p> : null}
-        </nav>
-        <button type="button" onClick={homeworkEditor.addPage} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted"><Plus className="size-4" aria-hidden="true" />Add Page</button>
-      </aside>
+      <PageNavigation
+        ariaLabel="Homework pages"
+        pages={pages.map((page, index) => ({ id: page.id, title: page.title.trim() || `Untitled Page ${index + 1}` }))}
+        selectedPageId={selectedPage?.id}
+        emptyMessage="No pages yet. Add a page to begin."
+        onSelect={homeworkEditor.selectPage}
+        onAddPage={homeworkEditor.addPage}
+      />
       <div className="min-w-0 rounded-lg border border-border bg-white p-4">
         {selectedPage ? <>
           <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end">

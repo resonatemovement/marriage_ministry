@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AuthoringSectionHeader } from "@/components/shared/authoring-section-header";
+import { PageNavigation } from "@/components/shared/page-navigation";
 import { RichTextSummary } from "@/components/shared/rich-text-summary";
 import { VideoLinkFields } from "@/components/shared/video-link-fields";
 import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
@@ -107,18 +108,21 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
     <AuthoringSectionHeader headingId="session-material-heading" title="Session Material" description="Build and organize the material participants will use." />
 
     <div className="grid items-start gap-4 lg:grid-cols-[21rem_minmax(0,1fr)]">
-      <aside aria-label="Session Material Pages" className="rounded-lg border border-border bg-white p-3">
-        {pages.length ? <nav aria-label="Pages" className="grid gap-2">
-          {pages.map((page, index) => {
-            const selected = selectedPage?.key === page.key;
-            return <button key={page.key} type="button" aria-current={selected ? "page" : undefined} onClick={() => { setSelectedPageKey(page.key); if (editing?.blockType === "rich_text") { setEditingKey(null); setCreatingKey(null); setMessage(null); } }} className={`grid min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 ${selected ? "border-brand-primary bg-brand-primary/5" : "border-border hover:bg-surface-muted"}`}>
-              <span className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-brand-secondary"><span>Page {index + 1}</span><span>1 content block</span></span>
-              <span className="block break-words text-sm font-semibold text-text-primary">{page.title.trim() || "Untitled Page"}</span>
-            </button>;
-          })}
-        </nav> : <p className="px-2 py-3 text-sm text-text-muted">No Pages yet.</p>}
-        {!archived && !editing ? <button type="button" onClick={() => add("rich_text")} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Page</button> : null}
-      </aside>
+      <PageNavigation
+        ariaLabel="Session Material Pages"
+        pages={pages.map((page) => ({ id: page.key, title: page.title.trim() || "Untitled Page" }))}
+        selectedPageId={selectedPage?.key}
+        emptyMessage="No Pages yet."
+        onSelect={(pageKey) => {
+          setSelectedPageKey(pageKey);
+          if (editing?.blockType === "rich_text") {
+            setEditingKey(null);
+            setCreatingKey(null);
+            setMessage(null);
+          }
+        }}
+        onAddPage={!archived && !editing ? () => add("rich_text") : undefined}
+      />
       <section aria-labelledby="session-page-editor-heading" className="min-w-0 rounded-lg border border-border bg-surface-muted/30 p-4 sm:p-5">
         <h3 id="session-page-editor-heading" className="font-heading text-lg font-bold text-text-primary">{selectedPage ? `Page ${selectedPageIndex + 1}: ${selectedPage.title.trim() || "Untitled Page"}` : "Session Material Page"}</h3>
         {editing?.blockType === "rich_text" ? openEditing : selectedPage ? <MaterialRows blockType="rich_text" blocks={selectedPageBlocks} orderingBlocks={pages} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={(key) => { setSelectedPageKey(key); setEditingKey(key); }} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">Add a Page to begin building Session Material.</p>}

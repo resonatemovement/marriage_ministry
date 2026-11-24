@@ -35,13 +35,17 @@ describe("Homework Builder shell", () => {
     expect(markup).toContain('nav aria-label="Pages"');
     expect(markup).toContain("lg:grid-cols-[21rem_minmax(0,1fr)]");
     expect(markup).toContain('aria-current="page"');
-    expect(markup).toContain("Page 1");
+    expect(markup).toContain("PAGE 1");
     expect(markup).toContain(">Add Page</button>");
     expect(markup).toContain("Page title");
     expect(markup).toContain('aria-label="Move page up"');
     expect(markup).toContain('aria-label="Move page down"');
     expect(markup).toContain("break-words");
-    expect(markup).toContain("min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left");
+    expect(markup).toContain("w-full gap-1 rounded-md border px-3 py-2 text-left transition");
+    expect(markup).toContain("border-text-muted/30 bg-surface-muted");
+    const pageNavigation = markup.slice(markup.indexOf('<aside aria-label="Homework pages"'), markup.indexOf("</aside>") + 8);
+    expect(pageNavigation).not.toContain("content block");
+    expect(pageNavigation).not.toContain("Selected");
   });
 
   it("keeps Preview in the shared workspace row instead of duplicating it in the Homework section", () => {
@@ -74,7 +78,7 @@ describe("Homework Builder shell", () => {
     expect(markup).toContain("Radio Question");
     expect(markup).toContain("Select one");
     expect(markup).toContain("2 choices · Optional");
-    expect(markup).toContain("5 content blocks");
+    expect(markup).not.toContain("5 content blocks");
     expect(markup).toContain("line-clamp-2");
     expect(markup).not.toContain("This block is preserved and is not editable in this pass.");
     expect(markup).toMatch(/Rich Text<\/p><div><h4/);
