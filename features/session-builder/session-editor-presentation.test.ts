@@ -24,13 +24,13 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain("Add Resource");
     expect(markup).not.toContain("Select Image");
     expect(markup).not.toContain("Choose Image");
-    expect(markup).toContain("Create and organize the reading material for this Session.");
+    expect(markup).toContain("Session Material Pages");
     expect(markup).toContain("Add supporting videos, links, and other resources for this Session.");
     expect(markup.match(/>Preview<\/button>/g)).toHaveLength(1);
     expect(markup.indexOf('aria-label="Session authoring workspaces"')).toBeLessThan(markup.indexOf(">Preview</button>"));
     expect(markup.indexOf(">Preview</button>")).toBeLessThan(markup.indexOf("Session Material</h2>"));
     expect(markup).toContain("lucide-eye");
-    expect(markup.indexOf(">Add Page</button>")).toBeLessThan(markup.indexOf(">Pages</h2>"));
+    expect(markup.indexOf('aside aria-label="Session Material Pages"')).toBeLessThan(markup.indexOf(">Add Page</button>"));
     expect(markup).toContain("mb-5 grid gap-3");
     expect(markup.indexOf("Session title")).toBeLessThan(markup.indexOf("Final Session"));
     expect(markup.indexOf("Final Session")).toBeLessThan(markup.indexOf("Completing this Session ends the counseling program instead of scheduling another Session."));
@@ -125,6 +125,26 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain("line-clamp-2");
     expect(markup).toContain("Include by Default");
     expect(markup).toMatch(/role="checkbox"[^>]*disabled=""/);
+  });
+
+  it("shows one existing Session Material Page at a time while keeping non-Page content available", () => {
+    const markup = renderToStaticMarkup(createElement(SessionEditor, {
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
+      blocks: [
+        { id: "page-one", sessionId: "session-id", blockType: "rich_text", position: 0, title: "Welcome", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "First page body" }] }] }, url: null, description: null },
+        { id: "video", sessionId: "session-id", blockType: "video_link", position: 1, title: "Watch", richTextContent: null, url: "https://example.com/watch", description: "Global resource" },
+        { id: "page-two", sessionId: "session-id", blockType: "rich_text", position: 2, title: "Discuss", richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Second page body" }] }] }, url: null, description: null },
+      ],
+    }));
+    expect(markup).toContain('aside aria-label="Session Material Pages"');
+    expect(markup).toContain("Page 1");
+    expect(markup).toContain("Page 2");
+    expect(markup).toContain("Welcome");
+    expect(markup).toContain("First page body");
+    expect(markup).not.toContain("Second page body");
+    expect(markup).toContain("Watch");
+    expect(markup).toContain("Video / Link");
+    expect(markup).toContain('aria-current="page"');
   });
 
   it("allows Admins to edit default recommendations while Authors see them read-only", () => {

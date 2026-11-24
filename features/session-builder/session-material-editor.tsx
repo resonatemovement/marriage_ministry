@@ -30,6 +30,7 @@ type UpdateBlocks = (update: (blocks: StagedMaterialBlock[]) => StagedMaterialBl
 export function SessionMaterialEditor({ blocks, archived, canManageRecommendations, updateBlocks }: { blocks: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [selectedPageKey, setSelectedPageKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ category: ResourceCategory; blockKey: string } | null>(null);
   const [creatingKey, setCreatingKey] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
   function add(blockType: MaterialBlockType) {
     const block = newStagedBlock(blockType);
     updateBlocks((current) => [...current, block]);
+    if (blockType === "rich_text") setSelectedPageKey(block.key);
     setEditingKey(block.key);
     setCreatingKey(blockType === "rich_text" ? null : block.key);
     setMessage(null);
@@ -93,19 +95,35 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
 
   const pages = blocks.filter((block) => block.blockType === "rich_text");
   const resources = blocks.filter((block) => block.blockType !== "rich_text");
+  const selectedPage = pages.find((block) => block.key === selectedPageKey) ?? pages[0];
+  const selectedPageIndex = selectedPage ? pages.findIndex((block) => block.key === selectedPage.key) : -1;
+  const selectedPageBlocks = selectedPage ? [selectedPage] : [];
   const openEditing = editing ? <MaterialForm block={editing} patch={(change) => patch(editing.key, change)} done={done} message={message}
     showCancel={creatingKey === editing.key} cancel={cancelNewBlock} chooseResource={() => {
       if (editing.blockType === "library_resource" && editing.resourceCategory) setPicker({ category: editing.resourceCategory, blockKey: editing.key });
     }} /> : null;
 
   return <section className="mt-6 grid gap-8" aria-labelledby="session-material-heading">
-    <AuthoringSectionHeader headingId="session-material-heading" title="Session Material" description="Build and organize the material participants will use."
-      action={!archived && !editing ? <button type="button" onClick={() => add("rich_text")} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Page</button> : undefined} />
+    <AuthoringSectionHeader headingId="session-material-heading" title="Session Material" description="Build and organize the material participants will use." />
 
-    <section aria-labelledby="session-pages-heading">
-      <AuthoringSectionHeader headingId="session-pages-heading" title="Pages" description="Create and organize the reading material for this Session." />
-      {editing?.blockType === "rich_text" ? openEditing : pages.length ? <MaterialRows blockType="rich_text" blocks={pages} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={setEditingKey} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Pages yet.</p>}
-    </section>
+    <div className="grid items-start gap-4 lg:grid-cols-[21rem_minmax(0,1fr)]">
+      <aside aria-label="Session Material Pages" className="rounded-lg border border-border bg-white p-3">
+        {pages.length ? <nav aria-label="Pages" className="grid gap-2">
+          {pages.map((page, index) => {
+            const selected = selectedPage?.key === page.key;
+            return <button key={page.key} type="button" aria-current={selected ? "page" : undefined} onClick={() => { setSelectedPageKey(page.key); if (editing?.blockType === "rich_text") { setEditingKey(null); setCreatingKey(null); setMessage(null); } }} className={`grid min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 ${selected ? "border-brand-primary bg-brand-primary/5" : "border-border hover:bg-surface-muted"}`}>
+              <span className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-brand-secondary"><span>Page {index + 1}</span><span>1 content block</span></span>
+              <span className="block break-words text-sm font-semibold text-text-primary">{page.title.trim() || "Untitled Page"}</span>
+            </button>;
+          })}
+        </nav> : <p className="px-2 py-3 text-sm text-text-muted">No Pages yet.</p>}
+        {!archived && !editing ? <button type="button" onClick={() => add("rich_text")} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Page</button> : null}
+      </aside>
+      <section aria-labelledby="session-page-editor-heading" className="min-w-0 rounded-lg border border-border bg-surface-muted/30 p-4 sm:p-5">
+        <h3 id="session-page-editor-heading" className="font-heading text-lg font-bold text-text-primary">{selectedPage ? `Page ${selectedPageIndex + 1}: ${selectedPage.title.trim() || "Untitled Page"}` : "Session Material Page"}</h3>
+        {editing?.blockType === "rich_text" ? openEditing : selectedPage ? <MaterialRows blockType="rich_text" blocks={selectedPageBlocks} orderingBlocks={pages} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={(key) => { setSelectedPageKey(key); setEditingKey(key); }} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">Add a Page to begin building Session Material.</p>}
+      </section>
+    </div>
     <section aria-labelledby="session-resources-heading">
       <AuthoringSectionHeader headingId="session-resources-heading" title="Resources" description="Add supporting videos, links, and other resources for this Session."
         action={!archived && !editing ? <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent"><Plus className="size-4" aria-hidden="true" />Add Resource</button> : undefined} />
@@ -151,25 +169,25 @@ function MaterialForm({ block, patch, done, message, showCancel, cancel, chooseR
   </div>;
 }
 
-function MaterialRows({ blockType, blocks, archived, canManageRecommendations, updateBlocks, edit, replace }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void; replace?: (block: StagedMaterialBlock) => void }) {
+function MaterialRows({ blockType, blocks, orderingBlocks, archived, canManageRecommendations, updateBlocks, edit, replace }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; orderingBlocks?: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void; replace?: (block: StagedMaterialBlock) => void }) {
   const dndContextId = useId();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }));
-  const keys = blocks.map((block) => block.key);
+  const keys = (orderingBlocks ?? blocks).map((block) => block.key);
   function move(activeKey: string, overKey: string) { updateBlocks((current) => moveStagedBlockWithinType(current, blockType, activeKey, overKey)); }
   function onDragEnd({ active, over }: DragEndEvent) { if (over && active.id !== over.id) move(String(active.id), String(over.id)); }
   return <DndContext id={dndContextId} sensors={sensors} onDragEnd={onDragEnd}><SortableContext items={keys} strategy={verticalListSortingStrategy}><div className="mt-5 grid gap-3">
-    {blocks.map((block, index) => <MaterialRow key={block.key} block={block} index={index} count={blocks.length} keys={keys} archived={archived} canManageRecommendations={canManageRecommendations}
+    {blocks.map((block) => <MaterialRow key={block.key} block={block} index={keys.indexOf(block.key)} count={keys.length} keys={keys} archived={archived} canManageRecommendations={canManageRecommendations} dragEnabled={!orderingBlocks}
       edit={() => edit(block.key)} replace={() => replace?.(block)} move={move} duplicate={() => updateBlocks((current) => duplicateStagedBlock(current, block.key))}
       toggleRecommended={(checked) => updateBlocks((current) => current.map((item) => item.key === block.key ? { ...item, isRecommended: checked } : item))}
       remove={() => updateBlocks((current) => removeStagedBlock(current, block.key))} />)}
   </div></SortableContext></DndContext>;
 }
 
-function MaterialRow({ block, index, count, keys, archived, canManageRecommendations, edit, replace, move, duplicate, toggleRecommended, remove }: {
-  block: StagedMaterialBlock; index: number; count: number; keys: string[]; archived: boolean; canManageRecommendations: boolean;
+function MaterialRow({ block, index, count, keys, archived, canManageRecommendations, dragEnabled = true, edit, replace, move, duplicate, toggleRecommended, remove }: {
+  block: StagedMaterialBlock; index: number; count: number; keys: string[]; archived: boolean; canManageRecommendations: boolean; dragEnabled?: boolean;
   edit: () => void; replace: () => void; move: (activeKey: string, overKey: string) => void; duplicate: () => void; toggleRecommended: (checked: boolean) => void; remove: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: archived });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: archived || !dragEnabled });
   const [confirming, setConfirming] = useState(false);
   const style = { transform: CSS.Transform.toString(transform), transition };
   function moveBy(direction: -1 | 1) { const target = keys[index + direction]; if (target) move(block.key, target); }
@@ -191,7 +209,7 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
     {!archived ? confirming ? <div className="flex items-center gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">{block.blockType === "library_resource" ? "Remove from Session" : "Remove"}</button></div> : <>
       {block.blockType === "library_resource" ? <a href={`/resource-library/${block.resourceId}/open`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md px-2 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Open Resource</a> : <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>}
       <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-      <button type="button" {...attributes} {...listeners} aria-label="Drag to reorder" className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted"><GripVertical className="size-4" /></button>
+      {dragEnabled ? <button type="button" {...attributes} {...listeners} aria-label="Drag to reorder" className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted"><GripVertical className="size-4" /></button> : null}
     </> : null}
   </div>;
 }
