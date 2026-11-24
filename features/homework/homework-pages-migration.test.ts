@@ -30,6 +30,16 @@ describe("versioned Homework pages migration contract", () => {
     expect(migration).toContain("Published Homework versions are immutable");
     expect(migration).toContain("Homework page deletion confirmation is required");
     expect(migration).toContain("id in (old.homework_version_id, new.homework_version_id)");
+    expect(migration).toContain("if target_homework_version_id is null then\n      -- A just-created Draft has no persisted Page 1 to delete.");
+    expect(migration).toContain("every existing block remains\n        -- in the submitted snapshot");
+    expect(migration).toContain("cardinality(expected_deleted_page_ids) > 0 and target_page_delete_confirmation is distinct from 'DELETE'");
+  });
+
+  it("maps source snapshot block IDs to draft-clone IDs without changing logical block identities", () => {
+    expect(migration).toContain("source_snapshot_version_id := current_version.id");
+    expect(migration).toContain("source_block.homework_block_id");
+    expect(migration).toContain("cloned_block.homework_block_id = source_identity.homework_block_id");
+    expect(migration).toContain("jsonb_set(incoming.value, '{id}', to_jsonb(cloned_block.id::text), true)");
   });
 
   it("preserves Counselor review authorization while returning page-group metadata", () => {
@@ -42,7 +52,19 @@ describe("versioned Homework pages migration contract", () => {
 
   it("provides rollback-only workflow verification without applying a migration", () => {
     expect(verifier.trimEnd().endsWith("rollback;")).toBe(true);
-    for (const assertion of ["Save Draft must persist incomplete pages", "Block placement was not saved", "Homework page deletion confirmation is required", "Expected publish rejection for an empty page", "Valid multi-page Homework did not publish", "Editing a published version must create a draft"]) {
+    for (const assertion of [
+      "Save Draft must persist incomplete pages",
+      "Block placement was not saved",
+      "Expected page deletion to require exact confirmation",
+      "Confirmed page deletion did not persist",
+      "Legacy single-page conversion was rejected or lost its title",
+      "Legacy conversion failed to preserve its block identity",
+      "Valid multi-page Homework did not publish",
+      "Editing a published version must create a draft",
+      "An existing Homework version was rewritten or backfilled",
+      "An existing Homework answer changed",
+      "rollback;",
+    ]) {
       expect(verifier).toContain(assertion);
     }
   });

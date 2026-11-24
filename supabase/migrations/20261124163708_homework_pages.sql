@@ -186,9 +186,9 @@ declare
   session_result jsonb;
   result jsonb;
   version_id uuid;
-  homework_id uuid;
+  homework_root_id uuid;
   current_version public.homework_versions;
-  page_item jsonb;
+  source_snapshot_version_id uuid;
   block_item jsonb;
   saved_block jsonb;
   i integer;
@@ -214,14 +214,40 @@ begin
     select 1 from public.sessions s where s.id = target_session_id and s.status = 'published'
   ) then raise exception 'Publish Changes requires a Published Session'; end if;
 
-  select h.id into homework_id from public.homeworks h where h.session_id = target_session_id and h.withdrawn_at is null for update;
-  if save_homework and homework_id is not null and target_homework_version_id is not null then
+  select h.id into homework_root_id from public.homeworks h where h.session_id = target_session_id and h.withdrawn_at is null for update;
+  if save_homework and homework_root_id is not null and target_homework_version_id is not null then
     select * into current_version from public.homework_versions v
-      where v.id = target_homework_version_id and v.homework_id = homework_id for update;
+      where v.id = target_homework_version_id and v.homework_id = homework_root_id for update;
     if not found then raise exception 'Select a valid Homework draft or remove the unavailable Homework selection'; end if;
     if current_version.status = 'published' then
-      target_homework_version_id := public.get_or_create_homework_draft(homework_id, current_version.id);
+      source_snapshot_version_id := current_version.id;
+      target_homework_version_id := public.get_or_create_homework_draft(homework_root_id, current_version.id);
       select * into current_version from public.homework_versions v where v.id = target_homework_version_id for update;
+      -- The cloned Draft has new snapshot row IDs. Translate submitted IDs from
+      -- the immutable source snapshot to its corresponding clone rows so the
+      -- existing authoring RPC updates those rows instead of rejecting or
+      -- duplicating their logical Homework blocks.
+      select coalesce(jsonb_agg(
+        case when cloned_block.id is not null
+          then jsonb_set(incoming.value, '{id}', to_jsonb(cloned_block.id::text), true)
+          else incoming.value
+        end order by incoming.ordinality), '[]'::jsonb)
+        into target_homework_blocks
+        from jsonb_array_elements(target_homework_blocks) with ordinality incoming(value, ordinality)
+        left join lateral (
+          select source_block.homework_block_id
+          from public.homework_version_blocks source_block
+          where source_block.homework_version_id = source_snapshot_version_id
+            and ((incoming.value ->> 'id' = source_block.id::text
+                  and (incoming.value ->> 'homework_block_id' is null
+                    or incoming.value ->> 'homework_block_id' = source_block.homework_block_id::text))
+              or (incoming.value ->> 'id' is null
+                  and incoming.value ->> 'homework_block_id' = source_block.homework_block_id::text))
+          limit 1
+        ) source_identity on true
+        left join public.homework_version_blocks cloned_block
+          on cloned_block.homework_version_id = target_homework_version_id
+          and cloned_block.homework_block_id = source_identity.homework_block_id;
     end if;
   end if;
 
@@ -247,8 +273,39 @@ begin
     if current_version.status <> 'draft' or exists (select 1 from public.homework_assignment_revisions r where r.homework_version_id = version_id) then
       raise exception 'Only an unassigned Homework Draft can be changed';
     end if;
-    previous_manifest := coalesce(current_version.page_manifest,
-      jsonb_build_array(jsonb_build_object('id','00000000-0000-4000-8000-000000000001','title','Page 1','position',0)));
+    if target_homework_version_id is null then
+      -- A just-created Draft has no persisted Page 1 to delete. Its first
+      -- explicit manifest is initialization, even when it starts with several
+      -- pages or new page IDs.
+      previous_manifest := '[]'::jsonb;
+    else
+      previous_manifest := current_version.page_manifest;
+      if previous_manifest is null then
+        previous_manifest := jsonb_build_array(jsonb_build_object(
+          'id','00000000-0000-4000-8000-000000000001','title','Page 1','position',0));
+        -- A legacy version's implicit Page 1 may be converted to explicit pages
+        -- without a destructive confirmation when every existing block remains
+        -- in the submitted snapshot (possibly moved to another page). Otherwise
+        -- removing that legacy page still follows the normal DELETE safeguard.
+        if not exists (
+          select 1 from public.homework_version_blocks existing_block
+          where existing_block.homework_version_id = version_id
+            and not exists (
+              select 1 from jsonb_array_elements(target_homework_blocks) incoming(value)
+              where incoming.value ->> 'homework_block_id' = existing_block.homework_block_id::text
+                or incoming.value ->> 'id' = existing_block.id::text
+            )
+        ) and exists (
+          select 1 from public.homework_version_blocks existing_block
+          where existing_block.homework_version_id = version_id
+        ) and not exists (
+          select 1 from jsonb_array_elements(target_page_manifest) p(value)
+          where p.value ->> 'id' = '00000000-0000-4000-8000-000000000001'
+        ) then
+          previous_manifest := target_page_manifest;
+        end if;
+      end if;
+    end if;
     select coalesce(array_agg((old_page.value ->> 'id')::uuid order by old_page.ordinality), '{}'::uuid[])
       into expected_deleted_page_ids
       from jsonb_array_elements(previous_manifest) with ordinality old_page(value, ordinality)
