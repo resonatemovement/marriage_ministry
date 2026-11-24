@@ -8,7 +8,6 @@ import { HomeworkBuilderContent } from "./homework-builder-content";
 import { HomeworkBuilderLoading } from "./homework-builder-loading";
 import { HomeworkEditorProvider } from "./homework-editor-state";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
-import { SessionPreviewProvider } from "@/features/session-builder/session-preview-context";
 
 const emptyDraft = { id: "draft-id", status: "draft" as const, basedOnVersionNumber: 1, blocks: [] };
 
@@ -45,12 +44,9 @@ describe("Homework Builder shell", () => {
     expect(markup).toContain("min-h-16 w-full gap-1 rounded-md border px-3 py-2 text-left");
   });
 
-  it("shows the existing Homework Preview action beside its section heading when a preview handler is available", () => {
-    const openPreview = vi.fn();
-    const markup = renderToStaticMarkup(createElement(HomeworkEditorProvider, { initialDraft: emptyDraft },
-      createElement(SessionPreviewProvider, { value: openPreview },
-        createElement(HomeworkBuilderContent, { result: { draft: emptyDraft } }))));
-    expect(markup.indexOf("Homework</h2>")).toBeLessThan(markup.indexOf(">Preview</button>"));
+  it("keeps Preview in the shared workspace row instead of duplicating it in the Homework section", () => {
+    const markup = renderToStaticMarkup(createElement(HomeworkEditorProvider, { initialDraft: emptyDraft }, createElement(HomeworkBuilderContent, { result: { draft: emptyDraft } })));
+    expect(markup).not.toContain(">Preview</button>");
     expect(markup).toContain(">Add Page</button>");
     expect(markup).toContain(">Add Content</button>");
   });

@@ -10,7 +10,7 @@ vi.mock("./resource-actions", () => ({ findSessionResources: vi.fn(), refreshSes
 import { SessionEditor } from "./session-editor";
 
 describe("unified Session editor presentation", () => {
-  it("places Preview beside Session Material and keeps its authoring actions in the same header", () => {
+  it("places one shared Preview control beside the workspace tabs and keeps section actions contextual", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, { session: null }));
     expect(markup).toContain("Session title");
     expect(markup).toContain("Final Session");
@@ -27,22 +27,38 @@ describe("unified Session editor presentation", () => {
     expect(markup).toContain("Create and organize the reading material for this Session.");
     expect(markup).toContain("Add supporting videos, links, and other resources for this Session.");
     expect(markup.match(/>Preview<\/button>/g)).toHaveLength(1);
-    expect(markup.indexOf("Session Material</h2>")).toBeLessThan(markup.indexOf(">Preview</button>"));
+    expect(markup.indexOf('aria-label="Session authoring workspaces"')).toBeLessThan(markup.indexOf(">Preview</button>"));
+    expect(markup.indexOf(">Preview</button>")).toBeLessThan(markup.indexOf("Session Material</h2>"));
+    expect(markup).toContain("lucide-eye");
     expect(markup.indexOf(">Add Page</button>")).toBeLessThan(markup.indexOf(">Pages</h2>"));
-    expect(markup).toContain("mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3");
+    expect(markup).toContain("mb-5 grid gap-3");
+    expect(markup.indexOf("Session title")).toBeLessThan(markup.indexOf("Final Session"));
+    expect(markup.indexOf("Final Session")).toBeLessThan(markup.indexOf("Completing this Session ends the counseling program instead of scheduling another Session."));
     expect(markup).not.toContain(">Rich Text</span>");
     expect(markup).toContain("Save Draft");
     expect(markup).toContain("Publish Session");
     expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Publish Session<\/button>/);
     expect(markup).toContain("Enter a session title.");
     expect(markup).not.toContain("Save Block");
-    expect(markup).not.toContain("Session authoring workspaces");
+    expect(markup).toContain("Session authoring workspaces");
     expect(markup).toMatch(/disabled=""[^>]*>Save Draft/);
   });
 
   it("opens Preview on the currently active workspace", () => {
     expect(sessionPreviewTabForWorkspace("material")).toBe("material");
     expect(sessionPreviewTabForWorkspace("homework")).toBe("homework");
+  });
+
+  it("keeps exactly one shared Preview control when Homework is selected", () => {
+    const markup = renderToStaticMarkup(createElement(SessionEditor, {
+      session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },
+      activeWorkspace: "homework",
+      homework: createElement("div", null, "Homework workspace content"),
+    }));
+    expect(markup.match(/>Preview<\/button>/g)).toHaveLength(1);
+    expect(markup).toMatch(/aria-current="page" class="[^"]*bg-white/);
+    expect(markup.indexOf('aria-label="Session authoring workspaces"')).toBeLessThan(markup.indexOf(">Preview</button>"));
+    expect(markup).toContain("Homework workspace content");
   });
 
   it("keeps saved Draft actions at Session level and shows the Homework workspace", () => {

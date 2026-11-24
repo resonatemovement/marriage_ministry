@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { Eye } from "lucide-react";
 
 import { HomeworkEditorProvider, useHomeworkEditorState } from "@/features/homework/homework-editor-state";
 import { editorStateIsDirty, initialSessionEditorState, restoreSessionEditorState, sessionEditorPageIsDirty, sessionPublishError, sessionSaveError, type SessionEditorState, type StagedMaterialBlock } from "./editor-model";
@@ -14,6 +15,7 @@ import { eligibleInternalNavigation } from "./navigation-guard";
 import { SessionPreviewProvider, type SessionPreviewTab } from "./session-preview-context";
 import { SessionPreview } from "./session-preview";
 import type { SessionWorkspace } from "./workspace";
+import { sessionPreviewTabForWorkspace } from "./workspace";
 import type { SessionMaterialBlock, SessionSummary } from "./types";
 import { refreshSessionResourceAccess } from "./resource-actions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -170,21 +172,26 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
   }
 
   return <div inert={pending} aria-busy={pending}>
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+    <div className="mb-5 grid gap-3">
       <label className="grid min-w-0 flex-1 basis-64 gap-1.5 text-sm font-medium text-text-primary">Session title
         <input value={editor.title} onChange={(event) => updateEditor((current) => ({ ...current, title: event.target.value }))} autoFocus={firstSave} maxLength={180} disabled={archived} className="min-h-10 rounded-md border border-border bg-white px-3 text-sm text-text-primary outline-none focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" />
       </label>
-      <div className="grid basis-full gap-1.5 sm:basis-auto sm:pb-1">
-        <label className="flex min-h-10 items-center gap-2 text-sm font-medium text-text-primary">
+      <div className="grid justify-items-start gap-1">
+        <label className="inline-flex min-h-8 items-center gap-2 text-sm font-medium text-text-primary">
           <Checkbox checked={editor.isFinal} onCheckedChange={(checked) => updateEditor((current) => ({ ...current, isFinal: checked === true }))} disabled={archived} />
           Final Session
         </label>
-        <p className="text-xs text-text-muted">Completing this Session ends the counseling program instead of scheduling another Session.</p>
+        <p className="pl-6 text-xs text-text-muted">Completing this Session ends the counseling program instead of scheduling another Session.</p>
       </div>
     </div>
 
     <SessionPreviewProvider value={openPreview}>
-      {editor.sessionId ? <SessionWorkspaceNavigation sessionId={editor.sessionId} activeWorkspace={activeWorkspace} /> : null}
+      <div className="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SessionWorkspaceNavigation sessionId={editor.sessionId} activeWorkspace={activeWorkspace} className="min-w-0 flex-1" />
+        <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace(activeWorkspace))} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-end rounded-md border border-border bg-white px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary focus-visible:outline-none sm:self-auto">
+          <Eye className="size-4" aria-hidden="true" />Preview
+        </button>
+      </div>
       {activeWorkspace === "material" || !editor.sessionId
         ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} />
         : homework}
