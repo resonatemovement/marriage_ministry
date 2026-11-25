@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type Ref } from "react";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 
@@ -13,8 +13,13 @@ import type { StagedMaterialBlock } from "./editor-model";
 import { formatResourceFileSize, formatResourceFileType } from "@/features/resource-library/policy";
 
 export function sessionPreviewTargetPage(pages: StagedMaterialBlock[], currentKey: string | null, direction: -1 | 1) {
-  const currentIndex = Math.max(0, pages.findIndex(({ key }) => key === currentKey));
-  return pages[currentIndex + direction]?.key ?? null;
+  const { index } = sessionPreviewPagePosition(pages, currentKey);
+  return pages[index + direction]?.key ?? null;
+}
+
+export function sessionPreviewPagePosition(pages: StagedMaterialBlock[], currentKey: string | null) {
+  const index = Math.max(0, pages.findIndex(({ key }) => key === currentKey));
+  return { index, pageNumber: pages.length ? index + 1 : 0, canPrevious: index > 0, canNext: index < pages.length - 1 };
 }
 
 export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialBlocks, homeworkBlocks, homeworkPages, resourceAccess = {} }: {
@@ -46,27 +51,32 @@ export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialB
   </Sheet>;
 }
 
-export function SessionMaterialPreviewContent({ blocks, resourceAccess = {}, fullWidth = false, pageCountPlacement = "inside", onPageChange }: { blocks: StagedMaterialBlock[]; resourceAccess?: Record<string, string>; fullWidth?: boolean; pageCountPlacement?: "inside" | "external"; onPageChange?: (page: number) => void }) {
+export function scrollToSessionMaterialHeading(heading: Pick<HTMLElement, "scrollIntoView"> | null) {
+  heading?.scrollIntoView({ behavior: "instant", block: "start" });
+}
+
+export function SessionMaterialPreviewContent({ blocks, resourceAccess = {}, fullWidth = false, pageCountPlacement = "inside", onPageChange, selectedPageKey, onPageSelect, pageHeadingRef }: { blocks: StagedMaterialBlock[]; resourceAccess?: Record<string, string>; fullWidth?: boolean; pageCountPlacement?: "inside" | "external"; onPageChange?: (page: number) => void; selectedPageKey?: string | null; onPageSelect?: (pageKey: string) => void; pageHeadingRef?: Ref<HTMLHeadingElement> }) {
   const pages = blocks.filter((block) => block.blockType === "rich_text");
   const resources = blocks.filter((block) => block.blockType !== "rich_text");
-  const [pageKey, setPageKey] = useState<string | null>(null);
+  const [internalPageKey, setInternalPageKey] = useState<string | null>(null);
+  const pageKey = selectedPageKey === undefined ? internalPageKey : selectedPageKey;
 
   if (!pages.length && !resources.length) return <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-text-muted">No Session Material yet.</p>;
-  const selectedIndex = pages.findIndex(({ key }) => key === pageKey);
-  const pageIndex = selectedIndex < 0 ? 0 : selectedIndex;
+  const { index: pageIndex } = sessionPreviewPagePosition(pages, pageKey);
   const page = pages[pageIndex];
   function navigatePage(direction: -1 | 1) {
     if (!page) return;
     const targetKey = sessionPreviewTargetPage(pages, page.key, direction);
     if (!targetKey) return;
-    setPageKey(targetKey);
+    if (selectedPageKey === undefined) setInternalPageKey(targetKey);
+    onPageSelect?.(targetKey);
     onPageChange?.(pages.findIndex(({ key }) => key === targetKey) + 1);
   }
   return <div className={fullWidth ? "grid w-full gap-8" : "mx-auto grid max-w-3xl gap-8"}>
     {page ? <section aria-label="Session Material Page" className="grid gap-5">
       {pageCountPlacement === "inside" ? <p className="text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p> : null}
       <article className="overflow-hidden rounded-lg border border-border bg-white">
-        <h2 className="p-4 pb-0 font-heading text-xl font-bold text-text-primary">{page.title}</h2>
+        <h2 ref={pageHeadingRef} className="scroll-mt-20 p-4 pb-0 font-heading text-xl font-bold text-text-primary">{page.title}</h2>
         {page.richTextContent ? <RichTextReadOnly content={page.richTextContent} /> : null}
       </article>
       <nav aria-label="Page navigation" className="flex items-center justify-between gap-3">

@@ -6,7 +6,7 @@ vi.mock("@/features/session-builder/rich-text-editor", () => ({
   RichTextReadOnly: ({ content }: { content: Record<string, unknown> }) => createElement("pre", null, JSON.stringify(content)),
 }));
 
-import { SessionMaterialPreviewContent, sessionPreviewTargetPage } from "./session-preview";
+import { scrollToSessionMaterialHeading, SessionMaterialPreviewContent, sessionPreviewPagePosition, sessionPreviewTargetPage } from "./session-preview";
 import type { StagedMaterialBlock } from "./editor-model";
 import type { ResourceCategory } from "@/features/resource-library/policy";
 
@@ -60,7 +60,7 @@ describe("Session Material Preview", () => {
     const markup = render([page("p1", "Communication and Expectations", "Staged Page text"), page("p2", "Second Page", "Second staged text")]);
     expect(markup).toContain("Page 1 of 2");
     expect(markup).toContain("Communication and Expectations");
-    expect(markup).toMatch(/<h2 class="p-4 pb-0 [^"]*">Communication and Expectations<\/h2>/);
+    expect(markup).toMatch(/<h2 class="scroll-mt-20 p-4 pb-0 [^"]*">Communication and Expectations<\/h2>/);
     expect(markup).toContain("Staged Page text");
     expect(markup).not.toContain("Second Page");
     expect(markup).not.toContain("Second staged text");
@@ -92,6 +92,33 @@ describe("Session Material Preview", () => {
     expect(sessionPreviewTargetPage(staged, secondPage, -1)).toBe("p1");
     expect(sessionPreviewTargetPage(staged, secondPage, 1)).toBeNull();
     expect(staged).toEqual(original);
+  });
+
+  it("reports Previous/Next availability at the first, middle, and last Page", () => {
+    const staged = [page("p1", "First", "First body"), page("p2", "Second", "Second body"), page("p3", "Third", "Third body")];
+    expect(sessionPreviewPagePosition(staged, null)).toEqual({ index: 0, pageNumber: 1, canPrevious: false, canNext: true });
+    expect(sessionPreviewPagePosition(staged, "p2")).toEqual({ index: 1, pageNumber: 2, canPrevious: true, canNext: true });
+    expect(sessionPreviewPagePosition(staged, "p3")).toEqual({ index: 2, pageNumber: 3, canPrevious: true, canNext: false });
+    expect(sessionPreviewPagePosition([], null)).toEqual({ index: 0, pageNumber: 0, canPrevious: false, canNext: false });
+  });
+
+  it("scrolls immediately to the page heading and safely ignores a missing heading", () => {
+    const scrollIntoView = vi.fn();
+    scrollToSessionMaterialHeading({ scrollIntoView });
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "start" });
+    expect(() => scrollToSessionMaterialHeading(null)).not.toThrow();
+  });
+
+  it("accepts the Couple view's controlled page key and reports the selected Page", () => {
+    const markup = renderToStaticMarkup(createElement(SessionMaterialPreviewContent, {
+      blocks: [page("p1", "First", "First body"), page("p2", "Second", "Second body")],
+      selectedPageKey: "p2",
+      pageCountPlacement: "external",
+    }));
+    expect(markup).toContain("Second body");
+    expect(markup).not.toContain("First body");
+    expect(markup).toContain("Previous Page</button>");
+    expect(markup).toMatch(/disabled=""[^>]*>Next Page/);
   });
 
   it("renders Resources separately even without Pages and shares the Homework Video / Link presentation", () => {

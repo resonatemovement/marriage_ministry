@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsListViewport, TabsTrigger } from "@/components/ui/tabs";
 import { CaseLifecycleRealtime } from "@/features/counseling-sessions/case-lifecycle-realtime";
 import { homeworkProgressBadgeClass, homeworkProgressLabel, participantHomeworkTitle } from "@/features/homework/presentation";
-import { SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
+import { scrollToSessionMaterialHeading, sessionPreviewPagePosition, sessionPreviewTargetPage, SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
 import { ExportSessionMaterialsButton } from "@/features/session-materials-export/export-session-materials-button";
 import { ParticipantHomeworkContent } from "./homework-participant";
 import type { CoupleSessionViewData } from "./queries";
@@ -16,10 +17,15 @@ import { HomeworkProgressRealtime } from "@/features/counseling-sessions/homewor
 export function CoupleSessionView({ session, initialTab = "material" }: { session: CoupleSessionViewData; initialTab?: "material" | "homework" }) {
   const completed = session.status === "completed";
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentMaterialPageKey, setCurrentMaterialPageKey] = useState<string | null>(null);
+  const shouldScrollToMaterialPage = useRef(false);
+  const materialPageHeadingRef = useRef<HTMLHeadingElement>(null);
   const [homeworkDirty, setHomeworkDirty] = useState(false);
   const [homeworkStatus, setHomeworkStatus] = useState(session.homework?.status ?? null);
-  const totalPages = session.materials.filter((block) => block.blockType === "rich_text").length;
+  const materialPages = session.materials.filter((block) => block.blockType === "rich_text");
+  const totalPages = materialPages.length;
+  const pagePosition = sessionPreviewPagePosition(materialPages, currentMaterialPageKey);
+  const currentPage = pagePosition.pageNumber;
   const homeworkTab = activeTab === "homework";
   const title = homeworkTab ? session.homework?.title ?? participantHomeworkTitle(session.title) : `Session ${session.number}: ${session.title}`;
   const eyebrow = homeworkTab ? "Session Homework" : completed ? "Completed Session" : "Current Session";
@@ -27,6 +33,23 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
   const statusClass = homeworkTab && homeworkStatus
     ? homeworkProgressBadgeClass(homeworkStatus)
     : completed ? "bg-surface-muted text-text-muted" : "bg-info-soft text-info-strong";
+
+  useEffect(() => {
+    if (!shouldScrollToMaterialPage.current) return;
+    shouldScrollToMaterialPage.current = false;
+    scrollToSessionMaterialHeading(materialPageHeadingRef.current);
+  }, [currentMaterialPageKey]);
+
+  function selectMaterialPage(pageKey: string) {
+    if (materialPages[pagePosition.index]?.key === pageKey) return;
+    shouldScrollToMaterialPage.current = true;
+    setCurrentMaterialPageKey(pageKey);
+  }
+
+  function navigateMaterialPage(direction: -1 | 1) {
+    const targetKey = sessionPreviewTargetPage(materialPages, materialPages[pagePosition.index]?.key ?? null, direction);
+    if (targetKey) selectMaterialPage(targetKey);
+  }
 
   return <main className="mx-auto max-w-[1100px] p-5 sm:p-8 lg:p-10">
     <CaseLifecycleRealtime caseId={session.caseId} />
@@ -51,10 +74,14 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
           </TabsList>
         </TabsListViewport>
         {activeTab === "material" ? <ExportSessionMaterialsButton caseSessionId={session.id} sessionLabel={`Session ${session.number}: ${session.title}`} className="ml-auto" /> : null}
-        {activeTab === "material" && totalPages > 0 ? <p className="ml-auto text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</p> : null}
+        {activeTab === "material" && totalPages > 0 ? <nav aria-label="Session Material page controls" className="ml-auto flex shrink-0 items-center gap-2">
+          <span className="whitespace-nowrap text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</span>
+          <button type="button" aria-label="Previous Session Material page" title="Previous page" disabled={!pagePosition.canPrevious} onClick={() => navigateMaterialPage(-1)} className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"><ArrowLeft className="size-4" aria-hidden="true" /></button>
+          <button type="button" aria-label="Next Session Material page" title="Next page" disabled={!pagePosition.canNext} onClick={() => navigateMaterialPage(1)} className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"><ArrowRight className="size-4" aria-hidden="true" /></button>
+        </nav> : null}
       </div>
       <TabsContent value="material" forceMount>
-        <SessionMaterialPreviewContent blocks={session.materials} fullWidth pageCountPlacement="external" onPageChange={setCurrentPage} />
+        <SessionMaterialPreviewContent blocks={session.materials} fullWidth pageCountPlacement="external" selectedPageKey={currentMaterialPageKey} onPageSelect={selectMaterialPage} pageHeadingRef={materialPageHeadingRef} />
       </TabsContent>
       <TabsContent value="homework">
         <ParticipantHomeworkContent homework={session.homework} emptyTitle={session.homeworkRequired ? "Homework unavailable" : "No Homework for this Session"} emptyDescription={session.homeworkRequired ? "Your assigned Homework could not be loaded. Please contact your counseling team." : "There’s nothing you need to complete before your next meeting."} readOnly={completed} showHeader={false} onDirtyChange={setHomeworkDirty} onStatusChange={setHomeworkStatus} />

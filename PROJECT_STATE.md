@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
-Last updated: November 24, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (Couple Homework compact page navigation implemented and regression-tested; commit/push pending; authenticated browser verification pending)
+Last updated: November 25, 2026
+Current working branch: `feature/hw-01-multiple-homework-pages` (Couple Session Material top/bottom page navigation and scoped heading scroll implemented; validation passed; commit/push pending)
 Repository: resonatemovement/marriage_ministry
+
+## HW-01 Couple Session Material Page Navigation (November 25, 2026)
+
+- Added compact outlined Previous/Next icon buttons beside the existing “Page X of Y” indicator in the Couple Session Material tab toolbar. Accessible labels and disabled states reflect the selected page boundaries; the existing Session Material/Homework tabs and Preview/Download PDF actions remain present. The toolbar wraps with the existing responsive tab row and does not add fixed-width content.
+- Lifted only the selected Session Material page key into the Couple Session view. Both toolbar arrows and existing bottom Previous Page/Next Page controls update that same key through the existing stable-page target helper. The shared renderer remains uncontrolled for Session Builder/Preview callers unless given the optional controlled page props. No authoring state, published snapshot, resources, PDF behavior, permissions, or data access changed.
+- Navigation-triggered page changes set a one-shot scroll flag. After the selected page renders, the view immediately scrolls the selected heading into view with an 80px scroll margin for the mobile sticky header. Tab changes and unrelated resource interactions do not set the flag. Added regression coverage for top controls, first/last disabled states, single-page state, shared controlled selection, page-boundary calculations, and immediate heading scroll behavior; existing PDF Preview/Download rendering assertions remain.
+- Focused Couple Session/Session Material preview tests pass **26/26**. Full Vitest suite passes **1,568/1,568 across 271 files**; typecheck, lint, production build, and `git diff --check` pass. No browser executable or installed Playwright/Puppeteer package was available, so desktop/mobile visual behavior and an authenticated browser scroll walkthrough remain unverified. Static responsive markup and control behavior are covered by tests.
+- No migration or infrastructure change. Changes and this state update are ready to commit/push on `feature/hw-01-multiple-homework-pages`; no merge or deployment is authorized. Preserve the existing unrelated `.env.example` and `AGENTS.md` edits and all eight stash entries.
 
 ## HW-01 Couple Homework Compact Page Navigation (November 24, 2026)
 

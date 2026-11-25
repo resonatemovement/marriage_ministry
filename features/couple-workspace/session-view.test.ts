@@ -57,7 +57,11 @@ describe("Couple Session View", () => {
     const tabRow = materialHtml.slice(materialHtml.indexOf('class="flex w-full flex-wrap items-center justify-between gap-3"'), materialHtml.indexOf('role="tabpanel"'));
     expect(tabRow).toContain('aria-label="Session sections"');
     expect(tabRow).toContain("w-full sm:w-auto");
-    expect(tabRow).toContain("ml-auto text-sm font-medium text-text-muted");
+    expect(tabRow).toContain('aria-label="Session Material page controls"');
+    expect(tabRow).toContain('aria-label="Previous Session Material page"');
+    expect(tabRow).toContain('aria-label="Next Session Material page"');
+    expect(tabRow).toMatch(/aria-label="Previous Session Material page"[^>]*disabled=""/);
+    expect(tabRow).not.toMatch(/aria-label="Next Session Material page"[^>]*disabled=""/);
     expect(tabRow.indexOf("Session Material")).toBeLessThan(tabRow.indexOf("Page 1 of 3"));
     expect(materialHtml.match(/Page 1 of 3/g)).toHaveLength(1);
     expect(materialHtml).toContain("flex-wrap items-center justify-between gap-3");
@@ -75,6 +79,26 @@ describe("Couple Session View", () => {
     expect(homeworkHtml).not.toContain("mx-auto max-w-3xl");
     expect(homeworkHtml.match(/Session Homework/g)).toHaveLength(1);
     expect(homeworkHtml.match(/Testing Homework/g)).toHaveLength(1);
+  });
+
+  it("keeps one-page Material controls present but disabled and shares page-change scrolling between top and bottom controls", () => {
+    const singlePageSession = { ...session, materials: session.materials.slice(0, 1) };
+    const html = renderToStaticMarkup(createElement(CoupleSessionView, { session: singlePageSession, initialTab: "material" }));
+    const tabRow = html.slice(html.indexOf('class="flex w-full flex-wrap items-center justify-between gap-3"'), html.indexOf('role="tabpanel"'));
+    expect(tabRow).toContain("Page 1 of 1");
+    expect(tabRow).toMatch(/aria-label="Previous Session Material page"[^>]*disabled=""/);
+    expect(tabRow).toMatch(/aria-label="Next Session Material page"[^>]*disabled=""/);
+
+    const viewSource = readFileSync("features/couple-workspace/session-view.tsx", "utf8");
+    const previewSource = readFileSync("features/session-builder/session-preview.tsx", "utf8");
+    expect(viewSource).toContain("onPageSelect={selectMaterialPage}");
+    expect(viewSource).toContain('onClick={() => navigateMaterialPage(-1)}');
+    expect(viewSource).toContain('onClick={() => navigateMaterialPage(1)}');
+    expect(viewSource).toContain("shouldScrollToMaterialPage.current = true");
+    expect(viewSource).toContain("scrollToSessionMaterialHeading(materialPageHeadingRef.current)");
+    expect(viewSource).toContain("}, [currentMaterialPageKey]);");
+    expect(previewSource).toContain("onPageSelect?.(targetKey)");
+    expect(previewSource).toContain('className="scroll-mt-20 p-4 pb-0');
   });
 
   it("adds a Sessions breadcrumb only for completed historical Sessions and uses the pinned authored number", () => {
