@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 25, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (Homework Rich Text optional-title correction validated; authenticated browser behavior unavailable; changes pending commit/push; no merge or deployment)
+Current working branch: `feature/hw-01-multiple-homework-pages` (Homework Rich Text optional-title correction validated; implementation commit `4a7babe` pushed; authenticated browser behavior unavailable; no merge or deployment)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Homework Rich Text Titles Optional (November 25, 2026)
@@ -10,7 +10,7 @@ Repository: resonatemovement/marriage_ministry
 - Builder completeness and publishability now accept untitled Rich Text only when the Rich Text body contains meaningful content. Empty body remains incomplete. Other block types and Homework question validation are unchanged. Builder Preview and Couple Homework render the body without an empty metadata heading; existing titled blocks retain their heading. Counselor review remains answer-focused and continues showing untitled prompt bodies without an empty heading; standalone Rich Text blocks are not answer/review entries in that workflow.
 - Regression coverage exercises the Homework-specific authoring adapter’s actual rendered label and Done-button state (`test` body enables; empty body disables), clearing a title, model completion/page-title validation, null-title save-RPC serialization and rehydration, and untitled Builder Preview/Couple/Counselor rendering. Existing titled block rendering remains covered. Existing `/session-builder/[sessionId]?workspace=homework` page-workspace test confirms the Homework Builder route selection.
 - Focused checks pass **100/100 tests across 8 files**. Full `npm test` passes **1,583/1,583 across 273 files**; `npm run lint`, production `npm run build`, `npm run typecheck` (rerun after the build because an initial concurrent run raced with generated `.next/types`), and `git diff --check` pass. The `localhost:3000` listener is Next.js from this checkout (`/Users/rodrozin/Sites/marriage_ministry`) on this branch. The target route returns HTTP 307 to login and no authenticated browser session is available, so interactive browser verification of entering `test`, saving, and reopening remains **UNVERIFIED**; no browser behavior is claimed fixed by manual inspection.
-- No database operations, migrations, account/answer changes, email, or deployment. Current task code/tests and this documentation update are pending commit/push. Preserve the unrelated `.env.example` and `AGENTS.md` edits and all eight existing stash hashes. Do not merge or deploy.
+- No database operations, migrations, account/answer changes, email, or deployment. Implementation and regression tests were committed as `4a7babe` and pushed to `origin/feature/hw-01-multiple-homework-pages`; this documentation closeout is pending its documentation-only commit/push. Preserve the unrelated `.env.example` and `AGENTS.md` edits and all eight existing stash hashes. Do not merge or deploy.
 
 ## HW-01 Optional Session Material Rich Text Titles (November 25, 2026)
 
