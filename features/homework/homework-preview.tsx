@@ -28,13 +28,13 @@ export function HomeworkPreviewContent({ blocks, pages = [{ id: "00000000-0000-4
 
 function HomeworkPreviewBlock({ block }: { block: StagedHomeworkBlock }) {
   if (block.blockType === "rich_text") {
-    if (!isRichTextContent(block.richTextContent) || !richTextBlockIsComplete(block.title, block.richTextContent)) {
+    if (!isRichTextContent(block.richTextContent) || !richTextBlockIsComplete(block.title, block.richTextContent, false)) {
       return <IncompletePreviewBlock />;
     }
 
     return <article className="overflow-hidden rounded-lg border border-border bg-white">
       <div className="grid gap-3 p-5">
-        <h2 className="font-heading text-lg font-bold text-text-primary">{block.title}</h2>
+        {block.title?.trim() ? <h2 className="font-heading text-lg font-bold text-text-primary">{block.title}</h2> : null}
         <RichTextReadOnly content={block.richTextContent} contentClassName="p-0" />
       </div>
     </article>;

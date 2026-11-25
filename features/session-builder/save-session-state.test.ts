@@ -67,6 +67,24 @@ describe("atomic Session and Homework RPC adapter", () => {
     expect(result).toMatchObject({ sessionState: { status: "published", title: "Updated Session", isFinal: true }, homework: { versionId: null, status: null, blocks: [] } });
   });
 
+  it("persists a cleared Homework Rich Text title as null and restores it from the RPC response", async () => {
+    const body = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Saved body" }] }] };
+    const block = newHomeworkBlock("rich_text", 0);
+    const added = addHomeworkBlock(emptyHomework, block);
+    const staged = updateHomeworkBlock(added, block.key, { title: "", richTextContent: body });
+    rpc.mockResolvedValue({ data: { session: null, homework: { version_id: "draft-id", status: "draft", version_number: null, pages: [
+      { id: emptyHomework.pages[0]!.id, title: "Reading", position: 0 },
+    ], blocks: [{ id: "saved-rich", homework_block_id: "logical-rich", block_type: "rich_text", position: 0, title: null,
+      rich_text_content: body, url: null, description: null, page_id: emptyHomework.pages[0]!.id }] } }, error: null });
+
+    const result = await saveSessionBuilderState(session, staged, { intent: "save", saveSession: false, saveHomework: true, publishHomework: false });
+
+    expect(rpc).toHaveBeenCalledWith("save_session_homework_authoring_state_with_pages", expect.objectContaining({
+      target_homework_blocks: [{ client_id: block.key, block_type: "rich_text", title: "", rich_text_content: body, url: null, description: null, page_id: emptyHomework.pages[0]!.id }],
+    }));
+    expect(result).toMatchObject({ homework: { blocks: [{ id: "saved-rich", title: null, richTextContent: body }] } });
+  });
+
   it("returns a specific publish validation error and does not issue a second publish request", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "Rich Text material cannot be empty" } });
     const result = await saveSessionBuilderState(session, emptyHomework, {

@@ -62,6 +62,36 @@ describe("staged Homework Rich Text model", () => {
     expect(state.blocks[0]?.isRequired).toBe(true);
   });
 
+  it("allows a blank Homework Rich Text title while preserving page-title and body requirements", () => {
+    const page = { id: "page-one", title: "Reading", position: 0 };
+    const initial = homeworkEditorStateFromRows("draft-id", [], "draft", [page]);
+    const created = newHomeworkBlock("rich_text", 0);
+    const added = addHomeworkBlock(initial, created);
+    const withBody = updateHomeworkBlock(added, created.key, {
+      title: null,
+      richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "test" }] }] },
+    });
+
+    expect(homeworkBlockIsComplete(withBody.blocks[0]!)).toBe(true);
+    expect(homeworkPagesArePublishable(finishHomeworkBlockEditing(withBody))).toBe(true);
+    expect(homeworkBlockIsComplete({ ...withBody.blocks[0]!, richTextContent: { type: "doc", content: [{ type: "paragraph" }] } })).toBe(false);
+    expect(homeworkPagesArePublishable({ ...finishHomeworkBlockEditing(withBody), pages: [{ ...page, title: " " }] })).toBe(false);
+
+    const cleared = updateHomeworkBlock(withBody, created.key, { title: "" });
+    const persisted = persistHomeworkEditorState(finishHomeworkBlockEditing(cleared), [{
+      id: "saved-rich", homeworkBlockId: "logical-rich", blockType: "rich_text", position: 0,
+      title: null, richTextContent: withBody.blocks[0]!.richTextContent, url: null, description: null, pageId: page.id,
+    }], "draft-id", "draft", [page]);
+    const reopened = homeworkEditorStateFromRows("draft-id", [{
+      id: "saved-rich", homeworkBlockId: "logical-rich", blockType: "rich_text", position: 0,
+      title: persisted.blocks[0]!.title, richTextContent: persisted.blocks[0]!.richTextContent, url: null, description: null, pageId: page.id,
+    }], "draft", [page]);
+
+    expect(persisted.blocks[0]).toMatchObject({ title: null, richTextContent: withBody.blocks[0]!.richTextContent });
+    expect(reopened.blocks[0]).toMatchObject({ title: null, richTextContent: withBody.blocks[0]!.richTextContent });
+    expect(homeworkEditorIsDirty(reopened)).toBe(false);
+  });
+
   it("creates, edits, duplicates, and restores Side-by-Side blocks by stable response identities rather than headings", () => {
     const initial = homeworkEditorStateFromRows("draft", []);
     const created = newHomeworkBlock("side_by_side_response", 0);

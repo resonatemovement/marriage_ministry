@@ -67,6 +67,15 @@ describe("participant Homework presentation", () => {
     expect(markup).toContain("Rich text body");
   });
 
+  it("renders untitled Couple Homework Rich Text without an empty heading", () => {
+    const markup = renderToStaticMarkup(createElement(ParticipantHomeworkContent, {
+      homework: homework([block({ id: "reading", type: "rich_text", title: null, content: content("Published untitled content") })]),
+    }));
+    expect(markup).toContain("Testing Homework");
+    expect(markup).toContain("Published untitled content");
+    expect(markup).not.toContain("<h3 class=\"font-heading text-lg font-bold text-text-primary\"></h3>");
+  });
+
   it("keeps Long Answer controls close, resizable, and comfortably sized", () => {
     expect(participantSource).toContain('>Your response <span className="font-normal text-text-muted">(required)</span></label>');
     expect(participantSource).toContain("rows={5}");

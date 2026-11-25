@@ -8,10 +8,18 @@ import { HomeworkBuilderContent } from "./homework-builder-content";
 import { HomeworkBuilderLoading } from "./homework-builder-loading";
 import { HomeworkEditorProvider } from "./homework-editor-state";
 import { sideBySideResponseMetadata } from "./side-by-side-response";
+import { readFileSync } from "node:fs";
+
+const builderSource = readFileSync("features/homework/homework-builder-content.tsx", "utf8");
 
 const emptyDraft = { id: "draft-id", status: "draft" as const, basedOnVersionNumber: 1, blocks: [] };
 
 describe("Homework Builder shell", () => {
+  it("uses the Homework-specific optional-title authoring control in the homework workspace", () => {
+    expect(builderSource).toContain("editing.blockType === \"rich_text\" ? <HomeworkRichTextAuthoring");
+    expect(builderSource).toContain("onTitleChange={(title) => patchEditing({ title: title || null })}");
+    expect(builderSource).toContain("requireTitle={false}");
+  });
   it("shows a stable loading state", () => {
     const markup = renderToStaticMarkup(createElement(HomeworkBuilderLoading));
     expect(markup).toContain('role="status"');

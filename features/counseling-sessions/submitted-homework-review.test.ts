@@ -37,6 +37,16 @@ describe("submitted Homework review presentation", () => {
     expect(markup).toContain("Long prompt");
   });
 
+  it("keeps an untitled Homework question prompt visible in Counselor review without an empty heading", () => {
+    const markup = renderToStaticMarkup(createElement(SubmittedHomeworkReviewPage, {
+      review: { ...review, questions: [{ ...review.questions[0]!, type: "long_answer", title: null, content: { text: "Published prompt" }, answerText: "" }] },
+      partnerName: "Partner A",
+    }));
+    expect(markup).toContain("Page 1");
+    expect(markup).toContain("Published prompt");
+    expect(markup).not.toContain("<h2 class=\"font-heading text-lg font-bold text-text-primary\"></h2>");
+  });
+
   it("maps saved option IDs to the pinned option labels and preserves answer text", () => {
     expect(homeworkReviewAnswer(review.questions[0])).toEqual(["I want to be heard."]);
     expect(homeworkReviewAnswer(review.questions[1])).toEqual(["Listen closely", "Pause first"]);

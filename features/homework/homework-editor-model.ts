@@ -320,7 +320,7 @@ export function homeworkSideBySideHeadingsAreValid(state: HomeworkEditorState) {
 
 export function homeworkBlockIsComplete(block: StagedHomeworkBlock) {
   if (block.blockType === "side_by_side_response") return sideBySideHeadingsAreValid(block.sideBySideConfig);
-  if (block.blockType === "rich_text") return richTextBlockIsComplete(block.title, block.richTextContent);
+  if (block.blockType === "rich_text") return richTextBlockIsComplete(block.title, block.richTextContent, false);
   if (block.blockType === "long_answer") return richTextBlockIsComplete(null, block.richTextContent, false);
   if (block.blockType === "video_link") return videoLinkIsComplete({ title: block.title ?? "", url: block.url ?? "", description: block.description ?? "" }, isValidHomeworkVideoUrl);
   if (block.blockType === "checkbox_question" || block.blockType === "radio_question") {

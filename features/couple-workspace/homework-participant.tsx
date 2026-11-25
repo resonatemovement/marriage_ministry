@@ -201,7 +201,7 @@ function HomeworkBlockContent({ block, answers, errors, locked, updateAnswer }: 
     </>;
   }
   if (block.type === "rich_text" && block.content && typeof block.content === "object" && !Array.isArray(block.content)) {
-    return <div className="grid gap-3"><h3 className="font-heading text-lg font-bold text-text-primary">{block.title}</h3><RichTextReadOnly content={block.content as Record<string, unknown>} compact contentClassName="p-0" /></div>;
+    return <div className="grid gap-3">{block.title?.trim() ? <h3 className="font-heading text-lg font-bold text-text-primary">{block.title}</h3> : null}<RichTextReadOnly content={block.content as Record<string, unknown>} compact contentClassName="p-0" /></div>;
   }
   if (block.type === "video_link" && block.title && block.url && block.description) return <VideoLinkPreview title={block.title} url={block.url} description={block.description} />;
   if (block.type === "long_answer" && block.content && typeof block.content === "object" && !Array.isArray(block.content)) {

@@ -25,6 +25,7 @@ import { HOMEWORK_AUTHORING_BLOCK_TYPES, homeworkBlockIsComplete, homeworkMoveTa
 import type { SideBySideResponseConfig } from "./side-by-side-response";
 import { SideBySideResponseFields } from "./side-by-side-response-fields";
 import { useHomeworkEditorState } from "./homework-editor-state";
+import { HomeworkRichTextAuthoring } from "./homework-rich-text-authoring";
 import { isValidHomeworkVideoUrl } from "./homework-url";
 import type { HomeworkDraftLoadResult } from "./queries";
 
@@ -191,10 +192,13 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
               Required question
             </label>
             <div className="flex justify-end gap-2"><button type="button" onClick={cancelEditing} className="min-h-10 rounded-md px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-muted focus-visible:bg-surface-muted">Cancel</button><button type="button" onClick={finishEditing} disabled={!homeworkBlockIsComplete(editing)} className="min-h-10 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90">Done</button></div>
-          </> : <RichTextBlockAuthoring title={editing.blockType === "rich_text" ? editing.title : null} content={richText as Record<string, unknown>}
-            onTitleChange={editing.blockType === "rich_text" ? (title) => patchEditing({ title: title || null }) : undefined}
+          </> : editing.blockType === "rich_text" ? <HomeworkRichTextAuthoring title={editing.title} content={richText as Record<string, unknown>}
+            onTitleChange={(title) => patchEditing({ title: title || null })}
             onContentChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })} onCancel={cancelEditing}
-            onDone={finishEditing} requireTitle={editing.blockType === "rich_text"} doneLabel="Done" />}
+            onDone={finishEditing} />
+            : <RichTextBlockAuthoring title={null} content={richText as Record<string, unknown>}
+              onContentChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })} onCancel={cancelEditing}
+              onDone={finishEditing} requireTitle={false} doneLabel="Done" />}
       </div> : visibleBlocks.length ? <HomeworkRows blocks={visibleBlocks} pages={pages}
         edit={(key) => { setUrlMessage(null); homeworkEditor.setEditingKey(key); }}
         duplicate={(key) => homeworkEditor.duplicateBlock(key)}

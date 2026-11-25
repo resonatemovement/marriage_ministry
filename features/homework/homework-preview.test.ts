@@ -36,6 +36,19 @@ describe("Homework Preview content", () => {
     expect(markup).not.toContain("px-5 pt-5");
   });
 
+  it("renders untitled published Homework Rich Text body without an empty heading or redundant gap", () => {
+    const blocks = homeworkEditorStateFromRows("published-id", [
+      { id: "rich-id", homeworkBlockId: "rich-block", blockType: "rich_text", position: 0, title: null, richTextContent: documentWithText("Published body"), url: null, description: null },
+    ], "published").blocks;
+    const markup = render(blocks);
+
+    expect(markup).toContain("Page 1");
+    expect(markup).toContain("Published body");
+    expect(markup).not.toContain("<h2 class=\"font-heading text-lg font-bold text-text-primary\"></h2>");
+    expect(markup).not.toContain(">null</h2>");
+    expect(markup).toContain('<div class="grid gap-3 p-5"><pre data-rich-text="true" class="p-0">');
+  });
+
   it("renders the exact current staged order and unsaved add, edit, duplicate, delete, and reorder changes", () => {
     const initial = homeworkEditorStateFromRows("draft-id", [
       { id: "rich-id", homeworkBlockId: "rich-block", blockType: "rich_text", position: 0, title: "Original title", richTextContent: documentWithText("Original reading"), url: null, description: null },
