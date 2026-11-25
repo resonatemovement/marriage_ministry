@@ -193,7 +193,27 @@ export async function resetCounselingJourney(formData: FormData) {
     target_case_id: caseId,
     reset_confirmation: confirmation,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("DEV counseling journey reset RPC failed", {
+      operation: "reset_counseling_journey",
+      caseId,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    if (
+      error.code === "23503" &&
+      error.message.includes("homework_completion_notifications_case_session_id_fkey")
+    ) {
+      return {
+        error: "This case has linked Homework notification history that must be reviewed before it can be reset. No reset was completed.",
+      };
+    }
+
+    return { error: "Unable to reset counseling case. Please try again." };
+  }
   revalidateCase(caseId);
   return { success: true };
 }

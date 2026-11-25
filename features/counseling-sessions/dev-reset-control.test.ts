@@ -22,7 +22,7 @@ describe("DEV counseling journey reset", () => {
   });
 
   it("reports reset success/failure with one safe toast and preserves reset confirmation safeguards", () => {
-    expect(control).toContain('showErrorToast("Unable to reset counseling case. Please try again.")');
+    expect(control).toContain("showErrorToast(result.error)");
     expect(control).toContain('showSuccessToast("DEV counseling case reset successfully.")');
     expect(control).toContain("disabled={pending || confirmation !== \"RESET\"}");
     expect(control).not.toContain("Journey reset.");

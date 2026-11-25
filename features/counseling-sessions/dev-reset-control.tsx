@@ -14,7 +14,7 @@ export function DevResetControl({ caseId }: { caseId: string }) {
   const submit = (formData: FormData) => startTransition(async () => {
     const result = await resetCounselingJourney(formData);
     if (result.error) {
-      if (result.error !== "Type exact uppercase RESET to continue.") showErrorToast("Unable to reset counseling case. Please try again.");
+      if (result.error !== "Type exact uppercase RESET to continue.") showErrorToast(result.error);
     }
     else {
       setConfirmation("");
