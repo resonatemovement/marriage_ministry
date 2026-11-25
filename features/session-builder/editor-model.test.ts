@@ -169,6 +169,22 @@ describe("unified Session editor model", () => {
     expect(sessionSaveError({ ...titled, blocks: [newStagedBlock("video_link")] })).toContain("valid http");
   });
 
+  it("saves and publishes meaningful Rich Text with a blank optional title while retaining Session title requirements", () => {
+    const titledPage = { ...saved, title: "Repeated page heading" };
+    const clearedPage = { ...titledPage, title: "   " };
+    const state = { sessionId: "session-id", status: "draft" as const, isFinal: false, title: "Required Session title", blocks: [clearedPage] };
+    expect(sessionSaveError(state)).toBeNull();
+    expect(sessionPublishError(state)).toBeNull();
+    expect(sessionSaveError({ ...state, title: " " })).toContain("session title");
+    expect(sessionPublishError({ ...state, title: " " })).toContain("session title");
+    expect(materialForRpc([clearedPage])).toEqual([{ id: "saved-id", block_type: "rich_text", title: null, rich_text_content: richText, url: null, description: null, is_recommended: true }]);
+
+    const legacyPublished = sessionStateFromRpc({ session_id: "session-id", status: "published", title: "Required Session title", is_final: false, blocks: [
+      { id: "saved-id", client_id: null, block_type: "rich_text", position: 0, title: null, rich_text_content: richText, url: null, description: null, is_recommended: true },
+    ] }, [titledPage]);
+    expect(legacyPublished?.blocks[0]).toMatchObject({ key: titledPage.key, persistedId: "saved-id", title: "", richTextContent: richText });
+  });
+
   it("sends the complete ordered state with client IDs only for unsaved blocks", () => {
     const local = { ...newStagedBlock("video_link"), url: " https://example.com/new " };
     expect(materialForRpc([saved, local])).toEqual([

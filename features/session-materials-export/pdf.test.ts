@@ -54,6 +54,19 @@ describe("assigned Session Materials PDF", () => {
     expect(bytes.toString("latin1")).not.toContain("Excluded current curriculum");
   });
 
+  it("renders titled Rich Text metadata normally and omits blank metadata without losing the authored Page heading", async () => {
+    const titled = { ...page("Titled page", 1, "unused"), title: "Repeated title", richTextContent: { type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Repeated title" }] }, { type: "paragraph", content: [{ type: "text", text: "Titled body" }] }] } };
+    const untitled = { ...page("Untitled page", 2, "unused"), title: "  \n ", richTextContent: { type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Page heading retained" }] }, { type: "paragraph", content: [{ type: "text", text: "Untitled body" }] }] } };
+    const { bytes } = await buildSessionMaterialsPdf("Session", [titled, untitled], "https://app.example");
+    const text = decodedPdfText(bytes);
+
+    expect(bytes.subarray(0, 4).toString("ascii")).toBe("%PDF");
+    expect(text.match(/Repeated title/g)).toHaveLength(2);
+    expect(text).toContain("Titled body");
+    expect(text).toContain("Page heading retained");
+    expect(text).toContain("Untitled body");
+  });
+
   it("includes a protected pinned Resource route and safe clickable external URL", async () => {
     const blocks = [
       { ...page("Resource", 1, "Resource text"), blockType: "library_resource" as const, title: "Pinned resource", description: "Helpful reading", richTextContent: null, resourceId: "resource-1", resourceVersionId: "pinned-version", resourceCategory: "document" as const },

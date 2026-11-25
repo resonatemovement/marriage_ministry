@@ -47,6 +47,18 @@ describe("shared block authoring completion", () => {
     expect(longAnswer).not.toContain("disabled=");
   });
 
+  it("allows a blank optional Session Material title while preserving the editable title field", () => {
+    const markup = renderToStaticMarkup(createElement(RichTextBlockAuthoring, {
+      title: "", content: meaningfulDocument, onTitleChange: vi.fn(), onContentChange: vi.fn(), onDone: vi.fn(), requireTitle: false,
+    }));
+    expect(markup).toContain("Title (optional)");
+    expect(markup).toContain('value=""');
+    expect(markup).toContain("Done</button>");
+    expect(markup).not.toContain("disabled=");
+    expect(richTextBlockIsComplete("", meaningfulDocument, false)).toBe(true);
+    expect(richTextBlockIsComplete(" ", emptyDocument, false)).toBe(false);
+  });
+
   it("uses the same meaningful Rich Text validator for Long Answer prompts", () => {
     expect(richTextHasMeaningfulContent(emptyDocument)).toBe(false);
     expect(richTextBlockIsComplete(null, emptyDocument, false)).toBe(false);

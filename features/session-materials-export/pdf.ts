@@ -293,7 +293,7 @@ export async function buildSessionMaterialsPdf(title: string, blocks: readonly S
   for (const block of blocks) {
     const richText = block.blockType === "rich_text" ? block.richTextContent : null;
     if (richText) assertRichTextSupported(richText);
-    if (block.title) {
+    if (block.title?.trim()) {
       doc.font("Helvetica-Bold").fontSize(16);
       const blockTitleHeight = doc.heightOfString(block.title, { width: contentWidth(layout) });
       let followingContentHeight = doc.currentLineHeight(true) + 8;

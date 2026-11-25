@@ -73,7 +73,7 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
   }
 
   function done() {
-    if (editing?.blockType === "rich_text" && !richTextBlockIsComplete(editing.title, editing.richTextContent)) return;
+    if (editing?.blockType === "rich_text" && !richTextBlockIsComplete(editing.title, editing.richTextContent, false)) return;
     if (editing?.blockType === "video_link" && !videoLinkIsComplete(editing, isValidMaterialUrl)) {
       setMessage("Enter a valid http or https URL.");
       return;
@@ -158,7 +158,7 @@ function MaterialForm({ block, patch, done, message, showCancel, cancel, chooseR
   return <div className="mt-5 grid gap-4 rounded-md border border-border bg-white p-5">
     <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{block.blockType === "rich_text" ? "Page" : block.blockType === "video_link" ? "Video / Link" : label}</p>
     {block.blockType === "rich_text" ? <RichTextBlockAuthoring title={block.title} content={block.richTextContent ?? { type: "doc", content: [] }}
-      onTitleChange={(title) => patch({ title })} onContentChange={(richTextContent) => patch({ richTextContent })} onDone={done} doneLabel="Done editing" />
+      onTitleChange={(title) => patch({ title })} onContentChange={(richTextContent) => patch({ richTextContent })} onDone={done} requireTitle={false} doneLabel="Done editing" />
       : block.blockType === "video_link" ? <><VideoLinkFields title={block.title} url={block.url} description={block.description}
       onTitleChange={(title) => patch({ title })} onUrlChange={(url) => patch({ url })}
       onDescriptionChange={(description) => patch({ description })} urlError={message} />

@@ -98,7 +98,7 @@ describe("Couple Session View", () => {
     expect(viewSource).toContain("scrollToSessionMaterialHeading(materialPageHeadingRef.current)");
     expect(viewSource).toContain("}, [currentMaterialPageKey]);");
     expect(previewSource).toContain("onPageSelect?.(targetKey)");
-    expect(previewSource).toContain('className="scroll-mt-20 p-4 pb-0');
+    expect(previewSource).toContain('className="scroll-mt-20 grid gap-5"');
   });
 
   it("adds a Sessions breadcrumb only for completed historical Sessions and uses the pinned authored number", () => {

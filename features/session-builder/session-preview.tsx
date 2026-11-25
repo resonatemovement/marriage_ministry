@@ -55,7 +55,7 @@ export function scrollToSessionMaterialHeading(heading: Pick<HTMLElement, "scrol
   heading?.scrollIntoView({ behavior: "instant", block: "start" });
 }
 
-export function SessionMaterialPreviewContent({ blocks, resourceAccess = {}, fullWidth = false, pageCountPlacement = "inside", onPageChange, selectedPageKey, onPageSelect, pageHeadingRef }: { blocks: StagedMaterialBlock[]; resourceAccess?: Record<string, string>; fullWidth?: boolean; pageCountPlacement?: "inside" | "external"; onPageChange?: (page: number) => void; selectedPageKey?: string | null; onPageSelect?: (pageKey: string) => void; pageHeadingRef?: Ref<HTMLHeadingElement> }) {
+export function SessionMaterialPreviewContent({ blocks, resourceAccess = {}, fullWidth = false, pageCountPlacement = "inside", onPageChange, selectedPageKey, onPageSelect, pageHeadingRef }: { blocks: StagedMaterialBlock[]; resourceAccess?: Record<string, string>; fullWidth?: boolean; pageCountPlacement?: "inside" | "external"; onPageChange?: (page: number) => void; selectedPageKey?: string | null; onPageSelect?: (pageKey: string) => void; pageHeadingRef?: Ref<HTMLElement> }) {
   const pages = blocks.filter((block) => block.blockType === "rich_text");
   const resources = blocks.filter((block) => block.blockType !== "rich_text");
   const [internalPageKey, setInternalPageKey] = useState<string | null>(null);
@@ -73,10 +73,10 @@ export function SessionMaterialPreviewContent({ blocks, resourceAccess = {}, ful
     onPageChange?.(pages.findIndex(({ key }) => key === targetKey) + 1);
   }
   return <div className={fullWidth ? "grid w-full gap-8" : "mx-auto grid max-w-3xl gap-8"}>
-    {page ? <section aria-label="Session Material Page" className="grid gap-5">
+    {page ? <section ref={pageHeadingRef} aria-label="Session Material Page" className="scroll-mt-20 grid gap-5">
       {pageCountPlacement === "inside" ? <p className="text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p> : null}
       <article className="overflow-hidden rounded-lg border border-border bg-white">
-        <h2 ref={pageHeadingRef} className="scroll-mt-20 p-4 pb-0 font-heading text-xl font-bold text-text-primary">{page.title}</h2>
+        {page.title?.trim() ? <h2 className="p-4 pb-0 font-heading text-xl font-bold text-text-primary">{page.title}</h2> : null}
         {page.richTextContent ? <RichTextReadOnly content={page.richTextContent} /> : null}
       </article>
       <nav aria-label="Page navigation" className="flex items-center justify-between gap-3">

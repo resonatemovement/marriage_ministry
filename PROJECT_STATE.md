@@ -1,7 +1,15 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 25, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (Couple Session Material top/bottom page navigation and scoped heading scroll implemented; validation passed; commit/push pending)
+Current working branch: `feature/hw-01-multiple-homework-pages` (Session Material Rich Text titles are optional; validation passed; commit/push pending)
 Repository: resonatemovement/marriage_ministry
+
+## HW-01 Optional Session Material Rich Text Titles (November 25, 2026)
+
+- The Session Material Rich Text editor labels its metadata field **Title (optional)**. It remains editable and can be cleared; no Page/Session title is copied into it. Completing a Rich Text block now requires meaningful body content but not the optional metadata title. Homework Rich Text authoring retains its existing required-title behavior.
+- Save Draft and publish validation continue to require the Session title and meaningful Rich Text body; they do not require the Rich Text block metadata title. Existing RPC serialization already sends blank/whitespace block titles as `null`, and `session_material_blocks.title` / pinned `case_session_material_blocks.title` are nullable in the existing schema and persistence contract. Therefore no migration or database change was needed.
+- Couple Session Material and Builder Preview omit the metadata heading for blank/whitespace titles while rendering the authored Rich Text body—including any body heading—normally. PDF generation similarly skips blank metadata titles without changing body formatting. Existing nonblank titles are preserved and are not deduplicated against body headings; persisted snapshots and legacy null titles remain compatible.
+- Focused authoring, model/persistence, Couple/Builder rendering, and PDF tests pass **68/68 across 5 files**. PDF regression coverage generates a document containing both titled and untitled Rich Text, verifies both bodies and authored headings, and confirms an existing duplicate title remains duplicated rather than being silently removed. Full Vitest passes **1,572/1,572 across 271 files**; typecheck, lint, production build, and `git diff --check` pass. No DEV records or snapshots were modified.
+- Implementation, tests, and this state update are ready to commit/push on `feature/hw-01-multiple-homework-pages`; no merge or deployment is authorized. Preserve the unrelated `.env.example` and `AGENTS.md` edits and all eight existing stash entries.
 
 ## HW-01 Couple Session Material Page Navigation (November 25, 2026)
 

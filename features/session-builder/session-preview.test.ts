@@ -60,7 +60,8 @@ describe("Session Material Preview", () => {
     const markup = render([page("p1", "Communication and Expectations", "Staged Page text"), page("p2", "Second Page", "Second staged text")]);
     expect(markup).toContain("Page 1 of 2");
     expect(markup).toContain("Communication and Expectations");
-    expect(markup).toMatch(/<h2 class="scroll-mt-20 p-4 pb-0 [^"]*">Communication and Expectations<\/h2>/);
+    expect(markup).toMatch(/<h2 class="p-4 pb-0 [^"]*">Communication and Expectations<\/h2>/);
+    expect(markup).toContain('aria-label="Session Material Page" class="scroll-mt-20 grid gap-5"');
     expect(markup).toContain("Staged Page text");
     expect(markup).not.toContain("Second Page");
     expect(markup).not.toContain("Second staged text");
@@ -119,6 +120,15 @@ describe("Session Material Preview", () => {
     expect(markup).not.toContain("First body");
     expect(markup).toContain("Previous Page</button>");
     expect(markup).toMatch(/disabled=""[^>]*>Next Page/);
+  });
+
+  it("omits the Rich Text title heading when blank while retaining the authored Page heading/content", () => {
+    const untitledPage = { ...page("p1", "  ", "Page heading in authored content"), richTextContent: { type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Page heading in authored content" }] }] } };
+    const markup = render([untitledPage]);
+    expect(markup).not.toMatch(/<h2[^>]*><\/h2>/);
+    expect(markup).not.toContain("<h2 class=");
+    expect(markup).toContain("Page heading in authored content");
+    expect(markup).toContain('aria-label="Session Material Page"');
   });
 
   it("renders Resources separately even without Pages and shares the Homework Video / Link presentation", () => {
