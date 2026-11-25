@@ -99,7 +99,7 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
   const selectedPage = pages.find((block) => block.key === selectedPageKey) ?? pages[0];
   const selectedPageIndex = selectedPage ? pages.findIndex((block) => block.key === selectedPage.key) : -1;
   const selectedPageBlocks = selectedPage ? [selectedPage] : [];
-  const openEditing = editing ? <MaterialForm block={editing} patch={(change) => patch(editing.key, change)} done={done} message={message}
+  const openEditing = editing ? <SessionMaterialForm block={editing} patch={(change) => patch(editing.key, change)} done={done} message={message}
     showCancel={creatingKey === editing.key} cancel={cancelNewBlock} chooseResource={() => {
       if (editing.blockType === "library_resource" && editing.resourceCategory) setPicker({ category: editing.resourceCategory, blockKey: editing.key });
     }} /> : null;
@@ -152,7 +152,7 @@ function Chooser({ icon, title, description, onClick }: { icon: React.ReactNode;
   return <button type="button" onClick={onClick} className="flex items-center gap-3 rounded-md border border-border p-4 text-left hover:bg-surface-muted"><span className="text-brand-primary">{icon}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-text-primary">{title}</span><span className="mt-1 block text-xs text-text-muted">{description}</span></span><ChevronRight className="size-4 text-text-muted" aria-hidden="true" /></button>;
 }
 
-function MaterialForm({ block, patch, done, message, showCancel, cancel, chooseResource }: { block: StagedMaterialBlock; patch: (change: Partial<StagedMaterialBlock>) => void; done: () => void; message: string | null; showCancel: boolean; cancel: () => void; chooseResource: () => void }) {
+export function SessionMaterialForm({ block, patch, done, message, showCancel, cancel, chooseResource }: { block: StagedMaterialBlock; patch: (change: Partial<StagedMaterialBlock>) => void; done: () => void; message: string | null; showCancel: boolean; cancel: () => void; chooseResource: () => void }) {
   const category = block.resourceCategory;
   const label = category ? category[0].toUpperCase() + category.slice(1) : "Resource";
   return <div className="mt-5 grid gap-4 rounded-md border border-border bg-white p-5">
