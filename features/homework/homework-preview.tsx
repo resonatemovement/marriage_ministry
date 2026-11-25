@@ -1,28 +1,39 @@
 "use client";
 
+import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
+import { HomeworkPageNavigation } from "./homework-page-navigation";
 import { RichTextReadOnly } from "@/features/session-builder/rich-text-editor";
 import { SideBySideResponseFields } from "./side-by-side-response-fields";
 import { richTextBlockIsComplete, videoLinkIsComplete } from "@/components/shared/authoring-completion";
 import type { HomeworkPage, StagedHomeworkBlock } from "./homework-editor-model";
 import { isValidHomeworkVideoUrl } from "./homework-url";
 
-export function HomeworkPreviewContent({ blocks, pages = [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }] }: { blocks: StagedHomeworkBlock[]; pages?: HomeworkPage[] }) {
-  if (blocks.length === 0) {
-    return <div className="mx-auto max-w-3xl rounded-lg border border-dashed border-border bg-surface p-6 text-center sm:p-10">
-      <h2 className="font-heading text-lg font-bold text-text-primary">No homework content yet.</h2>
-      <p className="mt-2 text-sm text-text-muted">This Session does not currently include homework content.</p>
-    </div>;
+export function HomeworkPreviewContent({ blocks, pages = [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }], selectedPageIndex, onPageIndexChange }: {
+  blocks: StagedHomeworkBlock[];
+  pages?: HomeworkPage[];
+  selectedPageIndex?: number;
+  onPageIndexChange?: (pageIndex: number) => void;
+}) {
+  const [internalPageIndex, setInternalPageIndex] = useState(0);
+  const pageIndex = selectedPageIndex ?? internalPageIndex;
+  function selectPageIndex(nextPageIndex: number) {
+    if (selectedPageIndex === undefined) setInternalPageIndex(nextPageIndex);
+    onPageIndexChange?.(nextPageIndex);
   }
-
   const visiblePages = pages.length ? pages : [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }];
-  return <div className="mx-auto grid max-w-3xl gap-6 sm:gap-8">
-    {visiblePages.map((page) => <section key={page.id} aria-label={page.title || `Page ${page.position + 1}`} className="grid gap-4">
-      <h2 className="font-heading text-xl font-bold text-text-primary">{page.title || `Page ${page.position + 1}`}</h2>
-      {blocks.filter((block) => block.pageId === page.id || !block.pageId && page.position === 0).map((block) => <HomeworkPreviewBlock key={block.key} block={block} />)}
-    </section>)}
+  const selectedIndex = Math.min(pageIndex, visiblePages.length - 1);
+  const currentPage = visiblePages[selectedIndex]!;
+  const currentBlocks = blocks.filter((block) => block.pageId === currentPage.id || !block.pageId && currentPage.position === 0);
+  return <div className="grid w-full gap-4 sm:gap-5">
+    <HomeworkPageNavigation pages={visiblePages} pageIndex={selectedIndex} onPageIndexChange={selectPageIndex} />
+    {currentBlocks.length ? <div className="grid gap-4">{currentBlocks.map((block) => <HomeworkPreviewBlock key={block.key} block={block} />)}</div>
+      : <div className="rounded-lg border border-dashed border-border bg-surface p-6 text-center sm:p-8">
+        <h2 className="font-heading text-lg font-bold text-text-primary">{blocks.length ? "This page has no content yet." : "No homework content yet."}</h2>
+        {!blocks.length ? <p className="mt-2 text-sm text-text-muted">This Session does not currently include homework content.</p> : null}
+      </div>}
   </div>;
 }
 

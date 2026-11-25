@@ -6,7 +6,7 @@ vi.mock("@/features/session-builder/rich-text-editor", () => ({
   RichTextReadOnly: ({ content }: { content: Record<string, unknown> }) => createElement("pre", null, JSON.stringify(content)),
 }));
 
-import { scrollToSessionMaterialHeading, SessionMaterialPreviewContent, sessionPreviewPagePosition, sessionPreviewTargetPage } from "./session-preview";
+import { scrollToSessionMaterialHeading, SessionMaterialPageControls, SessionMaterialPreviewContent, sessionPreviewPagePosition, sessionPreviewTargetPage, SessionPreviewTabs } from "./session-preview";
 import type { StagedMaterialBlock } from "./editor-model";
 import type { ResourceCategory } from "@/features/resource-library/policy";
 
@@ -101,6 +101,42 @@ describe("Session Material Preview", () => {
     expect(sessionPreviewPagePosition(staged, "p2")).toEqual({ index: 1, pageNumber: 2, canPrevious: true, canNext: true });
     expect(sessionPreviewPagePosition(staged, "p3")).toEqual({ index: 2, pageNumber: 3, canPrevious: true, canNext: false });
     expect(sessionPreviewPagePosition([], null)).toEqual({ index: 0, pageNumber: 0, canPrevious: false, canNext: false });
+  });
+
+  it("shares accessible top page controls with Couple Session Material, including disabled boundaries", () => {
+    const firstPageMarkup = renderToStaticMarkup(createElement(SessionMaterialPageControls, {
+      currentPage: 1, totalPages: 2, canPrevious: false, canNext: true, onPrevious: vi.fn(), onNext: vi.fn(),
+    }));
+    const lastPageMarkup = renderToStaticMarkup(createElement(SessionMaterialPageControls, {
+      currentPage: 2, totalPages: 2, canPrevious: true, canNext: false, onPrevious: vi.fn(), onNext: vi.fn(),
+    }));
+
+    expect(firstPageMarkup).toContain("Page 1 of 2");
+    expect(firstPageMarkup).toMatch(/aria-label="Previous Session Material page"[^>]*disabled=""/);
+    expect(firstPageMarkup).toMatch(/aria-label="Next Session Material page"/);
+    expect(lastPageMarkup).toContain("Page 2 of 2");
+    expect(lastPageMarkup).toMatch(/aria-label="Next Session Material page"[^>]*disabled=""/);
+  });
+
+  it("keeps Builder Session Material Preview page-by-page with top and bottom navigation", () => {
+    const markup = renderToStaticMarkup(createElement(SessionPreviewTabs, {
+      tab: "material",
+      onTabChange: vi.fn(),
+      materialBlocks: [page("p1", "First staged page", "First preview body"), page("p2", "Second staged page", "Second preview body")],
+      homeworkBlocks: [],
+      homeworkPages: [{ id: "homework-page", title: "Draft page", position: 0 }],
+    }));
+
+    expect(markup).toContain("Preview sections");
+    expect(markup).toContain("Page 1 of 2");
+    expect(markup).toContain("First staged page");
+    expect(markup).toContain("First preview body");
+    expect(markup).not.toContain("Second preview body");
+    expect(markup).toContain("Previous Page</button>");
+    expect(markup).toContain("Next Page</button>");
+    expect(markup).toMatch(/aria-label="Previous Session Material page"[^>]*disabled=""/);
+    expect(markup).toContain("Session Material");
+    expect(markup).toContain("Homework");
   });
 
   it("scrolls immediately to the page heading and safely ignores a missing heading", () => {

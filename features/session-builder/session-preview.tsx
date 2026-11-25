@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, type Ref } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useRef, useState, type Ref } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import Image from "next/image";
 
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -41,14 +41,68 @@ export function SessionPreview({ open, onOpenChange, tab, onTabChange, materialB
         <SheetClose asChild><button ref={backToEditing} type="button" className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary"><ArrowLeft className="size-4" aria-hidden="true" />Back to Editing</button></SheetClose>
       </SheetHeader>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8 sm:py-7">
-        <Tabs value={tab} onValueChange={(value) => onTabChange(value as "material" | "homework")}>
-          <TabsListViewport><TabsList aria-label="Preview sections"><TabsTrigger value="material">Session Material</TabsTrigger><TabsTrigger value="homework">Homework</TabsTrigger></TabsList></TabsListViewport>
-          <TabsContent value="material"><SessionMaterialPreviewContent blocks={materialBlocks} resourceAccess={resourceAccess} /></TabsContent>
-          <TabsContent value="homework"><HomeworkPreviewContent blocks={homeworkBlocks} pages={homeworkPages} /></TabsContent>
-        </Tabs>
+        <SessionPreviewTabs tab={tab} onTabChange={onTabChange} materialBlocks={materialBlocks} homeworkBlocks={homeworkBlocks} homeworkPages={homeworkPages} resourceAccess={resourceAccess} />
       </div>
     </SheetContent>
   </Sheet>;
+}
+
+export function SessionPreviewTabs({ tab, onTabChange, materialBlocks, homeworkBlocks, homeworkPages, resourceAccess = {} }: {
+  tab: "material" | "homework";
+  onTabChange: (tab: "material" | "homework") => void;
+  materialBlocks: StagedMaterialBlock[];
+  homeworkBlocks: StagedHomeworkBlock[];
+  homeworkPages: HomeworkPage[];
+  resourceAccess?: Record<string, string>;
+}) {
+  const materialPages = materialBlocks.filter((block) => block.blockType === "rich_text");
+  const [selectedMaterialPageKey, setSelectedMaterialPageKey] = useState<string | null>(null);
+  const [selectedHomeworkPageIndex, setSelectedHomeworkPageIndex] = useState(0);
+  const shouldScrollToMaterialPage = useRef(false);
+  const materialPageHeadingRef = useRef<HTMLElement>(null);
+  const materialPagePosition = sessionPreviewPagePosition(materialPages, selectedMaterialPageKey);
+
+  useEffect(() => {
+    if (!shouldScrollToMaterialPage.current) return;
+    shouldScrollToMaterialPage.current = false;
+    scrollToSessionMaterialHeading(materialPageHeadingRef.current);
+  }, [selectedMaterialPageKey]);
+
+  function selectMaterialPage(pageKey: string) {
+    if (materialPages[materialPagePosition.index]?.key === pageKey) return;
+    shouldScrollToMaterialPage.current = true;
+    setSelectedMaterialPageKey(pageKey);
+  }
+
+  function navigateMaterialPage(direction: -1 | 1) {
+    const pageKey = sessionPreviewTargetPage(materialPages, materialPages[materialPagePosition.index]?.key ?? null, direction);
+    if (pageKey) selectMaterialPage(pageKey);
+  }
+
+  return <Tabs value={tab} onValueChange={(value) => onTabChange(value as "material" | "homework")}>
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
+            <TabsListViewport className="w-full sm:w-auto"><TabsList aria-label="Preview sections" className="w-full sm:w-auto"><TabsTrigger value="material" className="flex-1 sm:flex-none">Session Material</TabsTrigger><TabsTrigger value="homework" className="flex-1 sm:flex-none">Homework</TabsTrigger></TabsList></TabsListViewport>
+            {tab === "material" && materialPages.length ? <SessionMaterialPageControls currentPage={materialPagePosition.pageNumber} totalPages={materialPages.length} canPrevious={materialPagePosition.canPrevious} canNext={materialPagePosition.canNext} onPrevious={() => navigateMaterialPage(-1)} onNext={() => navigateMaterialPage(1)} className="ml-auto" /> : null}
+          </div>
+          <TabsContent value="material"><SessionMaterialPreviewContent blocks={materialBlocks} resourceAccess={resourceAccess} fullWidth pageCountPlacement="external" selectedPageKey={selectedMaterialPageKey} onPageSelect={selectMaterialPage} pageHeadingRef={materialPageHeadingRef} /></TabsContent>
+          <TabsContent value="homework"><HomeworkPreviewContent blocks={homeworkBlocks} pages={homeworkPages} selectedPageIndex={selectedHomeworkPageIndex} onPageIndexChange={setSelectedHomeworkPageIndex} /></TabsContent>
+  </Tabs>;
+}
+
+export function SessionMaterialPageControls({ currentPage, totalPages, canPrevious, canNext, onPrevious, onNext, className = "" }: {
+  currentPage: number;
+  totalPages: number;
+  canPrevious: boolean;
+  canNext: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+  className?: string;
+}) {
+  return <nav aria-label="Session Material page controls" className={`flex shrink-0 items-center gap-2 ${className}`}>
+    <span className="whitespace-nowrap text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</span>
+    <button type="button" aria-label="Previous Session Material page" title="Previous page" disabled={!canPrevious} onClick={onPrevious} className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"><ArrowLeft className="size-4" aria-hidden="true" /></button>
+    <button type="button" aria-label="Next Session Material page" title="Next page" disabled={!canNext} onClick={onNext} className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"><ArrowRight className="size-4" aria-hidden="true" /></button>
+  </nav>;
 }
 
 export function scrollToSessionMaterialHeading(heading: Pick<HTMLElement, "scrollIntoView"> | null) {

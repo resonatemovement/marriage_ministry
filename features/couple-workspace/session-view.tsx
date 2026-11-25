@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsListViewport, TabsTrigger } from "@/components/ui/tabs";
 import { CaseLifecycleRealtime } from "@/features/counseling-sessions/case-lifecycle-realtime";
 import { homeworkProgressBadgeClass, homeworkProgressLabel, participantHomeworkTitle } from "@/features/homework/presentation";
-import { scrollToSessionMaterialHeading, sessionPreviewPagePosition, sessionPreviewTargetPage, SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
+import { scrollToSessionMaterialHeading, sessionPreviewPagePosition, sessionPreviewTargetPage, SessionMaterialPageControls, SessionMaterialPreviewContent } from "@/features/session-builder/session-preview";
 import { ExportSessionMaterialsButton } from "@/features/session-materials-export/export-session-materials-button";
 import { ParticipantHomeworkContent } from "./homework-participant";
 import type { CoupleSessionViewData } from "./queries";
@@ -74,11 +73,7 @@ export function CoupleSessionView({ session, initialTab = "material" }: { sessio
           </TabsList>
         </TabsListViewport>
         {activeTab === "material" ? <ExportSessionMaterialsButton caseSessionId={session.id} sessionLabel={`Session ${session.number}: ${session.title}`} className="ml-auto" /> : null}
-        {activeTab === "material" && totalPages > 0 ? <nav aria-label="Session Material page controls" className="ml-auto flex shrink-0 items-center gap-2">
-          <span className="whitespace-nowrap text-sm font-medium text-text-muted">Page {currentPage} of {totalPages}</span>
-          <button type="button" aria-label="Previous Session Material page" title="Previous page" disabled={!pagePosition.canPrevious} onClick={() => navigateMaterialPage(-1)} className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"><ArrowLeft className="size-4" aria-hidden="true" /></button>
-          <button type="button" aria-label="Next Session Material page" title="Next page" disabled={!pagePosition.canNext} onClick={() => navigateMaterialPage(1)} className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface text-text-primary hover:bg-surface-muted focus-visible:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"><ArrowRight className="size-4" aria-hidden="true" /></button>
-        </nav> : null}
+        {activeTab === "material" && totalPages > 0 ? <SessionMaterialPageControls currentPage={currentPage} totalPages={totalPages} canPrevious={pagePosition.canPrevious} canNext={pagePosition.canNext} onPrevious={() => navigateMaterialPage(-1)} onNext={() => navigateMaterialPage(1)} className="ml-auto" /> : null}
       </div>
       <TabsContent value="material" forceMount>
         <SessionMaterialPreviewContent blocks={session.materials} fullWidth pageCountPlacement="external" selectedPageKey={currentMaterialPageKey} onPageSelect={selectMaterialPage} pageHeadingRef={materialPageHeadingRef} />

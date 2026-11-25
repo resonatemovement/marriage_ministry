@@ -123,8 +123,10 @@ describe("participant Homework presentation", () => {
     expect(markup).not.toContain("Submit Homework");
     expect(markup).toContain("First prompt");
     expect(markup).not.toContain('for="answer-second"');
-    expect(participantSource).toContain("pages.map((page, index) => <SelectItem");
-    expect(participantSource).toContain("setPageIndex(nextPageIndex)");
+    expect(participantSource).toContain("<HomeworkPageNavigation pages={pages} pageIndex={pageIndex} onPageIndexChange={setPageIndex} />");
+    const navigationSource = readFileSync("features/homework/homework-page-navigation.tsx", "utf8");
+    expect(navigationSource).toContain("pages.map((page, index) => <SelectItem");
+    expect(navigationSource).toContain("onPageIndexChange(nextPageIndex)");
     expect(participantSource).toContain("pageIndex === pages.length - 1 ? <button");
     expect(participantSource).toContain("const [answers, setAnswers] = useState(initialAnswers)");
     expect(participantMissingRequirements(assignment, {})).toEqual(["First prompt", "Second prompt"]);

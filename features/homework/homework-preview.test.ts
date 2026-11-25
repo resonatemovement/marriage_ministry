@@ -14,6 +14,7 @@ vi.mock("@/features/session-builder/rich-text-editor", async () => {
 });
 
 import { HomeworkPreviewContent } from "./homework-preview";
+import { adjacentHomeworkPageIndex, homeworkPageIndexForId } from "./homework-page-navigation";
 
 const documentWithText = (text: string) => ({
   type: "doc",
@@ -97,6 +98,63 @@ describe("Homework Preview content", () => {
     expect(markup).not.toContain("Delete");
     expect(staged).toEqual(beforeRender);
     expect(homeworkEditorIsDirty(staged)).toBe(true);
+  });
+
+  it("shows only the selected staged Homework page with Couple-style navigation and preserves staged data", () => {
+    const pages = [
+      { id: "page-one", title: "Connection", position: 0 },
+      { id: "page-two", title: "Repair", position: 1 },
+    ];
+    const blocks: StagedHomeworkBlock[] = [
+      { key: "first", persistedId: null, homeworkBlockId: null, blockType: "rich_text", position: 0, title: "Read together", richTextContent: documentWithText("First page staged body"), url: null, description: null, questionChoices: [], isRequired: true, pageId: "page-one" },
+      { key: "second", persistedId: null, homeworkBlockId: null, blockType: "long_answer", position: 1, title: null, richTextContent: documentWithText("Second page staged question"), url: null, description: null, questionChoices: [], isRequired: true, pageId: "page-two" },
+    ];
+    const beforePreview = structuredClone(blocks);
+    const markup = renderToStaticMarkup(createElement(HomeworkPreviewContent, { blocks, pages }));
+
+    expect(markup).toContain("Connection");
+    expect(markup).toContain("Page 1 of 2");
+    expect(markup).toContain('aria-label="Choose Homework page"');
+    expect(markup).toContain("First page staged body");
+    expect(markup).not.toContain("Second page staged question");
+    expect(markup).toMatch(/disabled=""[^>]*>Previous Page/);
+    expect(markup).toContain(">Next Page</button>");
+    expect(markup).toContain("grid w-full gap-4 sm:gap-5");
+    expect(markup).toContain("sm:flex-row");
+    expect(markup).not.toContain("Save Draft");
+    expect(markup).not.toContain("Submit Homework");
+    expect(markup).not.toContain("<form");
+    expect(blocks).toEqual(beforePreview);
+    expect(homeworkPageIndexForId(pages, "page-two")).toBe(1);
+  });
+
+  it("uses bounded Previous/Next indices and resolves dropdown targets from the staged page order", () => {
+    const pages = [
+      { id: "one", title: "First", position: 0 },
+      { id: "two", title: "Second", position: 1 },
+      { id: "three", title: "Third", position: 2 },
+    ];
+
+    expect(homeworkPageIndexForId(pages, "three")).toBe(2);
+    expect(homeworkPageIndexForId(pages, "missing")).toBe(-1);
+    expect(adjacentHomeworkPageIndex(0, -1, 3)).toBe(0);
+    expect(adjacentHomeworkPageIndex(0, 1, 3)).toBe(1);
+    expect(adjacentHomeworkPageIndex(1, 1, 3)).toBe(2);
+    expect(adjacentHomeworkPageIndex(2, 1, 3)).toBe(2);
+  });
+
+  it("keeps a single staged Homework page full-width without a page counter or navigation controls", () => {
+    const markup = render([{
+      key: "only", persistedId: null, homeworkBlockId: null, blockType: "rich_text", position: 0,
+      title: null, richTextContent: documentWithText("Single-page draft"), url: null, description: null, questionChoices: [], isRequired: true,
+    }]);
+
+    expect(markup).toContain("Page 1");
+    expect(markup).toContain("Single-page draft");
+    expect(markup).not.toContain("Page 1 of 1");
+    expect(markup).not.toContain("Choose Homework page");
+    expect(markup).not.toContain("Previous Page");
+    expect(markup).not.toContain("Next Page");
   });
 
   it("renders Video / Link title and description with a safe action but no visible raw URL", () => {

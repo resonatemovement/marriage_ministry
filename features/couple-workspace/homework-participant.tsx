@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { RadioGroup } from "radix-ui";
 
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { VideoLinkPreview } from "@/features/homework/homework-preview";
+import { HomeworkPageNavigation } from "@/features/homework/homework-page-navigation";
 import { homeworkProgressLabel, type HomeworkProgressStatus } from "@/features/homework/presentation";
 import type { HomeworkAnswerChoice, HomeworkResponseValue } from "@/features/homework/selection-question";
 import type { HomeworkPage } from "@/features/homework/homework-editor-model";
@@ -299,20 +299,7 @@ function HomeworkAssignment({ homework, readOnly, showHeader, onDirtyChange, onS
   return <section aria-label="Your Homework">
     {showHeader ? <header className="mb-6"><p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Session Homework</p><h2 className="font-heading mt-2 text-2xl font-bold text-text-primary">{homework.title}</h2><p className="mt-2 text-sm text-text-muted">Status: <span className="font-medium text-text-primary">{homeworkProgressLabel(status)}</span></p></header> : null}
     <div className="min-w-0">
-      <header className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0"><h3 className="font-heading break-words text-xl font-bold text-text-primary">{currentPage.title || `Page ${pageIndex + 1}`}</h3>{pages.length > 1 ? <p className="mt-1 text-sm font-medium text-text-muted">Page {pageIndex + 1} of {pages.length}</p> : null}</div>
-        {pages.length > 1 ? <nav aria-label="Homework page navigation" className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <Select value={currentPage.id} onValueChange={(pageId) => {
-            const nextPageIndex = pages.findIndex((page) => page.id === pageId);
-            if (nextPageIndex >= 0) setPageIndex(nextPageIndex);
-          }}>
-            <SelectTrigger aria-label="Choose Homework page" className="col-span-2 min-w-0 sm:w-64"><SelectValue /></SelectTrigger>
-            <SelectContent>{pages.map((page, index) => <SelectItem key={page.id} value={page.id}>Page {index + 1}: {page.title || `Page ${index + 1}`}</SelectItem>)}</SelectContent>
-          </Select>
-          <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((index) => Math.max(0, index - 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Previous Page</button>
-          <button type="button" disabled={pageIndex >= pages.length - 1} onClick={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))} className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50">Next Page</button>
-        </nav> : null}
-      </header>
+      <HomeworkPageNavigation pages={pages} pageIndex={pageIndex} onPageIndexChange={setPageIndex} />
       <form noValidate onSubmit={(event) => event.preventDefault()}>
         <div className="grid gap-4">{homework.blocks.filter((block) => (block.pageId ?? pages[0]!.id) === currentPage.id).map((block) => <Card key={block.id} className="p-5">
           <HomeworkBlockContent block={block} answers={answers} errors={fieldErrors} locked={locked} updateAnswer={updateAnswer} />

@@ -92,8 +92,9 @@ describe("Couple Session View", () => {
     const viewSource = readFileSync("features/couple-workspace/session-view.tsx", "utf8");
     const previewSource = readFileSync("features/session-builder/session-preview.tsx", "utf8");
     expect(viewSource).toContain("onPageSelect={selectMaterialPage}");
-    expect(viewSource).toContain('onClick={() => navigateMaterialPage(-1)}');
-    expect(viewSource).toContain('onClick={() => navigateMaterialPage(1)}');
+    expect(viewSource).toContain('<SessionMaterialPageControls');
+    expect(viewSource).toContain('onPrevious={() => navigateMaterialPage(-1)}');
+    expect(viewSource).toContain('onNext={() => navigateMaterialPage(1)}');
     expect(viewSource).toContain("shouldScrollToMaterialPage.current = true");
     expect(viewSource).toContain("scrollToSessionMaterialHeading(materialPageHeadingRef.current)");
     expect(viewSource).toContain("}, [currentMaterialPageKey]);");
