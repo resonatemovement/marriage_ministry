@@ -25,7 +25,7 @@ export function DevResetControl({ caseId }: { caseId: string }) {
   return <Card className="mt-8 border border-border p-5 sm:p-6">
     <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">DEV Testing</p>
     <h2 className="font-heading mt-2 text-lg font-bold text-text-primary">Reset Counseling Journey</h2>
-    <p className="mt-2 max-w-3xl text-sm text-text-muted">This permanently erases this case’s Session, Meeting, released Material, and Homework lifecycle data. Couple accounts, team assignments, Prepare &amp; Enrich documents, and curriculum remain.</p>
+    <p className="mt-2 max-w-3xl text-sm text-text-muted">This permanently erases this case’s Session, Meeting, released Material, and Homework lifecycle data, including Session-linked inbox notices and Homework completion notification history. Assessment schedules and results are retained but detached from the removed Sessions. Couple accounts, team assignments, Prepare &amp; Enrich documents, and curriculum remain.</p>
     <form action={submit} className="mt-4 grid max-w-md gap-3">
       <input type="hidden" name="caseId" value={caseId} />
       <label htmlFor="reset-confirmation" className="text-sm font-medium text-text-primary">Type RESET to restore the case to Matched before Session 0.</label>

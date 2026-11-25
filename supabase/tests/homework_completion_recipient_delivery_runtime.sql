@@ -17,6 +17,95 @@ returns jsonb language sql security definer set search_path = '' as $$
   from public.homework_completion_notification_deliveries delivery where delivery.id=target_delivery_id;
 $$;
 
+create function pg_temp.homework_reset_unrelated_notification_counts(target_case_id uuid)
+returns jsonb language sql security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'cycles', (select count(*) from public.homework_completion_notifications where counseling_case_id <> target_case_id),
+    'deliveries', (select count(*) from public.homework_completion_notification_deliveries delivery
+      join public.homework_completion_notifications notification on notification.id = delivery.notification_id
+      where notification.counseling_case_id <> target_case_id),
+    'attempts', (select count(*) from public.homework_completion_notification_attempts attempt
+      join public.homework_completion_notifications notification on notification.id = attempt.notification_id
+      where notification.counseling_case_id <> target_case_id),
+    'payloads', (select count(*) from public.homework_completion_notification_payloads payload
+      join public.homework_completion_notifications notification on notification.id = payload.notification_id
+      where notification.counseling_case_id <> target_case_id),
+    'events', (select count(*) from public.homework_completion_notification_events event
+      join public.homework_completion_notifications notification on notification.id = event.notification_id
+      where notification.counseling_case_id <> target_case_id),
+    'evidence', (select count(*) from public.homework_completion_notification_provider_evidence evidence
+      join public.homework_completion_notification_attempts attempt on attempt.id = evidence.attempt_id
+      join public.homework_completion_notifications notification on notification.id = attempt.notification_id
+      where notification.counseling_case_id <> target_case_id),
+    'inApp', (select count(*) from public.in_app_notifications inbox
+      join public.case_sessions session_row on session_row.id = inbox.case_session_id
+      where session_row.counseling_case_id <> target_case_id),
+    'assessmentSchedules', (select count(*) from public.assessment_case_schedules where counseling_case_id <> target_case_id),
+    'assessmentAssignments', (select count(*) from public.assessment_participant_assignments where counseling_case_id <> target_case_id),
+    'assessmentAttempts', (select count(*) from public.assessment_attempts attempt
+      join public.assessment_participant_assignments assignment on assignment.id = attempt.participant_assignment_id
+      where assignment.counseling_case_id <> target_case_id),
+    'assessmentResponses', (select count(*) from public.assessment_responses response
+      join public.assessment_attempts attempt on attempt.id = response.attempt_id
+      join public.assessment_participant_assignments assignment on assignment.id = attempt.participant_assignment_id
+      where assignment.counseling_case_id <> target_case_id)
+  );
+$$;
+
+create function pg_temp.homework_reset_case_snapshot(target_case_id uuid)
+returns jsonb language sql security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'cycles',(select count(*) from public.homework_completion_notifications where counseling_case_id=target_case_id),
+    'deliveries',(select count(*) from public.homework_completion_notification_deliveries delivery
+      join public.homework_completion_notifications notification on notification.id=delivery.notification_id
+      where notification.counseling_case_id=target_case_id),
+    'attempts',(select count(*) from public.homework_completion_notification_attempts attempt
+      join public.homework_completion_notifications notification on notification.id=attempt.notification_id
+      where notification.counseling_case_id=target_case_id),
+    'payloads',(select count(*) from public.homework_completion_notification_payloads payload
+      join public.homework_completion_notifications notification on notification.id=payload.notification_id
+      where notification.counseling_case_id=target_case_id),
+    'events',(select count(*) from public.homework_completion_notification_events event
+      join public.homework_completion_notifications notification on notification.id=event.notification_id
+      where notification.counseling_case_id=target_case_id),
+    'evidence',(select count(*) from public.homework_completion_notification_provider_evidence evidence
+      join public.homework_completion_notification_attempts attempt on attempt.id=evidence.attempt_id
+      join public.homework_completion_notifications notification on notification.id=attempt.notification_id
+      where notification.counseling_case_id=target_case_id),
+    'inApp',(select count(*) from public.in_app_notifications inbox
+      join public.case_sessions session_row on session_row.id=inbox.case_session_id
+      where session_row.counseling_case_id=target_case_id),
+    'caseSessions',(select count(*) from public.case_sessions where counseling_case_id=target_case_id),
+    'homeworkAssignments',(select count(*) from public.homework_assignments where counseling_case_id=target_case_id),
+    'assessmentSchedules',(select count(*) from public.assessment_case_schedules where counseling_case_id=target_case_id),
+    'assessmentScheduleLinks',(select count(*) from public.assessment_case_schedules schedule
+      join public.case_sessions session_row on session_row.id in (schedule.case_session_id,schedule.progression_case_session_id)
+      where schedule.counseling_case_id=target_case_id),
+    'assessmentAssignments',(select count(*) from public.assessment_participant_assignments where counseling_case_id=target_case_id),
+    'assessmentAttempts',(select count(*) from public.assessment_attempts attempt
+      join public.assessment_participant_assignments assignment on assignment.id=attempt.participant_assignment_id
+      where assignment.counseling_case_id=target_case_id),
+    'assessmentResponses',(select count(*) from public.assessment_responses response
+      join public.assessment_attempts attempt on attempt.id=response.attempt_id
+      join public.assessment_participant_assignments assignment on assignment.id=attempt.participant_assignment_id
+      where assignment.counseling_case_id=target_case_id),
+    'caseAssignments',(select count(*) from public.case_assignments where counseling_case_id=target_case_id),
+    'groupMembers',(select count(*) from public.group_members where group_id in (
+      select couple_group_id from public.counseling_cases where id=target_case_id
+      union select assigned_group_id from public.case_assignments where counseling_case_id=target_case_id))
+  );
+$$;
+
+create function pg_temp.dev_reset_fail_final_homework_delete()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if current_setting('dev_reset_runtime.fail_final_homework_delete', true) = 'true' then
+    raise exception 'Synthetic DEV reset rollback verification failure';
+  end if;
+  return old;
+end;
+$$;
+
 do $setup$
 declare
   ids uuid[] := array[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];
@@ -66,6 +155,7 @@ begin
   perform set_config('homework_recipient_runtime.ctx',jsonb_build_object('admin',ids[1],'a',ids[2],'b',ids[3],
     'counselor_a',ids[4],'counselor_b',ids[5],'replacement_a',ids[7],'replacement_b',ids[8],
     'block',block_snapshot_id,'homework',homework_id,'version',version_id,'case',case_id,'session',session_id,
+    'couple_group',couple_group,'counselor_group',counselor_group,
     'counselor_assignment',counselor_assignment_id)::text,true);
 end;
 $setup$;
@@ -87,13 +177,48 @@ $publish$;
 reset role;
 
 do $link_session$
-declare ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb; case_session_id uuid;
+declare
+  ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb;
+  target_case_session_id uuid;
+  target_schedule_id uuid;
+  assignment_a uuid;
+  assignment_b uuid;
+  attempt_a uuid;
+  attempt_b uuid;
 begin
   insert into public.case_sessions(counseling_case_id,session_id,actual_sequence,template_sequence_number,title,
     homework_assignment_revision_id,material_released_at,homework_released_at,activated_at,activated_by)
   values((ctx->>'case')::uuid,(ctx->>'session')::uuid,1,1,'Synthetic recipient delivery session',(ctx->>'revision')::uuid,
-    now(),now(),now(),(ctx->>'admin')::uuid) returning id into case_session_id;
-  perform set_config('homework_recipient_runtime.ctx',(ctx||jsonb_build_object('case_session',case_session_id))::text,true);
+    now(),now(),now(),(ctx->>'admin')::uuid) returning id into target_case_session_id;
+  select schedule.id
+    into target_schedule_id
+    from public.assessment_case_schedules schedule
+    where schedule.counseling_case_id=(ctx->>'case')::uuid limit 1;
+  assert target_schedule_id is not null,'Synthetic Case fixture did not receive its default Assessment schedule';
+  update public.assessment_case_schedules
+    set case_session_id=target_case_session_id,progression_case_session_id=target_case_session_id
+    where id=target_schedule_id;
+  insert into public.assessment_participant_assignments(assessment_schedule_id,counseling_case_id,profile_id)
+  values(target_schedule_id,(ctx->>'case')::uuid,(ctx->>'a')::uuid)
+  on conflict (assessment_schedule_id,profile_id) do nothing returning id into assignment_a;
+  if assignment_a is null then
+    select id into assignment_a from public.assessment_participant_assignments
+      where assessment_participant_assignments.assessment_schedule_id=target_schedule_id and profile_id=(ctx->>'a')::uuid;
+  end if;
+  insert into public.assessment_participant_assignments(assessment_schedule_id,counseling_case_id,profile_id)
+  values(target_schedule_id,(ctx->>'case')::uuid,(ctx->>'b')::uuid)
+  on conflict (assessment_schedule_id,profile_id) do nothing returning id into assignment_b;
+  if assignment_b is null then
+    select id into assignment_b from public.assessment_participant_assignments
+      where assessment_participant_assignments.assessment_schedule_id=target_schedule_id and profile_id=(ctx->>'b')::uuid;
+  end if;
+  insert into public.assessment_attempts(participant_assignment_id,profile_id,attempt_number)
+  values(assignment_a,(ctx->>'a')::uuid,1) returning id into attempt_a;
+  insert into public.assessment_attempts(participant_assignment_id,profile_id,attempt_number)
+  values(assignment_b,(ctx->>'b')::uuid,1) returning id into attempt_b;
+  perform set_config('homework_recipient_runtime.ctx',(ctx||jsonb_build_object('case_session',target_case_session_id,
+    'assessment_schedule',target_schedule_id,'assessment_assignment_a',assignment_a,
+    'assessment_assignment_b',assignment_b,'assessment_attempt_a',attempt_a,'assessment_attempt_b',attempt_b))::text,true);
 end;
 $link_session$;
 
@@ -410,6 +535,7 @@ begin
   insert into public.group_members(group_id,profile_id) values(new_team,(ctx->>'replacement_a')::uuid),(new_team,(ctx->>'replacement_b')::uuid);
   insert into public.case_assignments(counseling_case_id,assigned_group_id,assignment_type,assigned_by)
     values((ctx->>'case')::uuid,new_team,'counselor',(ctx->>'admin')::uuid);
+  perform set_config('homework_recipient_runtime.ctx',(ctx||jsonb_build_object('replacement_group',new_team))::text,true);
   assert (select status='cancelled' from public.homework_completion_notification_deliveries where id=delivery_id),
     'New Counselor assignment revived former recipient delivery';
   perform set_config('homework_recipient_runtime.cycle_three',cycle_id::text,true);
@@ -474,5 +600,250 @@ begin
     'Expected one verified delivery evidence record for the synthetic accepted recipient';
 end;
 $cleanup_assertions$;
+
+-- Test that ordinary use retains immutable notification history even for a
+-- DEV Super Admin. This verifier runs as the database owner; no reset scope is set.
+reset role;
+do $notification_history_remains_immutable$
+declare ctx jsonb := current_setting('homework_recipient_runtime.ctx')::jsonb; event_id bigint; rejected boolean := false;
+begin
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'admin','role','authenticated',
+    'iss','https://lctkqjjkhpyootwvttvj.supabase.co/auth/v1')::text,true);
+  perform set_config('request.jwt.claim.sub',ctx->>'admin',true);
+  perform set_config('app.dev_reset_counseling_case_id','',true);
+  select id into event_id from public.homework_completion_notification_events
+  where notification_id in (select id from public.homework_completion_notifications where counseling_case_id=(ctx->>'case')::uuid)
+  order by id limit 1;
+  assert event_id is not null,'Synthetic notification fixture has no immutable event to protect';
+  begin
+    delete from public.homework_completion_notification_events where id=event_id;
+  exception when others then
+    rejected := sqlerrm = 'Homework completion notification history is append-only';
+  end;
+  assert rejected,'Notification history was mutable outside the scoped reset transaction';
+end;
+$notification_history_remains_immutable$;
+
+-- Force an error at the last reset delete. PostgreSQL must roll back the
+-- already-run notification cleanup, lifecycle deletes, and case status update.
+create trigger dev_reset_runtime_fail_final_homework_delete
+before delete on public.homework_assignments
+for each row execute function pg_temp.dev_reset_fail_final_homework_delete();
+
+set local role authenticated;
+do $reset_authorization_and_atomicity$
+declare
+  ctx jsonb := current_setting('homework_recipient_runtime.ctx')::jsonb;
+  target_case uuid := (ctx->>'case')::uuid;
+  expected_other_counts jsonb := pg_temp.homework_reset_unrelated_notification_counts((ctx->>'case')::uuid);
+  expected_target_counts jsonb := pg_temp.homework_reset_case_snapshot((ctx->>'case')::uuid);
+  rejected boolean;
+  failure_message text;
+begin
+  perform set_config('request.jwt.claim.sub',ctx->>'admin',true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'admin','role','authenticated',
+    'iss','https://lctkqjjkhpyootwvttvj.supabase.co/auth/v1')::text,true);
+  rejected := false;
+  begin
+    perform public.reset_counseling_journey(target_case,'reset');
+  exception when others then
+    rejected := sqlerrm = 'Type exact uppercase RESET to continue';
+  end;
+  assert rejected,'Incorrect reset confirmation was not rejected';
+
+  perform set_config('request.jwt.claim.sub',ctx->>'counselor_a',true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'counselor_a','role','authenticated',
+    'iss','https://lctkqjjkhpyootwvttvj.supabase.co/auth/v1')::text,true);
+  rejected := false;
+  begin
+    perform public.reset_counseling_journey(target_case,'RESET');
+  exception when others then
+    rejected := sqlerrm = 'Not authorized';
+  end;
+  assert rejected,'Non-Super Admin reset was not rejected';
+
+  perform set_config('request.jwt.claim.sub',ctx->>'admin',true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'admin','role','authenticated',
+    'iss','https://not-the-dev-project.supabase.co/auth/v1')::text,true);
+  rejected := false;
+  begin
+    perform public.reset_counseling_journey(target_case,'RESET');
+  exception when others then
+    rejected := sqlerrm = 'Counseling journey reset is available only in DEV';
+  end;
+  assert rejected,'A non-DEV JWT issuer was not rejected';
+
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'admin','role','authenticated',
+    'iss','https://lctkqjjkhpyootwvttvj.supabase.co/auth/v1')::text,true);
+  perform set_config('request.jwt.claim.sub',ctx->>'admin',true);
+  perform set_config('dev_reset_runtime.fail_final_homework_delete','true',true);
+  rejected := false;
+  begin
+    perform public.reset_counseling_journey(target_case,'RESET');
+  exception when others then
+    failure_message := sqlerrm;
+    rejected := failure_message = 'Synthetic DEV reset rollback verification failure';
+  end;
+  assert rejected,format('Injected final-stage failure did not abort reset (observed: %s)',coalesce(failure_message,'no exception'));
+  assert pg_temp.homework_reset_case_snapshot(target_case)=expected_target_counts,
+    'Failed reset did not restore all selected-case lifecycle and notification records';
+  assert pg_temp.homework_reset_unrelated_notification_counts(target_case)=expected_other_counts,
+    'Failed reset changed unrelated notification history';
+end;
+$reset_authorization_and_atomicity$;
+reset role;
+drop trigger dev_reset_runtime_fail_final_homework_delete on public.homework_assignments;
+
+do $authorized_reset_snapshot$
+declare ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb; target_case uuid:=(ctx->>'case')::uuid;
+begin
+  perform set_config('homework_recipient_runtime.reset_snapshot',pg_temp.homework_reset_case_snapshot(target_case)::text,true);
+  perform set_config('homework_recipient_runtime.reset_other_snapshot',pg_temp.homework_reset_unrelated_notification_counts(target_case)::text,true);
+end;
+$authorized_reset_snapshot$;
+
+set local role authenticated;
+do $authorized_reset_call$
+declare ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb;
+begin
+  perform set_config('request.jwt.claim.sub',ctx->>'admin',true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'admin','role','authenticated',
+    'iss','https://lctkqjjkhpyootwvttvj.supabase.co/auth/v1')::text,true);
+  perform public.reset_counseling_journey((ctx->>'case')::uuid,'RESET');
+end;
+$authorized_reset_call$;
+reset role;
+
+do $authorized_reset_preservation$
+declare
+  ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb;
+  target_case uuid:=(ctx->>'case')::uuid;
+  target_case_session uuid:=(ctx->>'case_session')::uuid;
+  snapshot jsonb:=current_setting('homework_recipient_runtime.reset_snapshot')::jsonb;
+  other_snapshot jsonb:=current_setting('homework_recipient_runtime.reset_other_snapshot')::jsonb;
+begin
+  assert (select status='matched' and closed_at is null from public.counseling_cases where id=target_case),
+    'Successful reset did not restore the selected case to Matched';
+  assert not exists(select 1 from public.case_sessions where counseling_case_id=target_case),
+    'Successful reset retained a Case Session';
+  assert not exists(select 1 from public.homework_assignments where counseling_case_id=target_case),
+    'Successful reset retained a case Homework assignment';
+  assert not exists(select 1 from public.homework_completion_notifications where counseling_case_id=target_case),
+    'Successful reset retained a selected-case completion cycle';
+  assert not exists(select 1 from public.in_app_notifications where case_session_id=target_case_session),
+    'Successful reset retained a Session-scoped inbox notification';
+  assert (select count(*)=(snapshot->>'assessmentSchedules')::bigint
+      from public.assessment_case_schedules where counseling_case_id=target_case),
+    'Reset removed an assessment schedule';
+  assert not exists(select 1 from public.assessment_case_schedules schedule
+      where schedule.counseling_case_id=target_case
+        and (schedule.case_session_id is not null or schedule.progression_case_session_id is not null)),
+    'Reset retained an assessment reference to a deleted Case Session';
+  assert (select count(*)=(snapshot->>'assessmentAssignments')::bigint
+      from public.assessment_participant_assignments where counseling_case_id=target_case),
+    'Reset removed assessment participant assignments';
+  assert (select count(*)=(snapshot->>'assessmentAttempts')::bigint
+      from public.assessment_attempts attempt
+      join public.assessment_participant_assignments assignment on assignment.id=attempt.participant_assignment_id
+      where assignment.counseling_case_id=target_case),
+    'Reset removed assessment attempt history';
+  assert (select count(*)=(snapshot->>'assessmentResponses')::bigint
+      from public.assessment_responses response
+      join public.assessment_attempts attempt on attempt.id=response.attempt_id
+      join public.assessment_participant_assignments assignment on assignment.id=attempt.participant_assignment_id
+      where assignment.counseling_case_id=target_case),
+    'Reset removed assessment response history';
+  assert (select count(*)=(snapshot->>'caseAssignments')::bigint from public.case_assignments where counseling_case_id=target_case),
+    'Reset changed the case team assignment history';
+  assert exists(select 1 from public.profiles where id=(ctx->>'a')::uuid)
+    and exists(select 1 from public.profiles where id=(ctx->>'b')::uuid),
+    'Reset removed a Couple identity';
+  assert pg_temp.homework_reset_unrelated_notification_counts(target_case)=other_snapshot,
+    'Reset changed notification history belonging to another case';
+end;
+$authorized_reset_preservation$;
+
+-- A fresh journey on the reset case still uses the ordinary completion-cycle
+-- trigger and recipient seeding. No worker or provider request is invoked.
+do $restart_synthetic_journey$
+declare
+  ctx jsonb := current_setting('homework_recipient_runtime.ctx')::jsonb;
+  target_case uuid := (ctx->>'case')::uuid;
+  assignment_id uuid;
+  revision_id uuid;
+  case_session_id uuid;
+  progress_a uuid;
+  progress_b uuid;
+begin
+  insert into public.profile_roles(profile_id,role)
+    values((ctx->>'replacement_a')::uuid,'counselor'),((ctx->>'replacement_b')::uuid,'counselor');
+  update public.counseling_cases set status='active' where id=target_case;
+end;
+$restart_synthetic_journey$;
+
+set local role authenticated;
+do $restart_assign_homework$
+declare ctx jsonb := current_setting('homework_recipient_runtime.ctx')::jsonb; assignment_id uuid; revision_id uuid;
+begin
+  perform set_config('request.jwt.claim.sub',ctx->>'admin',true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',ctx->>'admin','role','authenticated',
+    'iss','https://lctkqjjkhpyootwvttvj.supabase.co/auth/v1')::text,true);
+  assignment_id:=public.assign_homework((ctx->>'homework')::uuid,(ctx->>'case')::uuid,(ctx->>'version')::uuid);
+  select id into revision_id from public.homework_assignment_revisions
+    where homework_assignment_id=assignment_id and ended_at is null;
+  perform set_config('homework_recipient_runtime.restart_assignment',assignment_id::text,true);
+  perform set_config('homework_recipient_runtime.restart_revision',revision_id::text,true);
+end;
+$restart_assign_homework$;
+reset role;
+
+do $restart_link_session$
+declare
+  ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb;
+  case_session_id uuid;
+  revision_id uuid;
+  progress_a uuid;
+  progress_b uuid;
+begin
+  revision_id:=current_setting('homework_recipient_runtime.restart_revision')::uuid;
+  insert into public.case_sessions(counseling_case_id,session_id,actual_sequence,template_sequence_number,title,
+    homework_assignment_revision_id,material_released_at,homework_released_at,activated_at,activated_by)
+  values((ctx->>'case')::uuid,(ctx->>'session')::uuid,1,1,'Synthetic post-reset session',revision_id,
+    now(),now(),now(),(ctx->>'admin')::uuid) returning id into case_session_id;
+  perform set_config('homework_recipient_runtime.restart_case_session',case_session_id::text,true);
+  select id into progress_a from public.homework_participant_progress
+    where assignment_revision_id=revision_id and profile_id=(ctx->>'a')::uuid;
+  select id into progress_b from public.homework_participant_progress
+    where assignment_revision_id=revision_id and profile_id=(ctx->>'b')::uuid;
+  perform set_config('homework_recipient_runtime.restart_progress_a',progress_a::text,true);
+  perform set_config('homework_recipient_runtime.restart_progress_b',progress_b::text,true);
+end;
+$restart_link_session$;
+
+set local role authenticated;
+do $restart_submit$
+declare ctx jsonb:=current_setting('homework_recipient_runtime.ctx')::jsonb; answers jsonb;
+begin
+  answers:=jsonb_build_object(ctx->>'block','Synthetic post-reset answer');
+  perform set_config('request.jwt.claim.sub',ctx->>'a',true);
+  assert public.persist_participant_homework(current_setting('homework_recipient_runtime.restart_progress_a')::uuid,answers,'submit')='submitted',
+    'Partner A could not submit in the new journey';
+  perform set_config('request.jwt.claim.sub',ctx->>'b',true);
+  assert public.persist_participant_homework(current_setting('homework_recipient_runtime.restart_progress_b')::uuid,answers,'submit')='submitted',
+    'Partner B could not submit in the new journey';
+end;
+$restart_submit$;
+reset role;
+
+do $restart_cycle_assertions$
+declare target_case_session uuid:=current_setting('homework_recipient_runtime.restart_case_session')::uuid; cycle_id uuid;
+begin
+  select id into cycle_id from public.homework_completion_notifications
+    where case_session_id=target_case_session and completion_cycle=1;
+  assert cycle_id is not null,'A new completion cycle was not created after the reset';
+  assert (select count(*)=2 from public.homework_completion_notification_deliveries where notification_id=cycle_id),
+    'A new post-reset cycle did not seed two independent recipient deliveries';
+end;
+$restart_cycle_assertions$;
 
 rollback;

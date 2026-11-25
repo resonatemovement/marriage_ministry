@@ -205,10 +205,10 @@ export async function resetCounselingJourney(formData: FormData) {
 
     if (
       error.code === "23503" &&
-      error.message.includes("homework_completion_notifications_case_session_id_fkey")
+      error.message.includes("homework_completion_notification")
     ) {
       return {
-        error: "This case has linked Homework notification history that must be reviewed before it can be reset. No reset was completed.",
+        error: "Reset was blocked by linked Homework notification history. No changes were retained.",
       };
     }
 

@@ -59,20 +59,20 @@ describe("resetCounselingJourney server action", () => {
       data: null,
       error: {
         code: "23503",
-        message: "update or delete violates homework_completion_notifications_case_session_id_fkey",
+        message: "update or delete violates homework_completion_notification_attempts_notification_id_fkey",
         details: "internal database detail",
         hint: "internal database hint",
       },
     });
 
     await expect(resetCounselingJourney(form())).resolves.toEqual({
-      error: "This case has linked Homework notification history that must be reviewed before it can be reset. No reset was completed.",
+      error: "Reset was blocked by linked Homework notification history. No changes were retained.",
     });
     expect(log).toHaveBeenCalledWith("DEV counseling journey reset RPC failed", {
       operation: "reset_counseling_journey",
       caseId: "case-dev-test-id",
       code: "23503",
-      message: "update or delete violates homework_completion_notifications_case_session_id_fkey",
+      message: "update or delete violates homework_completion_notification_attempts_notification_id_fkey",
       details: "internal database detail",
       hint: "internal database hint",
     });
