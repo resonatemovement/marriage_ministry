@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 25, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (Session Material Rich Text optional-title behavior rechecked through the production form; latest changes pending commit/push; no merge or deployment)
+Current working branch: `feature/hw-01-multiple-homework-pages` (Session Material Rich Text optional-title production form covered by regression tests; pushed at `ff3ae77`; no merge or deployment)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Optional Session Material Rich Text Titles (November 25, 2026)
@@ -11,7 +11,7 @@ Repository: resonatemovement/marriage_ministry
 - Save Draft and publish validation continue to require the Session title and meaningful Rich Text body; they do not require the Rich Text block metadata title. Existing RPC serialization already sends blank/whitespace block titles as `null`, and `session_material_blocks.title` / pinned `case_session_material_blocks.title` are nullable in the existing schema and persistence contract. Therefore no migration or database change was needed.
 - Couple Session Material and Builder Preview omit the metadata heading for blank/whitespace titles while rendering the authored Rich Text body—including any body heading—normally. PDF generation similarly skips blank metadata titles without changing body formatting. Existing nonblank titles are preserved and are not deduplicated against body headings; persisted snapshots and legacy null titles remain compatible.
 - Follow-up focused authoring, production-form, model/persistence, Couple/Builder rendering, and PDF tests pass **70/70 across 6 files**. PDF regression coverage generates a document containing both titled and untitled Rich Text, verifies both bodies and authored headings, and confirms an existing duplicate title remains duplicated rather than being silently removed. Latest full Vitest passes **1,574/1,574 across 272 files**; typecheck, lint, production build, and `git diff --check` pass. No DEV records or snapshots were modified; no migration was required.
-- This follow-up is pending commit/push on `feature/hw-01-multiple-homework-pages`. No merge or deployment was performed. The unrelated `.env.example` and `AGENTS.md` edits and all eight existing stash entries must remain preserved.
+- Follow-up production-form test and documentation are committed as `ff3ae77` and pushed to `origin/feature/hw-01-multiple-homework-pages`. No merge or deployment was performed. The unrelated `.env.example` and `AGENTS.md` edits and all eight existing stash entries remain preserved.
 
 ## HW-01 Couple Session Material Page Navigation (November 25, 2026)
 
