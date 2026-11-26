@@ -195,8 +195,19 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
   const [confirming, setConfirming] = useState(false);
   const style = { transform: CSS.Transform.toString(transform), transition };
   function moveBy(direction: -1 | 1) { const target = keys[index + direction]; if (target) move(block.key, target); }
-  return <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-md border border-border bg-white p-4">
-    <div className="min-w-0 flex-1">{block.blockType === "rich_text" ? <>
+  return <div ref={setNodeRef} style={style} className="grid min-w-0 gap-2">
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+      <label className="flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium text-text-primary">
+        <Checkbox checked={block.isRecommended === true} onCheckedChange={(checked) => toggleRecommended(checked === true)} disabled={archived || !canManageRecommendations} />
+        Include by Default
+      </label>
+      {!archived ? confirming ? <div className="flex flex-wrap items-center justify-end gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">{block.blockType === "library_resource" ? "Remove from Session" : "Remove"}</button></div> : <>
+        {block.blockType === "library_resource" ? <a href={`/resource-library/${block.resourceId}/open`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md px-2 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Open Resource</a> : <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>}
+        <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+        {dragEnabled ? <button type="button" {...attributes} {...listeners} aria-label="Drag to reorder" className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted"><GripVertical className="size-4" aria-hidden="true" /></button> : null}
+      </> : null}
+    </div>
+    <div className="min-w-0 rounded-md border border-border bg-white p-4">{block.blockType === "rich_text" ? <>
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">Page</p>
       <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Page" />
     </> : block.blockType === "library_resource" ? <div className="flex items-center gap-3">
@@ -206,14 +217,5 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
       <span className="mt-1 block truncate text-sm font-semibold text-text-primary">{block.resource?.title ?? "Resource unavailable"}</span>
       <span className="block truncate text-xs text-text-muted">{block.resource ? `${formatResourceFileType(block.resource.currentVersion.mimeType)} · ${formatResourceFileSize(block.resource.currentVersion.sizeBytes)}` : ""}</span></span>
     </div> : <div className="flex items-center gap-3"><span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded bg-surface-muted text-brand-primary"><ExternalLink className="size-5" /></span><span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">Video / Link</span><span className="mt-1 block truncate text-sm font-semibold text-text-primary">{materialPreview(block)}</span></span></div>}</div>
-    <label className="flex shrink-0 items-center gap-2 text-sm font-medium text-text-primary">
-      <Checkbox checked={block.isRecommended === true} onCheckedChange={(checked) => toggleRecommended(checked === true)} disabled={archived || !canManageRecommendations} />
-      Include by Default
-    </label>
-    {!archived ? confirming ? <div className="flex items-center gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">{block.blockType === "library_resource" ? "Remove from Session" : "Remove"}</button></div> : <>
-      {block.blockType === "library_resource" ? <a href={`/resource-library/${block.resourceId}/open`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md px-2 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Open Resource</a> : <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>}
-      <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-      {dragEnabled ? <button type="button" {...attributes} {...listeners} aria-label="Drag to reorder" className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted"><GripVertical className="size-4" /></button> : null}
-    </> : null}
   </div>;
 }
