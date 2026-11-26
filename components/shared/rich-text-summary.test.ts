@@ -15,4 +15,16 @@ describe("RichTextSummary presentation", () => {
     expect(markup).toContain("Listen carefully and respond with empathy.");
     expect(markup).toContain("line-clamp-2");
   });
+
+  it("can suppress a repeated block title while preserving the collapsed body preview", () => {
+    const markup = renderToStaticMarkup(createElement(RichTextSummary, {
+      title: "Communication",
+      content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Body remains inside the preview card." }] }] },
+      emptyText: "Empty Rich Text block",
+      showTitle: false,
+    }));
+    expect(markup).not.toContain("Communication");
+    expect(markup).toContain("Body remains inside the preview card.");
+    expect(markup).toContain("line-clamp-2");
+  });
 });

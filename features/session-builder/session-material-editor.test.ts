@@ -48,9 +48,10 @@ describe("Session Material Rich Text authoring", () => {
 });
 
 describe("Session Material Builder rows", () => {
-  it("places PAGE controls in a responsive toolbar above the white preview card", () => {
+  it("places a wrapping PAGE heading and controls above the white preview on desktop and mobile", () => {
+    const longTitle = "Praying Together as a Couple Through Every Season";
     const page: StagedMaterialBlock = {
-      ...newStagedBlock("rich_text"), key: "page-one", title: "Communication", richTextContent: meaningfulContent, isRecommended: true,
+      ...newStagedBlock("rich_text"), key: "page-one", title: longTitle, richTextContent: meaningfulContent, isRecommended: true,
     };
     const video: StagedMaterialBlock = {
       ...newStagedBlock("video_link"), key: "video-one", title: "Watch together", url: "https://example.com/video", description: "Discuss this resource.",
@@ -59,17 +60,25 @@ describe("Session Material Builder rows", () => {
       blocks: [page, video], archived: false, canManageRecommendations: true, updateBlocks: vi.fn(),
     }));
 
-    const toolbar = markup.indexOf('class="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3"');
+    const header = markup.indexOf('<header class="grid min-w-0 gap-2 sm:flex sm:items-center sm:justify-between">');
+    const heading = markup.indexOf(`Page 1: ${longTitle}`);
+    const include = markup.indexOf("Include by Default");
+    const edit = markup.indexOf(">Edit</button>");
+    const menu = markup.indexOf('aria-label="Material actions"');
     const preview = markup.indexOf('class="min-w-0 rounded-md border border-border bg-white p-4"');
     const pageCardEnd = markup.indexOf("Resources", preview);
-    expect(toolbar).toBeGreaterThanOrEqual(0);
-    expect(preview).toBeGreaterThan(toolbar);
+    expect(header).toBeGreaterThanOrEqual(0);
+    expect(heading).toBeGreaterThan(header);
+    expect(include).toBeGreaterThan(heading);
+    expect(edit).toBeGreaterThan(include);
+    expect(menu).toBeGreaterThan(edit);
+    expect(preview).toBeGreaterThan(menu);
     expect(pageCardEnd).toBeGreaterThan(preview);
-    expect(markup.indexOf("Include by Default")).toBeLessThan(preview);
-    expect(markup.indexOf(">Edit</button>")).toBeLessThan(preview);
-    expect(markup.indexOf('aria-label="Material actions"')).toBeLessThan(preview);
-    expect(markup.slice(preview, pageCardEnd)).toContain(">Page</p>");
-    expect(markup.slice(preview, pageCardEnd)).toContain("Communication");
+    expect(markup.slice(header, preview)).toContain("break-words");
+    expect(markup.slice(header, preview)).toContain("sm:flex sm:items-center sm:justify-between");
+    expect(markup.slice(header, preview)).toContain("flex min-w-0 flex-wrap items-center justify-between gap-2 sm:shrink-0 sm:justify-end");
+    expect(markup.slice(preview, pageCardEnd)).not.toContain("Praying Together as a Couple Through Every Season");
+    expect(markup.slice(preview, pageCardEnd)).toContain(">test</p>");
     expect(markup.slice(preview, pageCardEnd)).toContain("line-clamp-2");
     expect(markup.slice(preview, pageCardEnd)).not.toContain("Include by Default");
     expect(markup.slice(preview, pageCardEnd)).not.toContain('aria-label="Material actions"');
