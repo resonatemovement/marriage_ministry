@@ -12,3 +12,8 @@ export function sessionWorkspaceHref(sessionId: string, workspace: SessionWorksp
   const base = `/session-builder/${sessionId}`;
   return workspace === "homework" ? `${base}?workspace=homework` : base;
 }
+
+export function sessionNavigationRequest(sessionId: string, currentSessionId: string, workspace: SessionWorkspace, hasUnsavedChanges: boolean) {
+  if (sessionId === currentSessionId) return { destination: null, requiresConfirmation: false };
+  return { destination: sessionWorkspaceHref(sessionId, workspace), requiresConfirmation: hasUnsavedChanges };
+}

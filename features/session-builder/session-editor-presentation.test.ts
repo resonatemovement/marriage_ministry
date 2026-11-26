@@ -114,6 +114,47 @@ describe("unified Session editor presentation", () => {
     expect(markup).not.toContain("Publish Session");
   });
 
+  it("renders compact Session navigation with the current selection and bounded arrows", () => {
+    const sessions = [
+      { id: "session-1", sequenceNumber: 1, curriculumNumber: 1, title: "Welcome", status: "draft" as const, isFinal: false, updatedAt: "" },
+      { id: "session-2", sequenceNumber: 2, curriculumNumber: 2, title: "Building Communication", status: "published" as const, isFinal: false, updatedAt: "" },
+      { id: "session-3", sequenceNumber: 3, curriculumNumber: 3, title: "Growing Together", status: "draft" as const, isFinal: false, updatedAt: "" },
+    ];
+    const markup = renderToStaticMarkup(createElement(SessionEditor, { session: sessions[1], sessions, activeWorkspace: "homework" }));
+
+    expect(markup).toContain('aria-label="Session navigation"');
+    expect(markup).toContain('aria-label="Select Session"');
+    expect(markup).toContain('aria-label="Previous Session"');
+    expect(markup).toContain('aria-label="Next Session"');
+    expect(markup).toContain("Edit Session");
+    expect(markup).toContain("Published");
+    expect(markup).toContain("Manage this session draft and its lifecycle.");
+    expect(markup).not.toMatch(/aria-label="Previous Session"[^>]*disabled=""/);
+    expect(markup).not.toMatch(/aria-label="Next Session"[^>]*disabled=""/);
+    expect(markup).toContain("Session 2: Building Communication");
+  });
+
+  it("disables only the outward arrow at each end of the curriculum", () => {
+    const sessions = [
+      { id: "session-1", sequenceNumber: 1, curriculumNumber: 1, title: "Welcome", status: "draft" as const, isFinal: false, updatedAt: "" },
+      { id: "session-2", sequenceNumber: 2, curriculumNumber: 2, title: "Building Communication", status: "published" as const, isFinal: false, updatedAt: "" },
+    ];
+    const firstMarkup = renderToStaticMarkup(createElement(SessionEditor, { session: sessions[0], sessions }));
+    const lastMarkup = renderToStaticMarkup(createElement(SessionEditor, { session: sessions[1], sessions }));
+    expect(firstMarkup).toMatch(/aria-label="Previous Session"[^>]*disabled=""/);
+    expect(firstMarkup).not.toMatch(/aria-label="Next Session"[^>]*disabled=""/);
+    expect(lastMarkup).not.toMatch(/aria-label="Previous Session"[^>]*disabled=""/);
+    expect(lastMarkup).toMatch(/aria-label="Next Session"[^>]*disabled=""/);
+  });
+
+  it("keeps Session navigation hidden for new Sessions and for a single available Session", () => {
+    const single = { id: "session-1", sequenceNumber: 1, curriculumNumber: 1, title: "Welcome", status: "draft" as const, isFinal: false, updatedAt: "" };
+    const newSessionMarkup = renderToStaticMarkup(createElement(SessionEditor, { session: null, sessions: [single] }));
+    const singleSessionMarkup = renderToStaticMarkup(createElement(SessionEditor, { session: single, sessions: [single] }));
+    expect(newSessionMarkup).not.toContain('aria-label="Session navigation"');
+    expect(singleSessionMarkup).not.toContain('aria-label="Session navigation"');
+  });
+
   it("renders Session Material Pages through the shared collapsed summary", () => {
     const markup = renderToStaticMarkup(createElement(SessionEditor, {
       session: { id: "session-id", sequenceNumber: 2, curriculumNumber: 2, title: "Session", status: "draft", isFinal: false, updatedAt: "" },

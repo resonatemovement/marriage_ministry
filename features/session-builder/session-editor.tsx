@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye } from "lucide-react";
 
 import { HomeworkEditorProvider, useHomeworkEditorState } from "@/features/homework/homework-editor-state";
 import { editorStateIsDirty, initialSessionEditorState, restoreSessionEditorState, sessionEditorPageIsDirty, sessionPublishError, sessionSaveError, type SessionEditorState, type StagedMaterialBlock } from "./editor-model";
@@ -15,23 +15,28 @@ import { eligibleInternalNavigation } from "./navigation-guard";
 import { SessionPreviewProvider, type SessionPreviewTab } from "./session-preview-context";
 import { SessionPreview } from "./session-preview";
 import type { SessionWorkspace } from "./workspace";
-import { sessionPreviewTabForWorkspace } from "./workspace";
+import { sessionNavigationRequest, sessionPreviewTabForWorkspace } from "./workspace";
 import type { SessionMaterialBlock, SessionSummary } from "./types";
 import { refreshSessionResourceAccess } from "./resource-actions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { sessionLifecycleBadgeClass, sessionStatusLabel } from "./model";
 
-export function SessionEditor({ session, blocks = [], activeWorkspace = "material", homework, canManageRecommendations = false }: {
+export function SessionEditor({ session, sessions = [], blocks = [], activeWorkspace = "material", homework, canManageRecommendations = false }: {
   session: SessionSummary | null;
+  sessions?: SessionSummary[];
   blocks?: SessionMaterialBlock[];
   activeWorkspace?: SessionWorkspace;
   homework?: ReactNode;
   canManageRecommendations?: boolean;
 }) {
-  return <HomeworkEditorProvider key={session?.id ?? "new-session"}><SessionEditorContent session={session} blocks={blocks} activeWorkspace={activeWorkspace} homework={homework} canManageRecommendations={canManageRecommendations} /></HomeworkEditorProvider>;
+  return <HomeworkEditorProvider key={session?.id ?? "new-session"}><SessionEditorContent session={session} sessions={sessions} blocks={blocks} activeWorkspace={activeWorkspace} homework={homework} canManageRecommendations={canManageRecommendations} /></HomeworkEditorProvider>;
 }
 
-function SessionEditorContent({ session, blocks, activeWorkspace, homework, canManageRecommendations }: {
+function SessionEditorContent({ session, sessions, blocks, activeWorkspace, homework, canManageRecommendations }: {
   session: SessionSummary | null;
+  sessions: SessionSummary[];
   blocks: SessionMaterialBlock[];
   activeWorkspace: SessionWorkspace;
   homework?: ReactNode;
@@ -58,6 +63,20 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
   const publishError = sessionPublishError(editor);
   const publishMessage = publishError ?? publishActionError;
   const firstSave = editor.sessionId === null;
+  const currentSessionIndex = sessions.findIndex((item) => item.id === session?.id);
+  const hasSessionNavigation = sessions.length > 1;
+
+  function navigateToSession(sessionId: string) {
+    if (!session) return;
+    const request = sessionNavigationRequest(sessionId, session.id, activeWorkspace, pageDirty);
+    if (!request.destination) return;
+    if (request.requiresConfirmation) {
+      pendingDestinationRef.current = request.destination;
+      setDiscardOpen(true);
+      return;
+    }
+    router.push(request.destination);
+  }
 
   useEffect(() => {
     if (!pageDirty) return;
@@ -172,6 +191,30 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
   }
 
   return <div inert={pending} aria-busy={pending}>
+    {session ? <header className="mb-6 grid min-w-0 grid-cols-1 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(20rem,32rem)] sm:gap-x-6">
+      <div className="min-w-0 sm:col-start-1 sm:row-start-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-heading text-3xl font-bold text-text-primary">Edit Session</h1>
+          <Badge className={sessionLifecycleBadgeClass(session.status)}>{sessionStatusLabel(session.status)}</Badge>
+        </div>
+      </div>
+      {hasSessionNavigation ? <nav aria-label="Session navigation" className="row-start-2 flex min-w-0 items-center gap-2 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:self-center">
+        <button type="button" aria-label="Previous Session" title="Previous Session" onClick={() => currentSessionIndex > 0 && navigateToSession(sessions[currentSessionIndex - 1].id)} disabled={currentSessionIndex <= 0} className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-white text-text-primary transition hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45">
+          <ArrowLeft className="size-4" aria-hidden="true" />
+        </button>
+        <Select value={session.id} onValueChange={navigateToSession}>
+          <SelectTrigger aria-label="Select Session" className="min-w-0 flex-1"><SelectValue>{`Session ${session.curriculumNumber}: ${session.title}`}</SelectValue></SelectTrigger>
+          <SelectContent>
+            {sessions.map((item) => <SelectItem key={item.id} value={item.id}>Session {item.curriculumNumber}: {item.title}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <button type="button" aria-label="Next Session" title="Next Session" onClick={() => currentSessionIndex >= 0 && currentSessionIndex < sessions.length - 1 && navigateToSession(sessions[currentSessionIndex + 1].id)} disabled={currentSessionIndex < 0 || currentSessionIndex >= sessions.length - 1} className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-white text-text-primary transition hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45">
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
+      </nav> : null}
+      <p className={`text-sm text-text-muted sm:col-start-1 sm:row-start-2 ${hasSessionNavigation ? "row-start-3" : "row-start-2"}`}>Manage this session draft and its lifecycle.</p>
+    </header> : null}
+    <section className="rounded-lg border border-border bg-surface p-5 sm:p-6">
     <div className="mb-5 grid gap-3">
       <label className="grid min-w-0 flex-1 basis-64 gap-1.5 text-sm font-medium text-text-primary">Session title
         <input value={editor.title} onChange={(event) => updateEditor((current) => ({ ...current, title: event.target.value }))} autoFocus={firstSave} maxLength={180} disabled={archived} className="min-h-10 rounded-md border border-border bg-white px-3 text-sm text-text-primary outline-none focus-visible:border-brand-primary focus-visible:ring-2 focus-visible:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" />
@@ -210,7 +253,8 @@ function SessionEditorContent({ session, blocks, activeWorkspace, homework, canM
       </> : null}
     </div>
 
-    <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+    </section>
+    <AlertDialog open={discardOpen} onOpenChange={(open) => { setDiscardOpen(open); if (!open) pendingDestinationRef.current = null; }}>
       <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle><AlertDialogDescription>You have changes that haven’t been saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => { pendingDestinationRef.current = null; }}>Keep Editing</AlertDialogCancel><AlertDialogAction onClick={() => { const destination = pendingDestinationRef.current; pendingDestinationRef.current = null; setDiscardOpen(false); if (destination) { bypassDestinationRef.current = destination; router.push(destination); queueMicrotask(() => { if (bypassDestinationRef.current === destination) bypassDestinationRef.current = null; }); } }}>Discard Changes</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
     </AlertDialog>
   </div>;

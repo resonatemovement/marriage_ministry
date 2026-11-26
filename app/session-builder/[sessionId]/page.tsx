@@ -2,14 +2,12 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Badge } from "@/components/ui/badge";
 import { WorkspaceShell } from "@/components/navigation/workspace-shell";
 import { HomeworkBuilder } from "@/features/homework/homework-builder";
 import { HomeworkBuilderLoading } from "@/features/homework/homework-builder-loading";
 import { requireSessionBuilderAccess } from "@/features/session-builder/access";
 import { SessionEditor } from "@/features/session-builder/session-editor";
-import { getSession, getSessionMaterialBlocks } from "@/features/session-builder/queries";
-import { sessionLifecycleBadgeClass, sessionStatusLabel } from "@/features/session-builder/model";
+import { getSession, getSessionMaterialBlocks, getSessions } from "@/features/session-builder/queries";
 import { sessionWorkspaceFromSearch } from "@/features/session-builder/workspace";
 import { hasAdministrativeAccess } from "@/lib/counseling/domain";
 
@@ -29,7 +27,13 @@ export default async function SessionDetailPage({
   if (!session) notFound();
   const workspaceQuery = Array.isArray(query.workspace) ? query.workspace[0] : query.workspace;
   const activeWorkspace = sessionWorkspaceFromSearch(workspaceQuery);
-  const blocks = await getSessionMaterialBlocks(session.id);
+  const [blocks, sessions] = await Promise.all([getSessionMaterialBlocks(session.id), getSessions()]);
 
-  return <WorkspaceShell workspace={access.workspace} activeHref="/session-builder" identity={access.identity}><main className="mx-auto max-w-[1500px] p-5 sm:p-8 lg:p-10"><Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/session-builder">Session Builder</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Session {session.curriculumNumber}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb><div className="flex flex-wrap items-center gap-3"><h1 className="font-heading text-3xl font-bold text-text-primary">Edit Session</h1><Badge className={sessionLifecycleBadgeClass(session.status)}>{sessionStatusLabel(session.status)}</Badge></div><p className="mt-2 text-sm text-text-muted">Manage this session draft and its lifecycle.</p><section className="mt-6 rounded-lg border border-border bg-surface p-5 sm:p-6"><SessionEditor session={session} blocks={blocks} activeWorkspace={activeWorkspace} canManageRecommendations={hasAdministrativeAccess(access.identity.roles)} homework={activeWorkspace === "homework" ? <Suspense key={`homework-${session.id}`} fallback={<HomeworkBuilderLoading />}><HomeworkBuilder sessionId={session.id} sessionStatus={session.status as "draft" | "published"} /></Suspense> : undefined} /></section></main></WorkspaceShell>;
+  const navigableSessions = sessions.filter((item) => item.status !== "archived" || item.id === session.id);
+  if (!navigableSessions.some((item) => item.id === session.id)) {
+    navigableSessions.push(session);
+    navigableSessions.sort((left, right) => left.curriculumNumber - right.curriculumNumber);
+  }
+
+  return <WorkspaceShell workspace={access.workspace} activeHref="/session-builder" identity={access.identity}><main className="mx-auto max-w-[1500px] p-5 sm:p-8 lg:p-10"><Breadcrumb className="mb-5"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/session-builder">Session Builder</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Session {session.curriculumNumber}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb><SessionEditor session={session} sessions={navigableSessions} blocks={blocks} activeWorkspace={activeWorkspace} canManageRecommendations={hasAdministrativeAccess(access.identity.roles)} homework={activeWorkspace === "homework" ? <Suspense key={`homework-${session.id}`} fallback={<HomeworkBuilderLoading />}><HomeworkBuilder sessionId={session.id} sessionStatus={session.status as "draft" | "published"} /></Suspense> : undefined} /></main></WorkspaceShell>;
 }
