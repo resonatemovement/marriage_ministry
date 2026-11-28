@@ -95,7 +95,7 @@ describe("Homework Builder shell", () => {
     expect(markup).not.toContain("This block is preserved and is not editable in this pass.");
     expect(markup).toContain('class="min-w-0 [overflow-wrap:anywhere]"><h4');
     expect(markup).toContain('class="mt-1 break-words text-sm font-semibold text-text-primary [overflow-wrap:anywhere]"');
-    expect(markup).toContain("w-full min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md border border-border bg-white p-4 sm:flex-nowrap");
+    expect(markup).toContain("flex w-full min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md border p-4 transition-colors motion-reduce:transition-none sm:flex-nowrap");
     expect(markup).toContain("min-w-0 w-full max-w-full gap-3");
     expect(markup).toContain("ml-auto flex shrink-0 items-center gap-1");
     expect(markup.match(/aria-label="Reorder /g)).toHaveLength(5);

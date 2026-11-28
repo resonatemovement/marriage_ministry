@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Dialog } from "radix-ui";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, X } from "lucide-react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +11,8 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { SessionSummary } from "./types";
 import { getHomeworkMoveDestination, moveSessionBuilderContent, type HomeworkMoveDestination, type MoveContentInput } from "./move-content-actions";
 import { announceSessionBuilderContentMoved, hasUnsavedSessionBuilderChangesInOtherTab } from "./dirty-registry";
+import { showErrorToast, showSuccessToastWithAction } from "@/lib/toast";
+import { sessionBuilderHref, sessionMoveFeedback } from "./move-notification";
 
 type MoveKind = MoveContentInput["kind"];
 
@@ -38,7 +41,6 @@ export function MoveToSessionMenuItem({
       sourceIsReady={sourceIsReady} sourceBlockedMessage={sourceBlockedMessage} onMoved={onMoved} />
   </>;
 }
-
 function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind, itemId, itemLabel,
   sourceVersionId, sourceVersionUpdatedAt, sourceIsReady, sourceBlockedMessage, onMoved,
 }: {
@@ -55,6 +57,7 @@ function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind
   sourceBlockedMessage?: string;
   onMoved: () => void;
 }) {
+  const router = useRouter();
   const isSessionMaterial = kind === "session_material_page" || kind === "session_material_resource";
   const destinations = sessions.filter((session) => session.id !== sourceSession.id && session.status !== "archived"
     && (!isSessionMaterial || session.status === "draft"));
@@ -63,6 +66,7 @@ function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, startTransition] = useTransition();
+  const moveStarted = useRef(false);
   const destination = destinations.find((session) => session.id === destinationId);
   const isHomeworkPage = kind === "homework_page";
   const needsHomework = isHomeworkPage;
@@ -83,7 +87,7 @@ function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind
   }, [open, needsHomework, destinationId]);
 
   function move() {
-    if (!destination || !sourceIsReady || pending) return;
+    if (!destination || !sourceIsReady || pending || moveStarted.current || success) return;
     const dirtyInAnotherTab = hasUnsavedSessionBuilderChangesInOtherTab(destination.id);
     if (dirtyInAnotherTab !== false) {
       setError(dirtyInAnotherTab === null
@@ -105,20 +109,37 @@ function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind
       destinationSessionUpdatedAt: destination.updatedAt,
     };
     setError(null);
+    moveStarted.current = true;
     startTransition(async () => {
-      const result = await moveSessionBuilderContent(input);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await moveSessionBuilderContent(input);
+        if (!result.ok) {
+          moveStarted.current = false;
+          setError(result.error);
+          showErrorToast(result.error);
+          return;
+        }
+        const feedback = sessionMoveFeedback(kind, itemLabel, sourceSession, destination);
+        showSuccessToastWithAction(
+          feedback.title,
+          feedback.description,
+          "Open Session",
+          () => router.push(feedback.destinationHref),
+        );
+        setSuccess(true);
+        onMoved();
+        announceSessionBuilderContentMoved([sourceSession.id, destination.id]);
+      } catch {
+        moveStarted.current = false;
+        const safeError = "The content could not be moved. Reload both Sessions and try again.";
+        setError(safeError);
+        showErrorToast(safeError);
       }
-      setSuccess(true);
-      onMoved();
-      announceSessionBuilderContentMoved([sourceSession.id, destination.id]);
     });
   }
 
   const canMove = Boolean(destination && sourceIsReady && !pending && (!needsHomework || (destinationLoaded && destinationHomework)));
-  const destinationHref = destination ? `/session-builder/${destination.id}?workspace=${kind.startsWith("homework") ? "homework" : "material"}` : "/session-builder";
+  const destinationHref = destination ? sessionBuilderHref(destination.id, kind) : "/session-builder";
 
   return <Dialog.Root open={open} onOpenChange={onOpenChange}>
     <Dialog.Portal>

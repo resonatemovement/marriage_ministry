@@ -30,6 +30,8 @@ import { isValidHomeworkVideoUrl } from "./homework-url";
 import type { HomeworkDraftLoadResult } from "./queries";
 import { MoveToSessionMenuItem } from "@/features/session-builder/move-to-session-dialog";
 import { useSessionBuilderMoveContext } from "@/features/session-builder/move-context";
+import { showSuccessToastWithAction } from "@/lib/toast";
+import { homeworkPageMoveFeedback } from "@/features/session-builder/move-notification";
 
 function errorMessage(error: "withdrawn" | "unavailable") {
   return error === "withdrawn"
@@ -47,12 +49,36 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deletePageTarget, setDeletePageTarget] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [pendingPageFocus, setPendingPageFocus] = useState<{ blockKey: string; pageId: string } | null>(null);
+  const [highlightedBlockKey, setHighlightedBlockKey] = useState<string | null>(null);
   const error = "error" in result ? result.error : null;
   const message = error ? errorMessage(error) : null;
 
   useEffect(() => {
     if ("draft" in result && result.draft.id) initialize(result.draft.id, result.draft.blocks, result.draft.status, result.draft.pages);
   }, [initialize, result]);
+
+  useEffect(() => {
+    if (!pendingPageFocus || homeworkEditor.state.selectedPageId !== pendingPageFocus.pageId) return;
+    const movedBlock = homeworkEditor.state.blocks.find((block) => block.key === pendingPageFocus.blockKey);
+    if (movedBlock?.pageId !== pendingPageFocus.pageId) return;
+    const frame = window.requestAnimationFrame(() => {
+      const element = document.getElementById(homeworkBlockElementId(pendingPageFocus.blockKey));
+      if (element) {
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        setHighlightedBlockKey(pendingPageFocus.blockKey);
+      }
+      setPendingPageFocus(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [homeworkEditor.state, pendingPageFocus]);
+
+  useEffect(() => {
+    if (!highlightedBlockKey) return;
+    const timeout = window.setTimeout(() => setHighlightedBlockKey(null), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [highlightedBlockKey]);
 
   if (error) {
     return <section aria-labelledby="homework-builder-heading" className="mt-6">
@@ -76,6 +102,26 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   const editingBlock = blocks.find((block) => block.key === editingKey);
   const editing = editingBlock?.pageId === selectedPage?.id ? editingBlock : undefined;
   const richText = isRichTextContent(editing?.richTextContent) ? editing.richTextContent : { type: "doc", content: [{ type: "paragraph" }] };
+
+  function moveBlockToPage(blockKey: string, destinationPageId: string) {
+    const block = blocks.find((candidate) => candidate.key === blockKey);
+    const sourcePage = block && pages.find((page) => page.id === block.pageId);
+    const destinationPage = pages.find((page) => page.id === destinationPageId);
+    if (!block || !sourcePage || !destinationPage || sourcePage.id === destinationPage.id) return;
+
+    homeworkEditor.moveBlockToPage(blockKey, destinationPageId);
+    const itemLabel = block.title?.trim() || blockTypeLabel(block.blockType);
+    const feedback = homeworkPageMoveFeedback(itemLabel, sourcePage, destinationPage);
+    showSuccessToastWithAction(
+      feedback.title,
+      feedback.description,
+      "View Page",
+      () => {
+        homeworkEditor.selectPage(destinationPageId);
+        setPendingPageFocus({ blockKey, pageId: destinationPageId });
+      },
+    );
+  }
 
   function addBlock(type: typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number]) {
     homeworkEditor.addBlock(type);
@@ -214,7 +260,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
         edit={(key) => { setUrlMessage(null); homeworkEditor.setEditingKey(key); }}
         duplicate={(key) => homeworkEditor.duplicateBlock(key)}
         requestDelete={requestDelete}
-        moveToPage={homeworkEditor.moveBlockToPage} reorder={homeworkEditor.reorderBlocks} /> : null}
+        moveToPage={moveBlockToPage} reorder={homeworkEditor.reorderBlocks} highlightedBlockKey={highlightedBlockKey} /> : null}
         </div>
       </div>
     </div>
@@ -240,7 +286,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   </section>;
 }
 
-function HomeworkRows({ blocks, pages, edit, duplicate, requestDelete, moveToPage, reorder }: {
+function HomeworkRows({ blocks, pages, edit, duplicate, requestDelete, moveToPage, reorder, highlightedBlockKey }: {
   blocks: ReturnType<typeof useHomeworkEditorState>["state"]["blocks"];
   pages: ReturnType<typeof useHomeworkEditorState>["state"]["pages"];
   edit: (key: string) => void;
@@ -248,6 +294,7 @@ function HomeworkRows({ blocks, pages, edit, duplicate, requestDelete, moveToPag
   requestDelete: (key: string) => void;
   moveToPage: (key: string, pageId: string) => void;
   reorder: (activeKey: string, overKey: string) => void;
+  highlightedBlockKey: string | null;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -259,12 +306,12 @@ function HomeworkRows({ blocks, pages, edit, duplicate, requestDelete, moveToPag
   }
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
     <SortableContext items={blocks.map((block) => block.key)} strategy={verticalListSortingStrategy}>
-      <div className="mt-4 grid min-w-0 w-full max-w-full gap-3">{blocks.map((block) => <HomeworkRow key={block.key} block={block} blocks={blocks} pages={pages} reorder={reorder} edit={edit} duplicate={duplicate} requestDelete={requestDelete} moveToPage={moveToPage} />)}</div>
+      <div className="mt-4 grid min-w-0 w-full max-w-full gap-3">{blocks.map((block) => <HomeworkRow key={block.key} block={block} blocks={blocks} pages={pages} reorder={reorder} edit={edit} duplicate={duplicate} requestDelete={requestDelete} moveToPage={moveToPage} highlighted={highlightedBlockKey === block.key} />)}</div>
     </SortableContext>
   </DndContext>;
 }
 
-function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDelete, moveToPage }: {
+function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDelete, moveToPage, highlighted }: {
   blocks: ReturnType<typeof useHomeworkEditorState>["state"]["blocks"];
   pages: ReturnType<typeof useHomeworkEditorState>["state"]["pages"];
   block: ReturnType<typeof useHomeworkEditorState>["state"]["blocks"][number];
@@ -273,13 +320,14 @@ function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDe
   duplicate: (key: string) => void;
   requestDelete: (key: string) => void;
   moveToPage: (key: string, pageId: string) => void;
+  highlighted: boolean;
 }) {
   const supported = HOMEWORK_AUTHORING_BLOCK_TYPES.some((type) => type === block.blockType);
   const moveUpTarget = homeworkMoveTarget(blocks, block.key, -1);
   const moveDownTarget = homeworkMoveTarget(blocks, block.key, 1);
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: !supported });
   const style = { transform: CSS.Transform.toString(transform), transition };
-  return <article ref={setNodeRef} style={style} className="flex w-full min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md border border-border bg-white p-4 sm:flex-nowrap">
+  return <article id={homeworkBlockElementId(block.key)} ref={setNodeRef} style={style} className={`flex w-full min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md border p-4 transition-colors motion-reduce:transition-none sm:flex-nowrap ${highlighted ? "border-brand-primary/50 bg-brand-primary/[0.04]" : "border-border bg-white"}`}>
     <div className="min-w-0 w-full flex-1 basis-full [overflow-wrap:anywhere] sm:basis-0">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(block.blockType)}</p>
       {block.blockType === "rich_text" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Rich Text block" className="min-w-0 [overflow-wrap:anywhere]" titleClassName="mt-1 break-words text-sm font-semibold text-text-primary [overflow-wrap:anywhere]" />
@@ -309,6 +357,10 @@ function blockTypeLabel(blockType: string) {
   if (blockType === "checkbox_question") return "Checkbox Question";
   if (blockType === "radio_question") return "Radio Question";
   return blockType;
+}
+
+function homeworkBlockElementId(blockKey: string) {
+  return `homework-content-${blockKey}`;
 }
 
 function blockTypeIcon(blockType: string) {
