@@ -6,6 +6,7 @@ import { sessionPreviewTabForWorkspace } from "./workspace";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("./save-session-state", () => ({ saveSessionBuilderState: vi.fn() }));
 vi.mock("./resource-actions", () => ({ findSessionResources: vi.fn(), refreshSessionResourceAccess: vi.fn() }));
+vi.mock("./move-content-actions", () => ({ getHomeworkMoveDestination: vi.fn(), moveSessionBuilderContent: vi.fn() }));
 
 import { SessionEditor } from "./session-editor";
 

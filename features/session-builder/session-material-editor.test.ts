@@ -3,6 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./resource-actions", () => ({ refreshSessionResourceAccess: vi.fn(), findSessionResources: vi.fn() }));
+vi.mock("./move-content-actions", () => ({
+  getHomeworkMoveDestination: vi.fn(),
+  moveSessionBuilderContent: vi.fn(),
+}));
 
 import { newStagedBlock, type StagedMaterialBlock } from "./editor-model";
 import { SessionMaterialEditor, SessionMaterialForm } from "./session-material-editor";

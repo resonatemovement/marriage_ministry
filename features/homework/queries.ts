@@ -8,6 +8,7 @@ import type { HomeworkPage } from "./homework-editor-model";
 export type HomeworkDraftContext = {
   id: string | null;
   status: "draft" | "published";
+  updatedAt: string | null;
   basedOnVersionNumber: number | null;
   blocks: HomeworkDraftBlock[];
   pages?: HomeworkPage[];
@@ -48,10 +49,10 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
     if (homework?.withdrawn_at) return { error: "withdrawn" };
 
     if (!homework && sessionStatus === "published") {
-      return { draft: { id: null, status: "draft", basedOnVersionNumber: null, blocks: [], pages: [] } };
+      return { draft: { id: null, status: "draft", updatedAt: null, basedOnVersionNumber: null, blocks: [], pages: [] } };
     }
 
-    let selectedVersion: { id: string; status: "draft" | "published"; based_on_version_id: string | null; version_number: number | null; page_manifest?: unknown } | null = null;
+    let selectedVersion: { id: string; status: "draft" | "published"; based_on_version_id: string | null; version_number: number | null; updated_at: string; page_manifest?: unknown } | null = null;
     if (homework) {
       const { data: versions, error: versionsError } = await supabase.from("homework_versions")
         .select("*")
@@ -60,7 +61,7 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
       if (versionsError) return { error: "unavailable" };
       const existingDraft = versions?.find((version) => version.status === "draft");
       const latestPublished = versions?.find((version) => version.status === "published");
-      selectedVersion = existingDraft ?? (sessionStatus === "published" ? latestPublished ?? null : null);
+      selectedVersion = (existingDraft ?? (sessionStatus === "published" ? latestPublished ?? null : null)) as typeof selectedVersion;
     }
 
     if (!selectedVersion) {
@@ -92,6 +93,7 @@ export const initializeHomeworkDraftForSession = cache(async (sessionId: string,
       draft: {
         id: selectedVersion.id,
         status: selectedVersion.status,
+        updatedAt: selectedVersion.updated_at,
         basedOnVersionNumber: sourceResult.data?.version_number ?? selectedVersion.version_number ?? null,
         blocks: ((blocks ?? []) as Array<Database["public"]["Tables"]["homework_version_blocks"]["Row"] & { page_id?: string | null }>).map((block) => ({
           id: block.id,

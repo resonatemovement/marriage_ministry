@@ -22,6 +22,8 @@ import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sessionLifecycleBadgeClass, sessionStatusLabel } from "./model";
+import { SessionBuilderMoveProvider } from "./move-context";
+import { sessionBuilderDirtyMarkerKey, sessionBuilderMoveEventKey, SESSION_BUILDER_DIRTY_MARKER_TTL_MS } from "./dirty-registry";
 
 export function SessionEditor({ session, sessions = [], blocks = [], activeWorkspace = "material", homework, canManageRecommendations = false }: {
   session: SessionSummary | null;
@@ -56,8 +58,17 @@ function SessionEditorContent({ session, sessions, blocks, activeWorkspace, home
   const [resourceAccess, setResourceAccess] = useState<Record<string, string>>({});
   const pendingDestinationRef = useRef<string | null>(null);
   const bypassDestinationRef = useRef<string | null>(null);
+  const tabIdRef = useRef<string | null>(null);
+  const [syncedSessionRevision, setSyncedSessionRevision] = useState(() => `${session?.id ?? ""}:${session?.updatedAt ?? ""}`);
   const dirty = editorStateIsDirty(editor, baseline);
   const pageDirty = sessionEditorPageIsDirty(dirty, homeworkDirty);
+  const currentSessionRevision = `${session?.id ?? ""}:${session?.updatedAt ?? ""}`;
+  if (session && !pageDirty && syncedSessionRevision !== currentSessionRevision) {
+    const next = initialSessionEditorState(session, blocks);
+    setEditor(next);
+    setBaseline(next);
+    setSyncedSessionRevision(currentSessionRevision);
+  }
   const archived = editor.status === "archived";
   const saveError = editor.status === "published" ? sessionPublishError(editor) : sessionSaveError(editor);
   const publishError = sessionPublishError(editor);
@@ -87,6 +98,45 @@ function SessionEditorContent({ session, sessions, blocks, activeWorkspace, home
     window.addEventListener("beforeunload", warnOnUnload);
     return () => window.removeEventListener("beforeunload", warnOnUnload);
   }, [pageDirty]);
+
+  useEffect(() => {
+    if (!session?.id) return;
+    tabIdRef.current ??= crypto.randomUUID();
+    const key = sessionBuilderDirtyMarkerKey(session.id, tabIdRef.current);
+    const updateMarker = () => {
+      try {
+        if (pageDirty) window.localStorage.setItem(key, String(Date.now()));
+        else window.localStorage.removeItem(key);
+      } catch {
+        // Move actions fail closed when they cannot inspect the cross-tab registry.
+      }
+    };
+    updateMarker();
+    const heartbeat = pageDirty ? window.setInterval(updateMarker, SESSION_BUILDER_DIRTY_MARKER_TTL_MS / 3) : null;
+    const removeMarker = () => { try { window.localStorage.removeItem(key); } catch { /* no-op */ } };
+    window.addEventListener("pagehide", removeMarker);
+    return () => {
+      if (heartbeat !== null) window.clearInterval(heartbeat);
+      window.removeEventListener("pagehide", removeMarker);
+      removeMarker();
+    };
+  }, [session?.id, pageDirty]);
+
+  useEffect(() => {
+    if (!session?.id) return;
+    const sessionId = session.id;
+    function refreshAfterOtherTabMove(event: StorageEvent) {
+      if (event.key !== sessionBuilderMoveEventKey() || !event.newValue || pageDirty) return;
+      try {
+        const payload = JSON.parse(event.newValue) as { sessionIds?: unknown };
+        if (Array.isArray(payload.sessionIds) && payload.sessionIds.includes(sessionId)) router.refresh();
+      } catch {
+        // Invalid local notifications are ignored; database state remains authoritative.
+      }
+    }
+    window.addEventListener("storage", refreshAfterOtherTabMove);
+    return () => window.removeEventListener("storage", refreshAfterOtherTabMove);
+  }, [session?.id, pageDirty, router]);
 
   useEffect(() => {
     if (!pageDirty) return;
@@ -229,6 +279,8 @@ function SessionEditorContent({ session, sessions, blocks, activeWorkspace, home
     </div>
 
     <SessionPreviewProvider value={openPreview}>
+      <SessionBuilderMoveProvider value={{ sessions, sourceSession: session,
+        sourceCanMove: Boolean(session) && !archived && !pageDirty, refreshAfterMove: () => router.refresh() }}>
       <div className="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SessionWorkspaceNavigation sessionId={editor.sessionId} activeWorkspace={activeWorkspace} className="min-w-0 flex-1" />
         <button type="button" onClick={() => openPreview(sessionPreviewTabForWorkspace(activeWorkspace))} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-end rounded-md border border-border bg-white px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary focus-visible:outline-none sm:self-auto">
@@ -238,6 +290,7 @@ function SessionEditorContent({ session, sessions, blocks, activeWorkspace, home
       {activeWorkspace === "material" || !editor.sessionId
         ? <SessionMaterialEditor blocks={editor.blocks} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} />
         : homework}
+      </SessionBuilderMoveProvider>
     </SessionPreviewProvider>
     <SessionPreview open={previewOpen} onOpenChange={setPreviewOpen} tab={previewTab} onTabChange={setPreviewTab} materialBlocks={editor.blocks} homeworkBlocks={homeworkEditor.state.blocks} homeworkPages={homeworkEditor.state.pages} resourceAccess={resourceAccess} />
 

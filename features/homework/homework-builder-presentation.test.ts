@@ -3,6 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/features/session-builder/move-content-actions", () => ({
+  getHomeworkMoveDestination: vi.fn(),
+  moveSessionBuilderContent: vi.fn(),
+}));
 
 import { HomeworkBuilderContent } from "./homework-builder-content";
 import { HomeworkBuilderLoading } from "./homework-builder-loading";
@@ -12,7 +16,7 @@ import { readFileSync } from "node:fs";
 
 const builderSource = readFileSync("features/homework/homework-builder-content.tsx", "utf8");
 
-const emptyDraft = { id: "draft-id", status: "draft" as const, basedOnVersionNumber: 1, blocks: [] };
+const emptyDraft = { id: "draft-id", status: "draft" as const, updatedAt: "2026-11-28T00:00:00Z", basedOnVersionNumber: 1, blocks: [] };
 
 describe("Homework Builder shell", () => {
   it("uses the Homework-specific optional-title authoring control in the homework workspace", () => {

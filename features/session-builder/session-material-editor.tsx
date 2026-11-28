@@ -25,10 +25,13 @@ import { SessionResourcePicker } from "./session-resource-picker";
 import { formatResourceFileSize, formatResourceFileType, type ResourceCategory } from "@/features/resource-library/policy";
 import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
 import { refreshSessionResourceAccess } from "./resource-actions";
+import { MoveToSessionMenuItem } from "./move-to-session-dialog";
+import { useSessionBuilderMoveContext } from "./move-context";
 
 type UpdateBlocks = (update: (blocks: StagedMaterialBlock[]) => StagedMaterialBlock[]) => void;
 
 export function SessionMaterialEditor({ blocks, archived, canManageRecommendations, updateBlocks }: { blocks: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks }) {
+  const moveContext = useSessionBuilderMoveContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [selectedPageKey, setSelectedPageKey] = useState<string | null>(null);
@@ -125,14 +128,14 @@ export function SessionMaterialEditor({ blocks, archived, canManageRecommendatio
       />
       <section aria-labelledby="session-page-editor-heading" className="min-w-0 rounded-lg border border-border bg-surface-muted/30 p-4 sm:p-5">
         {editing?.blockType === "rich_text" ? <><h3 id="session-page-editor-heading" className="font-heading text-lg font-bold text-text-primary">{selectedPage ? `Page ${selectedPageIndex + 1}: ${selectedPage.title.trim() || "Untitled Page"}` : "Session Material Page"}</h3>{openEditing}</>
-          : selectedPage ? <MaterialRows blockType="rich_text" blocks={selectedPageBlocks} orderingBlocks={pages} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={(key) => { setSelectedPageKey(key); setEditingKey(key); }} />
+          : selectedPage ? <MaterialRows blockType="rich_text" blocks={selectedPageBlocks} orderingBlocks={pages} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={(key) => { setSelectedPageKey(key); setEditingKey(key); }} moveContext={moveContext} />
             : <><h3 id="session-page-editor-heading" className="font-heading text-lg font-bold text-text-primary">Session Material Page</h3><p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">Add a Page to begin building Session Material.</p></>}
       </section>
     </div>
     <section aria-labelledby="session-resources-heading">
       <AuthoringSectionHeader headingId="session-resources-heading" title="Resources" description="Add supporting videos, links, and other resources for this Session."
         action={!archived && !editing ? <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent"><Plus className="size-4" aria-hidden="true" />Add Resource</button> : undefined} />
-      {editing && editing.blockType !== "rich_text" ? openEditing : resources.length ? <MaterialRows blockType="library_resource" blocks={resources} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={setEditingKey} replace={(block) => { if (block.resourceCategory) setPicker({ category: block.resourceCategory, blockKey: block.key }); }} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Resources yet.</p>}
+      {editing && editing.blockType !== "rich_text" ? openEditing : resources.length ? <MaterialRows blockType="library_resource" blocks={resources} archived={archived} canManageRecommendations={canManageRecommendations} updateBlocks={updateBlocks} edit={setEditingKey} replace={(block) => { if (block.resourceCategory) setPicker({ category: block.resourceCategory, blockKey: block.key }); }} moveContext={moveContext} /> : <p className="mt-4 rounded-md border border-dashed border-border p-5 text-sm text-text-muted">No Resources yet.</p>}
     </section>
 
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0">
@@ -174,23 +177,24 @@ export function SessionMaterialForm({ block, patch, done, message, showCancel, c
   </div>;
 }
 
-function MaterialRows({ blockType, blocks, orderingBlocks, archived, canManageRecommendations, updateBlocks, edit, replace }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; orderingBlocks?: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void; replace?: (block: StagedMaterialBlock) => void }) {
+function MaterialRows({ blockType, blocks, orderingBlocks, archived, canManageRecommendations, updateBlocks, edit, replace, moveContext }: { blockType: MaterialBlockType; blocks: StagedMaterialBlock[]; orderingBlocks?: StagedMaterialBlock[]; archived: boolean; canManageRecommendations: boolean; updateBlocks: UpdateBlocks; edit: (key: string) => void; replace?: (block: StagedMaterialBlock) => void; moveContext: ReturnType<typeof useSessionBuilderMoveContext> }) {
   const dndContextId = useId();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }));
   const keys = (orderingBlocks ?? blocks).map((block) => block.key);
   function move(activeKey: string, overKey: string) { updateBlocks((current) => moveStagedBlockWithinType(current, blockType, activeKey, overKey)); }
   function onDragEnd({ active, over }: DragEndEvent) { if (over && active.id !== over.id) move(String(active.id), String(over.id)); }
   return <DndContext id={dndContextId} sensors={sensors} onDragEnd={onDragEnd}><SortableContext items={keys} strategy={verticalListSortingStrategy}><div className="mt-5 grid gap-3">
-    {blocks.map((block) => <MaterialRow key={block.key} block={block} index={keys.indexOf(block.key)} count={keys.length} keys={keys} archived={archived} canManageRecommendations={canManageRecommendations} dragEnabled={!orderingBlocks}
+    {blocks.map((block) => <MaterialRow key={block.key} block={block} index={keys.indexOf(block.key)} count={keys.length} keys={keys} archived={archived} canManageRecommendations={canManageRecommendations} dragEnabled={!orderingBlocks} moveContext={moveContext}
       edit={() => edit(block.key)} replace={() => replace?.(block)} move={move} duplicate={() => updateBlocks((current) => duplicateStagedBlock(current, block.key))}
       toggleRecommended={(checked) => updateBlocks((current) => current.map((item) => item.key === block.key ? { ...item, isRecommended: checked } : item))}
       remove={() => updateBlocks((current) => removeStagedBlock(current, block.key))} />)}
   </div></SortableContext></DndContext>;
 }
 
-function MaterialRow({ block, index, count, keys, archived, canManageRecommendations, dragEnabled = true, edit, replace, move, duplicate, toggleRecommended, remove }: {
+function MaterialRow({ block, index, count, keys, archived, canManageRecommendations, dragEnabled = true, edit, replace, move, duplicate, toggleRecommended, remove, moveContext }: {
   block: StagedMaterialBlock; index: number; count: number; keys: string[]; archived: boolean; canManageRecommendations: boolean; dragEnabled?: boolean;
   edit: () => void; replace: () => void; move: (activeKey: string, overKey: string) => void; duplicate: () => void; toggleRecommended: (checked: boolean) => void; remove: () => void;
+  moveContext: ReturnType<typeof useSessionBuilderMoveContext>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: archived || !dragEnabled });
   const [confirming, setConfirming] = useState(false);
@@ -203,7 +207,11 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
   </label>;
   const actionControls = archived ? null : confirming ? <div className="flex flex-wrap items-center justify-end gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">{block.blockType === "library_resource" ? "Remove from Session" : "Remove"}</button></div> : <div className="flex shrink-0 items-center gap-1">
     {block.blockType === "library_resource" ? <a href={`/resource-library/${block.resourceId}/open`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md px-2 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Open Resource</a> : <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>}
-    <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+    <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem>{moveContext.sourceSession ? <DropdownMenuSeparator /> : null}{moveContext.sourceSession ? <MoveToSessionMenuItem sessions={moveContext.sessions} sourceSession={moveContext.sourceSession}
+      kind={block.blockType === "rich_text" ? "session_material_page" : "session_material_resource"} itemId={block.persistedId ?? block.key}
+      itemLabel={block.blockType === "rich_text" ? `Page ${index + 1}: ${block.title.trim() || "Untitled Page"}` : block.title.trim() || block.resource?.title || "Session Material resource"}
+      sourceIsReady={moveContext.sourceCanMove && moveContext.sourceSession.status === "draft" && Boolean(block.persistedId)} sourceBlockedMessage={moveContext.sourceSession.status !== "draft" ? "Session Material can only be moved between Draft Sessions." : "Save or discard unsaved Session Material or Homework changes before moving this item."}
+      onMoved={moveContext.refreshAfterMove} /> : null}<DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
     {dragEnabled ? <button type="button" {...attributes} {...listeners} aria-label="Drag to reorder" className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted"><GripVertical className="size-4" aria-hidden="true" /></button> : null}
   </div>;
   return <div ref={setNodeRef} style={style} className="grid min-w-0 gap-2">

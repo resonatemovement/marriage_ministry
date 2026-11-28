@@ -53,7 +53,7 @@ describe("Homework version initialization", () => {
   it("does not create a Homework root when an empty Published Session opens Homework", async () => {
     maybeSingle.mockResolvedValueOnce({ data: null, error: null });
     await expect(initializeHomeworkDraftForSession("session-id", "published")).resolves.toEqual({
-      draft: { id: null, status: "draft", basedOnVersionNumber: null, blocks: [], pages: [] },
+      draft: { id: null, status: "draft", updatedAt: null, basedOnVersionNumber: null, blocks: [], pages: [] },
     });
     expect(rpc).not.toHaveBeenCalled();
     expect(order).not.toHaveBeenCalled();

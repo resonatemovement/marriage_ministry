@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import type { HomeworkDraftBlock } from "./queries";
-import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocksOnPage, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, selectHomeworkPage, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
+import { addHomeworkBlock, addHomeworkPage, addHomeworkQuestionChoice, beginHomeworkBlockEditing, cancelHomeworkBlockEditing, deleteHomeworkBlock, deleteHomeworkPage, deleteHomeworkQuestionChoice, duplicateHomeworkBlock, finishHomeworkBlockEditing, homeworkEditorCanCommit, homeworkEditorIsDirty, homeworkPagesArePublishable, homeworkSideBySideHeadingsAreValid, homeworkEditorStateFromRows, initializeHomeworkEditorState, moveHomeworkBlockToPage, newHomeworkBlock, persistHomeworkEditorState, reorderHomeworkBlocksOnPage, reorderHomeworkPages, reorderHomeworkQuestionChoices, renameHomeworkPage, restoreHomeworkEditorState, selectHomeworkPage, updateHomeworkBlock, updateHomeworkQuestionChoice, type HomeworkEditorState, type StagedHomeworkBlock } from "./homework-editor-model";
 import type { HOMEWORK_AUTHORING_BLOCK_TYPES } from "./homework-editor-model";
 
 type HomeworkAuthoringBlockType = typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number];
@@ -42,7 +42,7 @@ const HomeworkEditorContext = createContext<HomeworkEditorContextValue | null>(n
 export function HomeworkEditorProvider({ children, initialDraft }: { children?: ReactNode; initialDraft?: { id: string; status?: "draft" | "published"; blocks: HomeworkDraftBlock[] } }) {
   const [state, setState] = useState<HomeworkEditorState>(() => initialDraft ? homeworkEditorStateFromRows(initialDraft.id, initialDraft.blocks, initialDraft.status) : { versionId: null, versionStatus: null, blocks: [], pages: [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }], selectedPageId: "00000000-0000-4000-8000-000000000001", baseline: [], pageBaseline: [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }], deletedPageIds: [], pageDeletionConfirmed: false, editingKey: null, editingOriginal: null });
   const initialize = useCallback((versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published", pages?: HomeworkEditorState["pages"]) => {
-    setState((current) => current.versionId === versionId ? current : homeworkEditorStateFromRows(versionId, rows, status, pages));
+    setState((current) => initializeHomeworkEditorState(current, versionId, rows, status, pages));
   }, []);
   const addPage = useCallback(() => setState((current) => addHomeworkPage(current)), []);
   const renamePage = useCallback((pageId: string, title: string) => setState((current) => renameHomeworkPage(current, pageId, title)), []);

@@ -102,8 +102,9 @@ export function persistHomeworkEditorState(state: HomeworkEditorState, rows: Hom
   return { versionId, versionStatus, blocks, pages: structuredClone(next.pages), selectedPageId: state.selectedPageId, baseline: structuredClone(blocks), pageBaseline: structuredClone(next.pages), deletedPageIds: [], pageDeletionConfirmed: false, editingKey: null, editingOriginal: null };
 }
 
-export function initializeHomeworkEditorState(current: HomeworkEditorState, versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published" = "draft") {
-  return current.versionId === versionId ? current : homeworkEditorStateFromRows(versionId, rows, status);
+export function initializeHomeworkEditorState(current: HomeworkEditorState, versionId: string, rows: HomeworkDraftBlock[], status: "draft" | "published" = "draft", pages?: HomeworkPage[]) {
+  if (current.versionId === versionId && homeworkEditorIsDirty(current)) return current;
+  return homeworkEditorStateFromRows(versionId, rows, status, pages);
 }
 
 export function newHomeworkBlock(blockType: typeof HOMEWORK_AUTHORING_BLOCK_TYPES[number], position: number): StagedHomeworkBlock {
