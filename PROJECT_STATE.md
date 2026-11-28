@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 28, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 page-only cross-Session transfer safeguard `20261128190204` applied to linked DEV; implementation commit `afe9fc4` pushed; no actual Session content moved, merge, or deployment)
+Current working branch: `feature/hw-01-multiple-homework-pages` (latest dialog mount fix `ffb94a7` pushed; HW-01 page-only cross-Session transfer safeguard `20261128190204` remains applied to linked DEV; no actual Session content moved, merge, or deployment)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Move-to-Session Dialog Mounting Fix (November 28, 2026)
@@ -9,7 +9,7 @@ Repository: resonatemovement/marriage_ministry
 - **Correction:** The menu item now only invokes an `onOpen` callback. Stable Homework Builder and Session Material row parents own the controlled dialog's open state and render the dialog outside the dropdown content. A per-open key resets selection/error state. The destination selector, source/page context, unsaved-state feedback, eligibility checks, explicit Move Page/Move confirmation, atomic server action, duplicate-submit protection, and success/error feedback remain unchanged. Session Material retains its existing Draft-only rules.
 - **Preserved scope:** No database/RPC/migration or transfer-contract changes. Opening or canceling the dialog performs no move; no actual Homework or Session Material was moved. Session Material's existing menu uses the same corrected mount lifecycle.
 - **Validation:** Added focused mount/contract regressions for the menu selection callback, stable parent dialog placement in both workspaces, Homework page/source context, destination exclusion, disabled confirmation, cancel, and existing unsaved/ineligible feedback. Updated one prior source-contract assertion to expect a controlled parent `onOpenChange` instead of the removed menu-local `setOpen`. Focused tests pass **8/8 across three files**; full suite passes **1,627/1,627 across 280 files**. Typecheck, lint, production build, and `git diff --check` pass. An authenticated browser session/automation is unavailable; the reported browser interaction is not claimed as manually verified. A local Next dev process was observed, not altered.
-- **Git/safety:** Work is limited to the move dialog, Homework Builder, Session Material Builder, focused tests, and this state entry. No migration, database operation, actual content move, merge, or deployment. Preserve unrelated dirty `.env.example` and `AGENTS.md` edits and all eight stashes. Implementation commit/push status is recorded after completion.
+- **Git/safety:** Work is limited to the move dialog, Homework Builder, Session Material Builder, focused tests, and this state entry. No migration, database operation, actual content move, merge, or deployment. Implementation is committed as `ffb94a7` (`fix(homework): keep move dialog mounted after menu closes`) and pushed to `origin/feature/hw-01-multiple-homework-pages`. Preserve unrelated dirty `.env.example` and `AGENTS.md` edits and all eight stashes.
 
 ## HW-01 Move Feedback and Destination Navigation (November 28, 2026)
 
