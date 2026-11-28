@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { richTextSummary, richTextSummaryOverflows } from "./rich-text-summary-model";
 
-export function RichTextSummary({ content, title, emptyText, showTitle = true }: {
+export function RichTextSummary({ content, title, emptyText, showTitle = true, className, titleClassName }: {
   content: unknown;
   title: string | null;
   emptyText: string;
   showTitle?: boolean;
+  className?: string;
+  titleClassName?: string;
 }) {
   const summary = richTextSummary(content, title);
   const bodyRef = useRef<HTMLParagraphElement>(null);
@@ -27,8 +29,8 @@ export function RichTextSummary({ content, title, emptyText, showTitle = true }:
     return () => observer.disconnect();
   }, [summary.body, expanded]);
 
-  return <div>
-    {showTitle && summary.title ? <h4 className="mt-1 truncate text-sm font-semibold text-text-primary">{summary.title}</h4> : null}
+  return <div className={className}>
+    {showTitle && summary.title ? <h4 className={titleClassName ?? "mt-1 truncate text-sm font-semibold text-text-primary"}>{summary.title}</h4> : null}
     {summary.body ? <>
       <p ref={bodyRef} className={`mt-3 whitespace-pre-line text-sm text-text-muted ${expanded ? "" : "line-clamp-2"}`}>{summary.body}</p>
       {hasOverflow ? <button type="button" aria-expanded={expanded} onClick={() => setExpanded((current) => !current)} className="mt-1 rounded-md text-sm font-semibold text-brand-primary hover:underline focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">

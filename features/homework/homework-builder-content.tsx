@@ -157,7 +157,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
             <button type="button" disabled={Boolean(editingBlock)} onClick={() => setDrawerOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:bg-brand-primary/90"><Plus className="size-4" aria-hidden="true" />Add Content</button>
           </div>
         </> : <p className="text-sm text-text-muted">Select or add a page to begin.</p>}
-        <div className="mt-4">
+        <div className="mt-4 min-w-0 w-full max-w-full">
       {selectedPage && visibleBlocks.length === 0 && !editing ? <div className="rounded-md border border-dashed border-border p-6"><h3 className="font-heading text-base font-bold text-text-primary">No content on this page yet.</h3><p className="mt-2 text-sm text-text-muted">Add Homework content to this page, or save it as a draft while it is in progress.</p></div> : null}
       {editing ? <div className="mt-5 grid gap-4 rounded-md border border-border bg-white p-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(editing.blockType)}</p>
@@ -263,7 +263,7 @@ function HomeworkRows({ blocks, pages, moveContext, sourceVersionId, sourceVersi
   }
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
     <SortableContext items={blocks.map((block) => block.key)} strategy={verticalListSortingStrategy}>
-      <div className="mt-4 grid gap-3">{blocks.map((block) => <HomeworkRow key={block.key} block={block} blocks={blocks} pages={pages} reorder={reorder} edit={edit} duplicate={duplicate} requestDelete={requestDelete} moveToPage={moveToPage} moveContext={moveContext} sourceVersionId={sourceVersionId} sourceVersionUpdatedAt={sourceVersionUpdatedAt} sourceIsReady={sourceIsReady} />)}</div>
+      <div className="mt-4 grid min-w-0 w-full max-w-full gap-3">{blocks.map((block) => <HomeworkRow key={block.key} block={block} blocks={blocks} pages={pages} reorder={reorder} edit={edit} duplicate={duplicate} requestDelete={requestDelete} moveToPage={moveToPage} moveContext={moveContext} sourceVersionId={sourceVersionId} sourceVersionUpdatedAt={sourceVersionUpdatedAt} sourceIsReady={sourceIsReady} />)}</div>
     </SortableContext>
   </DndContext>;
 }
@@ -287,17 +287,18 @@ function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDe
   const moveDownTarget = homeworkMoveTarget(blocks, block.key, 1);
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: !supported });
   const style = { transform: CSS.Transform.toString(transform), transition };
-  return <article ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-md border border-border bg-white p-4">
-    <div className="min-w-0 flex-1">
+  return <article ref={setNodeRef} style={style} className="flex w-full min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md border border-border bg-white p-4 sm:flex-nowrap">
+    <div className="min-w-0 w-full flex-1 basis-full [overflow-wrap:anywhere] sm:basis-0">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-secondary">{blockTypeLabel(block.blockType)}</p>
-      {block.blockType === "rich_text" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Rich Text block" />
-        : block.blockType === "side_by_side_response" && block.sideBySideConfig ? <><div className="mt-2 grid gap-2 sm:grid-cols-2"><p className="break-words font-semibold text-text-primary">{block.sideBySideConfig.leftHeading}</p><p className="break-words font-semibold text-text-primary">{block.sideBySideConfig.rightHeading}</p></div><p className="mt-2 text-xs text-text-muted">{block.sideBySideConfig.bothRequired ? "Both responses required" : "Responses optional"}</p></>
-        : block.blockType === "long_answer" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Long Answer prompt" />
-          : (block.blockType === "checkbox_question" || block.blockType === "radio_question") && isRichTextContent(block.richTextContent) ? <><RichTextSummary content={block.richTextContent} title={null} emptyText="Empty question" /><p className="mt-2 text-xs text-text-muted">{block.questionChoices.length} choices · {block.isRequired ? "Required" : "Optional"}</p></>
-          : block.blockType === "video_link" ? <><h4 className="mt-1 truncate text-sm font-semibold text-text-primary">{block.title || "Untitled Video / Link"}</h4><div className="mt-3 grid gap-1 text-sm text-text-muted">{block.url ? <p className="break-all">{block.url}</p> : <p>Video / Link URL not set</p>}{block.description ? <p>{block.description}</p> : null}</div></>
+      {block.blockType === "rich_text" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Rich Text block" className="min-w-0 [overflow-wrap:anywhere]" titleClassName="mt-1 break-words text-sm font-semibold text-text-primary [overflow-wrap:anywhere]" />
+        : block.blockType === "side_by_side_response" && block.sideBySideConfig ? <><div className="mt-2 grid min-w-0 gap-2 sm:grid-cols-2"><p className="break-words font-semibold text-text-primary [overflow-wrap:anywhere]">{block.sideBySideConfig.leftHeading}</p><p className="break-words font-semibold text-text-primary [overflow-wrap:anywhere]">{block.sideBySideConfig.rightHeading}</p></div><p className="mt-2 text-xs text-text-muted">{block.sideBySideConfig.bothRequired ? "Both responses required" : "Responses optional"}</p></>
+        : block.blockType === "long_answer" && isRichTextContent(block.richTextContent) ? <RichTextSummary content={block.richTextContent} title={block.title} emptyText="Empty Long Answer prompt" className="min-w-0 [overflow-wrap:anywhere]" titleClassName="mt-1 break-words text-sm font-semibold text-text-primary [overflow-wrap:anywhere]" />
+          : (block.blockType === "checkbox_question" || block.blockType === "radio_question") && isRichTextContent(block.richTextContent) ? <><RichTextSummary content={block.richTextContent} title={null} emptyText="Empty question" className="min-w-0 [overflow-wrap:anywhere]" /><p className="mt-2 text-xs text-text-muted">{block.questionChoices.length} choices · {block.isRequired ? "Required" : "Optional"}</p></>
+          : block.blockType === "video_link" ? <><h4 className="mt-1 break-words text-sm font-semibold text-text-primary [overflow-wrap:anywhere]">{block.title || "Untitled Video / Link"}</h4><div className="mt-3 grid min-w-0 gap-1 text-sm text-text-muted">{block.url ? <p className="break-all">{block.url}</p> : <p>Video / Link URL not set</p>}{block.description ? <p className="break-words [overflow-wrap:anywhere]">{block.description}</p> : null}</div></>
             : <p className="mt-3 text-sm text-text-muted">This block is preserved and is not editable in this pass.</p>}
     </div>
     {supported ? <>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
       <button type="button" onClick={() => edit(block.key)} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Edit</button>
       <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label={`Actions for ${blockTypeLabel(block.blockType)} block`} className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary"><MoreHorizontal className="size-4" aria-hidden="true" /></button></DropdownMenuTrigger>
         <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => duplicate(block.key)}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={!moveUpTarget} onSelect={() => { if (moveUpTarget) reorder(block.key, moveUpTarget); }}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={!moveDownTarget} onSelect={() => { if (moveDownTarget) reorder(block.key, moveDownTarget); }}>Move Down</DropdownMenuItem>{pages.length > 1 ? <><DropdownMenuSeparator /><DropdownMenuLabel>Move to page</DropdownMenuLabel>{pages.filter((page) => page.id !== block.pageId).map((page) => <DropdownMenuItem key={page.id} onSelect={() => moveToPage(block.key, page.id)}>{page.title.trim() || `Untitled Page ${page.position + 1}`}</DropdownMenuItem>)}</> : null}{moveContext.sourceSession ? <DropdownMenuSeparator /> : null}{moveContext.sourceSession ? <MoveToSessionMenuItem sessions={moveContext.sessions} sourceSession={moveContext.sourceSession}
@@ -307,6 +308,7 @@ function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDe
           onMoved={moveContext.refreshAfterMove} /> : null}<DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => requestDelete(block.key)}>Delete</DropdownMenuItem></DropdownMenuContent>
       </DropdownMenu>
       <button type="button" {...attributes} {...listeners} aria-label={`Reorder ${blockTypeLabel(block.blockType)} block`} className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary"><GripVertical className="size-4" aria-hidden="true" /></button>
+      </div>
     </> : null}
   </article>;
 }

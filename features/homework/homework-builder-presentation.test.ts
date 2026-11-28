@@ -93,10 +93,31 @@ describe("Homework Builder shell", () => {
     expect(markup).not.toContain("5 content blocks");
     expect(markup).toContain("line-clamp-2");
     expect(markup).not.toContain("This block is preserved and is not editable in this pass.");
-    expect(markup).toMatch(/Rich Text<\/p><div><h4/);
+    expect(markup).toContain('class="min-w-0 [overflow-wrap:anywhere]"><h4');
+    expect(markup).toContain('class="mt-1 break-words text-sm font-semibold text-text-primary [overflow-wrap:anywhere]"');
+    expect(markup).toContain("w-full min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md border border-border bg-white p-4 sm:flex-nowrap");
+    expect(markup).toContain("min-w-0 w-full max-w-full gap-3");
+    expect(markup).toContain("ml-auto flex shrink-0 items-center gap-1");
     expect(markup.match(/aria-label="Reorder /g)).toHaveLength(5);
     expect(markup.match(/aria-label="Actions for /g)).toHaveLength(5);
     expect(markup.match(/>Edit<\/button>/g)).toHaveLength(5);
+  });
+
+  it("contains long Homework titles and prompt text while keeping card actions in a narrow-screen row", () => {
+    const longTitle = "A very long Homework title that should wrap instead of forcing its card wider";
+    const longPrompt = "unbroken".repeat(30);
+    const loadedDraft = { ...emptyDraft, blocks: [
+      { id: "long-rich", homeworkBlockId: "long-rich", blockType: "rich_text", position: 0, title: longTitle, richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longPrompt }] }] }, url: null, description: null },
+      { id: "long-answer", homeworkBlockId: "long-answer", blockType: "long_answer", position: 1, title: longTitle, richTextContent: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longPrompt }] }] }, url: null, description: null },
+    ] };
+    const markup = renderToStaticMarkup(createElement(HomeworkEditorProvider, { initialDraft: loadedDraft }, createElement(HomeworkBuilderContent, { result: { draft: loadedDraft } })));
+
+    expect(markup).toContain(longTitle);
+    expect(markup).toContain(longPrompt);
+    expect(markup.match(/\[overflow-wrap:anywhere\]/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(markup.match(/aria-label="Actions for /g)).toHaveLength(2);
+    expect(markup.match(/aria-label="Reorder /g)).toHaveLength(2);
+    expect(markup.match(/>Edit<\/button>/g)).toHaveLength(2);
   });
 
   it("preserves unsupported block types without exposing editing, duplicate, delete, or reorder actions", () => {
