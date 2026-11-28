@@ -210,7 +210,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
             : <RichTextBlockAuthoring title={null} content={richText as Record<string, unknown>}
               onContentChange={(richTextContent) => patchEditing({ richTextContent: richTextContent as Json })} onCancel={cancelEditing}
               onDone={finishEditing} requireTitle={false} doneLabel="Done" />}
-      </div> : visibleBlocks.length ? <HomeworkRows blocks={visibleBlocks} pages={pages} moveContext={moveContext} sourceVersionId={result.draft.id} sourceVersionUpdatedAt={result.draft.updatedAt} sourceIsReady={moveContext.sourceCanMove && !homeworkEditor.dirty}
+      </div> : visibleBlocks.length ? <HomeworkRows blocks={visibleBlocks} pages={pages}
         edit={(key) => { setUrlMessage(null); homeworkEditor.setEditingKey(key); }}
         duplicate={(key) => homeworkEditor.duplicateBlock(key)}
         requestDelete={requestDelete}
@@ -240,13 +240,9 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   </section>;
 }
 
-function HomeworkRows({ blocks, pages, moveContext, sourceVersionId, sourceVersionUpdatedAt, sourceIsReady, edit, duplicate, requestDelete, moveToPage, reorder }: {
+function HomeworkRows({ blocks, pages, edit, duplicate, requestDelete, moveToPage, reorder }: {
   blocks: ReturnType<typeof useHomeworkEditorState>["state"]["blocks"];
   pages: ReturnType<typeof useHomeworkEditorState>["state"]["pages"];
-  moveContext: ReturnType<typeof useSessionBuilderMoveContext>;
-  sourceVersionId: string | null;
-  sourceVersionUpdatedAt: string | null;
-  sourceIsReady: boolean;
   edit: (key: string) => void;
   duplicate: (key: string) => void;
   requestDelete: (key: string) => void;
@@ -263,12 +259,12 @@ function HomeworkRows({ blocks, pages, moveContext, sourceVersionId, sourceVersi
   }
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
     <SortableContext items={blocks.map((block) => block.key)} strategy={verticalListSortingStrategy}>
-      <div className="mt-4 grid min-w-0 w-full max-w-full gap-3">{blocks.map((block) => <HomeworkRow key={block.key} block={block} blocks={blocks} pages={pages} reorder={reorder} edit={edit} duplicate={duplicate} requestDelete={requestDelete} moveToPage={moveToPage} moveContext={moveContext} sourceVersionId={sourceVersionId} sourceVersionUpdatedAt={sourceVersionUpdatedAt} sourceIsReady={sourceIsReady} />)}</div>
+      <div className="mt-4 grid min-w-0 w-full max-w-full gap-3">{blocks.map((block) => <HomeworkRow key={block.key} block={block} blocks={blocks} pages={pages} reorder={reorder} edit={edit} duplicate={duplicate} requestDelete={requestDelete} moveToPage={moveToPage} />)}</div>
     </SortableContext>
   </DndContext>;
 }
 
-function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDelete, moveToPage, moveContext, sourceVersionId, sourceVersionUpdatedAt, sourceIsReady }: {
+function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDelete, moveToPage }: {
   blocks: ReturnType<typeof useHomeworkEditorState>["state"]["blocks"];
   pages: ReturnType<typeof useHomeworkEditorState>["state"]["pages"];
   block: ReturnType<typeof useHomeworkEditorState>["state"]["blocks"][number];
@@ -277,10 +273,6 @@ function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDe
   duplicate: (key: string) => void;
   requestDelete: (key: string) => void;
   moveToPage: (key: string, pageId: string) => void;
-  moveContext: ReturnType<typeof useSessionBuilderMoveContext>;
-  sourceVersionId: string | null;
-  sourceVersionUpdatedAt: string | null;
-  sourceIsReady: boolean;
 }) {
   const supported = HOMEWORK_AUTHORING_BLOCK_TYPES.some((type) => type === block.blockType);
   const moveUpTarget = homeworkMoveTarget(blocks, block.key, -1);
@@ -301,11 +293,7 @@ function HomeworkRow({ block, blocks, pages, reorder, edit, duplicate, requestDe
       <div className="ml-auto flex shrink-0 items-center gap-1">
       <button type="button" onClick={() => edit(block.key)} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary">Edit</button>
       <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label={`Actions for ${blockTypeLabel(block.blockType)} block`} className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary"><MoreHorizontal className="size-4" aria-hidden="true" /></button></DropdownMenuTrigger>
-        <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => duplicate(block.key)}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={!moveUpTarget} onSelect={() => { if (moveUpTarget) reorder(block.key, moveUpTarget); }}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={!moveDownTarget} onSelect={() => { if (moveDownTarget) reorder(block.key, moveDownTarget); }}>Move Down</DropdownMenuItem>{pages.length > 1 ? <><DropdownMenuSeparator /><DropdownMenuLabel>Move to page</DropdownMenuLabel>{pages.filter((page) => page.id !== block.pageId).map((page) => <DropdownMenuItem key={page.id} onSelect={() => moveToPage(block.key, page.id)}>{page.title.trim() || `Untitled Page ${page.position + 1}`}</DropdownMenuItem>)}</> : null}{moveContext.sourceSession ? <DropdownMenuSeparator /> : null}{moveContext.sourceSession ? <MoveToSessionMenuItem sessions={moveContext.sessions} sourceSession={moveContext.sourceSession}
-          kind="homework_block" itemId={block.persistedId ?? block.key} itemLabel={block.blockType === "side_by_side_response" ? "Side-by-Side Response" : blockTypeLabel(block.blockType)}
-          sourceVersionId={sourceVersionId} sourceVersionUpdatedAt={sourceVersionUpdatedAt}
-          sourceIsReady={sourceIsReady && Boolean(block.persistedId)} sourceBlockedMessage="Save or discard unsaved Homework or Session changes before moving this item."
-          onMoved={moveContext.refreshAfterMove} /> : null}<DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => requestDelete(block.key)}>Delete</DropdownMenuItem></DropdownMenuContent>
+        <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => duplicate(block.key)}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={!moveUpTarget} onSelect={() => { if (moveUpTarget) reorder(block.key, moveUpTarget); }}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={!moveDownTarget} onSelect={() => { if (moveDownTarget) reorder(block.key, moveDownTarget); }}>Move Down</DropdownMenuItem>{pages.length > 1 ? <><DropdownMenuSeparator /><DropdownMenuLabel>Move to page</DropdownMenuLabel>{pages.filter((page) => page.id !== block.pageId).map((page) => <DropdownMenuItem key={page.id} onSelect={() => moveToPage(block.key, page.id)}>{page.title.trim() || `Untitled Page ${page.position + 1}`}</DropdownMenuItem>)}</> : null}<DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => requestDelete(block.key)}>Delete</DropdownMenuItem></DropdownMenuContent>
       </DropdownMenu>
       <button type="button" {...attributes} {...listeners} aria-label={`Reorder ${blockTypeLabel(block.blockType)} block`} className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted focus-visible:bg-sidebar-accent focus-visible:text-brand-primary"><GripVertical className="size-4" aria-hidden="true" /></button>
       </div>

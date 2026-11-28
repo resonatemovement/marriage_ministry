@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20261128100000_session_builder_content_moves.sql", "utf8");
+const pageOnlyMigration = readFileSync("supabase/migrations/20261128190204_homework_cross_session_page_only.sql", "utf8");
 const actions = readFileSync("features/session-builder/move-content-actions.ts", "utf8");
 const dialog = readFileSync("features/session-builder/move-to-session-dialog.tsx", "utf8");
 const homeworkBuilder = readFileSync("features/homework/homework-builder-content.tsx", "utf8");
@@ -12,8 +13,15 @@ describe("Session Builder cross-Session content move contract", () => {
     expect(dialog).toContain("Move to Session");
     expect(dialog).toContain("Destination Session");
     expect(homeworkBuilder).toContain('kind="homework_page"');
-    expect(homeworkBuilder).toContain('kind="homework_block"');
+    expect(homeworkBuilder).not.toContain('kind="homework_block"');
+    expect(homeworkBuilder).toContain('DropdownMenuLabel>Move to page</DropdownMenuLabel>');
     expect(materialBuilder).toContain('"session_material_page" : "session_material_resource"');
+    expect(dialog).toContain('"Move Homework Page" : "Move to Session"');
+    expect(dialog).toContain("All questions and content blocks move together.");
+    expect(dialog).toContain("Move Page");
+    expect(dialog).not.toContain("Destination Homework Page");
+    expect(dialog).not.toContain("needsDestinationPage");
+    expect(dialog).toContain("Previously published Homework and Couple answers will remain unchanged.");
     expect(dialog).not.toContain("Copy to Session");
     expect(actions).toContain('"move_session_builder_content_between_sessions"');
   });
@@ -50,8 +58,7 @@ describe("Session Builder cross-Session content move contract", () => {
     expect(dialog).toContain("hasUnsavedSessionBuilderChangesInOtherTab(destination.id)");
     expect(dialog).toContain("if (dirtyInAnotherTab !== false)");
     expect(dialog).toContain("Save or discard source edits");
-    expect(dialog).toContain("Destination Homework Page");
-    expect(dialog).toContain("create a page before moving this item");
+    expect(dialog).toContain("Editable Homework could not be loaded.");
     expect(dialog).toContain("disabled={!canMove}");
     expect(actions).toContain("Reload both Sessions and try again.");
     expect(dialog).toContain("Open destination Session");
@@ -67,5 +74,26 @@ describe("Session Builder cross-Session content move contract", () => {
     expect(dialog).toContain("max-h-[90dvh]");
     expect(dialog).toContain("sm:w-[min(520px,calc(100vw-2rem))]");
     expect(dialog).toContain('session.status === "draft"');
+  });
+
+  it("restricts the public database boundary to complete Homework pages", () => {
+    expect(pageOnlyMigration).toContain("rename to move_session_builder_content_between_sessions_impl");
+    expect(pageOnlyMigration).toContain("set schema private");
+    expect(pageOnlyMigration).toContain("if move_kind = 'homework_block' then");
+    expect(pageOnlyMigration).toContain("Homework items can only be moved as a complete page");
+    expect(pageOnlyMigration).toContain("move_kind not in ('session_material_page','session_material_resource','homework_page')");
+    expect(pageOnlyMigration).toContain("from public, anon, authenticated");
+    expect(pageOnlyMigration).toContain("grant execute on function public.move_session_builder_content_between_sessions(");
+    expect(pageOnlyMigration).toContain("to authenticated");
+  });
+
+  it("keeps whole-page transfer atomic and preserves published Homework and answer history", () => {
+    expect(migration).toContain("if move_kind = 'homework_page' then");
+    expect(migration).toContain("for row_item in select b.*");
+    expect(migration).toContain("where b.homework_version_id = source_draft_id and b.page_id = source_item_id");
+    expect(migration).toContain("destination_manifest := destination_manifest || jsonb_build_array");
+    expect(pageOnlyMigration).toContain("return private.move_session_builder_content_between_sessions_impl(");
+    expect(pageOnlyMigration).not.toMatch(/delete\s+from\s+public\.homework_answers/i);
+    expect(pageOnlyMigration).not.toMatch(/delete\s+from\s+public\.homework_assignment_revisions/i);
   });
 });

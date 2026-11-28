@@ -8,7 +8,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export type HomeworkMoveDestination = {
   versionId: string | null;
   updatedAt: string | null;
-  pages: Array<{ id: string; title: string; position: number }>;
 };
 
 type HomeworkMoveVersion = {
@@ -16,7 +15,6 @@ type HomeworkMoveVersion = {
   status: "draft" | "published";
   updated_at: string;
   version_number: number | null;
-  page_manifest: unknown;
 };
 
 export async function getHomeworkMoveDestination(sessionId: string): Promise<HomeworkMoveDestination | null> {
@@ -29,7 +27,7 @@ export async function getHomeworkMoveDestination(sessionId: string): Promise<Hom
   const { data: homework, error: homeworkError } = await supabase.from("homeworks")
     .select("id,withdrawn_at").eq("session_id", sessionId).maybeSingle();
   if (homeworkError) return null;
-  if (!homework) return { versionId: null, updatedAt: null, pages: [] };
+  if (!homework) return { versionId: null, updatedAt: null };
   if (homework.withdrawn_at) return null;
 
   const { data: rawVersions, error: versionsError } = await supabase.from("homework_versions")
@@ -37,28 +35,16 @@ export async function getHomeworkMoveDestination(sessionId: string): Promise<Hom
     .eq("homework_id", homework.id).order("created_at", { ascending: false });
   if (versionsError) return null;
   const versions = (rawVersions ?? []) as unknown as HomeworkMoveVersion[];
-  const selected = versions?.find((version) => version.status === "draft")
-    ?? versions?.filter((version) => version.status === "published").sort((left, right) => (right.version_number ?? 0) - (left.version_number ?? 0))[0];
-  if (!selected) return { versionId: null, updatedAt: null, pages: [] };
-
-  if (Array.isArray(selected.page_manifest)) {
-    const pages = selected.page_manifest.flatMap((page) => page && typeof page === "object" && !Array.isArray(page)
-      && typeof page.id === "string" && typeof page.title === "string" && typeof page.position === "number"
-      ? [{ id: page.id, title: page.title, position: page.position }] : []);
-    return { versionId: selected.id, updatedAt: selected.updated_at, pages };
-  }
-
-  const { count, error: blocksError } = await supabase.from("homework_version_blocks")
-    .select("id", { count: "exact", head: true }).eq("homework_version_id", selected.id);
-  if (blocksError) return null;
-  return { versionId: selected.id, updatedAt: selected.updated_at,
-    pages: count ? [{ id: "00000000-0000-4000-8000-000000000001", title: "Page 1", position: 0 }] : [] };
+  const selected = versions.find((version) => version.status === "draft")
+    ?? versions.filter((version) => version.status === "published").sort((left, right) => (right.version_number ?? 0) - (left.version_number ?? 0))[0];
+  if (!selected) return { versionId: null, updatedAt: null };
+  return { versionId: selected.id, updatedAt: selected.updated_at };
 }
 
 export type MoveContentInput = {
   sourceSessionId: string;
   destinationSessionId: string;
-  kind: "session_material_page" | "session_material_resource" | "homework_page" | "homework_block";
+  kind: "session_material_page" | "session_material_resource" | "homework_page";
   itemId: string;
   sourceSessionUpdatedAt: string;
   sourceHomeworkVersionId?: string | null;
@@ -66,8 +52,9 @@ export type MoveContentInput = {
   destinationHomeworkVersionId?: string | null;
   destinationHomeworkUpdatedAt?: string | null;
   destinationSessionUpdatedAt: string;
-  destinationPageId?: string | null;
 };
+
+const allowedMoveKinds: MoveContentInput["kind"][] = ["session_material_page", "session_material_resource", "homework_page"];
 
 const safeMessages = new Set([
   "Not authorized",
@@ -85,9 +72,9 @@ const safeMessages = new Set([
   "Destination Homework changed. Reload and try again.",
   "Destination Homework Draft is not editable",
   "Destination Homework page is unavailable",
-  "Destination Homework page is unavailable",
   "The selected Homework page is no longer available to move",
   "Add another Homework page before moving the only page",
+  "Homework items can only be moved as a complete page",
   "The selected Homework item is no longer available to move",
   "The selected Side-by-Side item is incomplete",
   "No editable Homework content was moved",
@@ -95,6 +82,10 @@ const safeMessages = new Set([
 
 export async function moveSessionBuilderContent(input: MoveContentInput): Promise<{ ok: true } | { ok: false; error: string }> {
   await requireSessionBuilderAccess(`/session-builder/${input.sourceSessionId}`);
+  if (!(allowedMoveKinds as string[]).includes((input as { kind: string }).kind)) {
+    return { ok: false, error: (input as { kind: string }).kind === "homework_block"
+      ? "Homework items can only be moved as a complete page" : "Invalid Session content move" };
+  }
   const supabase = await createServerSupabaseClient();
   const invoke = supabase.rpc.bind(supabase) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
   const { data, error } = await invoke("move_session_builder_content_between_sessions", {
@@ -108,7 +99,7 @@ export async function moveSessionBuilderContent(input: MoveContentInput): Promis
     destination_homework_version_id: input.destinationHomeworkVersionId ?? null,
     destination_session_updated_at: input.destinationSessionUpdatedAt,
     destination_homework_updated_at: input.destinationHomeworkUpdatedAt ?? null,
-    destination_page_id: input.destinationPageId ?? null,
+    destination_page_id: null,
   });
   if (error) {
     const message = typeof error === "object" && error !== null && "message" in error && typeof error.message === "string" && safeMessages.has(error.message)

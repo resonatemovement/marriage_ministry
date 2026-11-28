@@ -62,6 +62,9 @@ begin
   assert not has_function_privilege('anon',
     'public.move_session_builder_content_between_sessions(uuid,uuid,text,uuid,uuid,timestamptz,timestamptz,uuid,timestamptz,timestamptz,uuid)', 'EXECUTE'),
     'Anonymous role can invoke the move RPC';
+  assert not has_function_privilege('authenticated',
+    'private.move_session_builder_content_between_sessions_impl(uuid,uuid,text,uuid,uuid,timestamptz,timestamptz,uuid,timestamptz,timestamptz,uuid)', 'EXECUTE'),
+    'Authenticated role can bypass the page-only public RPC boundary';
 
   select role_row.profile_id into actor_id
   from public.profile_roles role_row join public.profiles profile on profile.id = role_row.profile_id
@@ -108,18 +111,18 @@ begin
       question_choices_value, false, source_page_a) returning id into checkbox_snapshot_id;
   insert into public.homework_version_blocks(homework_version_id, homework_block_id, block_type, position, title, rich_text_content, page_id)
     values (source_published_version, long_logical_id, 'long_answer', 2, 'Reflection',
-      '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Answer this"}]}]}'::jsonb, source_page_b)
+      '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Answer this"}]}]}'::jsonb, source_page_a)
     returning id into long_snapshot_id;
   insert into public.homework_version_blocks(homework_version_id, homework_block_id, block_type, position, title, description, rich_text_content, is_required, page_id)
     values
       (source_published_version, side_left_logical_id, 'long_answer', 3, 'Partner A',
         jsonb_build_object('kind','side_by_side_response','groupId',side_by_side_group_id,'side','left',
           'instructions','Discuss together','leftHeading','Partner A','rightHeading','Partner B','bothRequired',true,'responseMode','paired_rows_v1')::text,
-        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Left side"}]}]}'::jsonb, true, source_page_b),
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Left side"}]}]}'::jsonb, true, source_page_a),
       (source_published_version, side_right_logical_id, 'long_answer', 4, 'Partner B',
         jsonb_build_object('kind','side_by_side_response','groupId',side_by_side_group_id,'side','right',
           'instructions','Discuss together','leftHeading','Partner A','rightHeading','Partner B','bothRequired',true,'responseMode','paired_rows_v1')::text,
-        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Right side"}]}]}'::jsonb, true, source_page_b);
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Right side"}]}]}'::jsonb, true, source_page_a);
   select id into side_left_snapshot_id from public.homework_version_blocks
     where homework_version_id = source_published_version and homework_block_id = side_left_logical_id;
   select id into side_right_snapshot_id from public.homework_version_blocks
@@ -151,73 +154,53 @@ begin
   perform set_config('request.jwt.claim.sub', actor_id::text, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', actor_id, 'role', 'authenticated')::text, true);
 
-  -- Move one Homework block out of the published-source-derived Draft first.
+  -- Move the complete Homework page out of a published-source-derived Draft.
+  -- It contains Rich Text, Long Answer, a selection question, and a full
+  -- Side-by-Side pair.
   select public.move_session_builder_content_between_sessions(
-    source_session, destination_session, 'homework_block', long_snapshot_id, source_published_version,
+    source_session, destination_session, 'homework_page', source_page_a, source_published_version,
     (select updated_at from public.sessions where id = source_session),
     (select updated_at from public.homework_versions where id = source_published_version),
     destination_draft_version,
     (select updated_at from public.sessions where id = destination_session),
-    (select updated_at from public.homework_versions where id = destination_draft_version),
-    destination_page) into call_result;
+    (select updated_at from public.homework_versions where id = destination_draft_version), null) into call_result;
   source_draft_version := (call_result ->> 'source_homework_version_id')::uuid;
-  assert (call_result ->> 'moved_count')::integer = 1, 'Individual Homework item was not moved exactly once';
-  select id into side_left_snapshot_id from public.homework_version_blocks
-    where homework_version_id = source_draft_version and homework_block_id = side_left_logical_id;
-  select id into side_right_snapshot_id from public.homework_version_blocks
-    where homework_version_id = source_draft_version and homework_block_id = side_right_logical_id;
-  assert side_left_snapshot_id is not null and side_right_snapshot_id is not null,
-    'Published Side-by-Side content was not cloned into the source Draft';
-  assert (select count(*) = 1 from public.homework_version_blocks where homework_version_id = source_draft_version and homework_block_id = long_logical_id) = false,
-    'Moved Homework item remains in the source Draft';
-  assert exists (select 1 from public.homework_version_blocks where homework_version_id = destination_draft_version
-    and page_id = destination_page and position = 1 and block_type = 'long_answer' and title = 'Reflection'),
-    'Moved Homework item was not appended to the selected destination page';
-
-  select public.move_session_builder_content_between_sessions(
-    source_session, destination_session, 'homework_block', side_left_snapshot_id, source_draft_version,
-    (select updated_at from public.sessions where id = source_session),
-    (select updated_at from public.homework_versions where id = source_draft_version),
-    destination_draft_version,
-    (select updated_at from public.sessions where id = destination_session),
-    (select updated_at from public.homework_versions where id = destination_draft_version),
-    destination_page) into call_result;
-  source_draft_version := (call_result ->> 'source_homework_version_id')::uuid;
-  assert (call_result ->> 'moved_count')::integer = 2, 'Moving one Side-by-Side item did not move both paired rows';
-  assert (select count(*) from public.homework_version_blocks b
-    where b.homework_version_id = destination_draft_version
-      and private.homework_side_by_side_metadata(b.description) ->> 'groupId' = side_by_side_group_id::text) = 2,
-    'Side-by-Side settings were not preserved as one grouped destination item';
-  assert (select count(*) from public.homework_version_blocks b
-    where b.homework_version_id = source_draft_version
-      and private.homework_side_by_side_metadata(b.description) ->> 'groupId' = side_by_side_group_id::text) = 0,
-    'Moved Side-by-Side pair remains in the source Draft';
-
-  -- Move the complete remaining Homework page, preserving formatting, question
-  -- settings, and source page ordering while leaving its other page intact.
-  select public.move_session_builder_content_between_sessions(
-    source_session, destination_session, 'homework_page', source_page_a, source_draft_version,
-    (select updated_at from public.sessions where id = source_session),
-    (select updated_at from public.homework_versions where id = source_draft_version),
-    destination_draft_version,
-    (select updated_at from public.sessions where id = destination_session),
-    (select updated_at from public.homework_versions where id = destination_draft_version),
-    null) into call_result;
-  assert (call_result ->> 'moved_count')::integer = 2, 'Whole Homework Page did not move both supported blocks';
-  source_draft_version := (call_result ->> 'source_homework_version_id')::uuid;
+  assert (call_result ->> 'moved_count')::integer = 5, 'Whole Homework Page did not move all child blocks exactly once';
+  assert not exists (select 1 from public.homework_version_blocks where homework_version_id = source_draft_version and page_id = source_page_a),
+    'Moved Homework page remains in the source Draft';
+  assert (select count(*) from public.homework_version_blocks where homework_version_id = source_draft_version and page_id = source_page_b) = 0,
+    'Moving a Homework page changed another source page';
   assert jsonb_array_length((select page_manifest from public.homework_versions where id = source_draft_version)) = 1,
     'Source Homework page removal did not preserve the remaining page';
   assert (select count(*) from public.homework_version_blocks where homework_version_id = destination_draft_version
-    and page_id = (call_result ->> 'destination_page_id')::uuid) = 2, 'The moved Homework page content is incomplete';
+    and page_id = (call_result ->> 'destination_page_id')::uuid) = 5, 'The moved Homework page content is incomplete';
+  assert (select array_agg(block_type order by position) from public.homework_version_blocks
+    where homework_version_id = destination_draft_version and page_id = (call_result ->> 'destination_page_id')::uuid)
+      = array['rich_text','checkbox_question','long_answer','long_answer','long_answer']::text[],
+    'Whole Homework page content order was not preserved';
+  assert exists (select 1 from public.homework_version_blocks where homework_version_id = destination_draft_version
+    and page_id = destination_page and position = 0 and title = 'Existing destination content'),
+    'Existing destination page content was changed';
+  assert jsonb_array_length((select page_manifest from public.homework_versions where id = destination_draft_version)) = 2,
+    'Moving a page overwrote or omitted the existing destination page';
+  assert exists (select 1 from public.homework_version_blocks where homework_version_id = destination_draft_version
+    and page_id = (call_result ->> 'destination_page_id')::uuid and position = 3 and block_type = 'long_answer' and title = 'Reflection'),
+    'Long Answer was not appended with the moved page';
   assert exists (select 1 from public.homework_version_blocks where homework_version_id = destination_draft_version
     and page_id = (call_result ->> 'destination_page_id')::uuid and block_type = 'rich_text'
     and title is null and rich_text_content = rich_content), 'Rich Text title/formatting was not preserved';
   assert exists (select 1 from public.homework_version_blocks where homework_version_id = destination_draft_version
     and page_id = (call_result ->> 'destination_page_id')::uuid and block_type = 'checkbox_question'
     and question_choices = question_choices_value and is_required = false), 'Question configuration was not preserved';
+  assert (select count(*) from public.homework_version_blocks b
+    where b.homework_version_id = destination_draft_version
+      and b.page_id = (call_result ->> 'destination_page_id')::uuid
+      and private.homework_side_by_side_metadata(b.description) ->> 'groupId' = side_by_side_group_id::text) = 2,
+    'Side-by-Side content was not preserved as a complete pair';
+  assert not exists (select 1 from public.homework_version_blocks where homework_version_id = source_draft_version
+    and page_id = source_page_b), 'Unmoved source page content changed';
 
-  -- A repeated request with the original snapshot ID must fail before a second
-  -- destination insert. Published snapshot and stored answer remain unchanged.
+  -- A direct individual Homework block move is rejected before any mutation.
   select count(*) into selected_page_block_count from public.homework_version_blocks where homework_version_id = destination_draft_version;
   begin
     perform public.move_session_builder_content_between_sessions(
@@ -228,15 +211,18 @@ begin
       (select updated_at from public.sessions where id = destination_session),
       (select updated_at from public.homework_versions where id = destination_draft_version),
       destination_page);
-    raise exception 'Duplicate Homework move unexpectedly succeeded';
+    raise exception 'Individual Homework block move unexpectedly succeeded';
   exception when others then
     get stacked diagnostics message = message_text;
-    if message = 'Duplicate Homework move unexpectedly succeeded' then raise; end if;
+    if message = 'Individual Homework block move unexpectedly succeeded' then raise; end if;
+    assert message = 'Homework items can only be moved as a complete page', 'Individual Homework block move failed for an unexpected reason';
   end;
   assert (select count(*) from public.homework_version_blocks where homework_version_id = destination_draft_version) = selected_page_block_count,
-    'Rejected duplicate request changed destination content';
+    'Rejected individual Homework move changed destination content';
   assert (select rich_text_content from public.homework_version_blocks where id = rich_snapshot_id) = rich_content,
     'Published source snapshot changed';
+  assert (select count(*) from public.homework_version_blocks where homework_version_id = source_published_version) = 5,
+    'Published source Homework was changed by moving a page';
   assert (select answer_text from public.homework_answers where id = answer_id) = 'Historical answer must remain untouched',
     'Historical Couple answer changed';
 
