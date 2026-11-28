@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 28, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 cross-Session content move implemented; `20261128100000` applied to linked DEV with rollback-only workflow verification; task changes pending commit/push; no actual Session content moved, merge, or deployment)
+Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 cross-Session content move implemented; `20261128100000` applied to linked DEV with rollback-only workflow verification; implementation commit `8390fde` pushed; no actual Session content moved, merge, or deployment)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Move Authored Content Between Sessions (November 28, 2026)
@@ -12,7 +12,7 @@ Repository: resonatemovement/marriage_ministry
 - **Database lint:** Linked DEV lint reported no new warnings or errors in the added RPC; it listed the same eight existing warnings in unrelated functions.
 - **Application validation:** Focused move/Builder tests pass **44/44 across six files**. Full suite passes **1,613/1,613 across 276 files**. Typecheck, ESLint, production build, and `git diff --check` pass. `npm run knip` was also run and exits nonzero on the repository’s existing broad unused-export/configuration-hint findings; this task did not expand scope to remediate them.
 - **Browser verification:** No authenticated browser automation/session was available. Modal interactions and actual desktop/mobile visual behavior remain unverified in a browser; accessible labels, responsive modal classes, disabled/validation conditions, action wiring, and content contracts have automated coverage.
-- **Git:** Branch remains `feature/hw-01-multiple-homework-pages`, currently based at `e681d02`; task implementation and this state update are pending commit/push. Preserve unrelated dirty `.env.example` and `AGENTS.md` edits and all eight stashes. No merge or deployment is authorized.
+- **Git:** Branch remains `feature/hw-01-multiple-homework-pages`; implementation commit `8390fde` (`feat(session-builder): move authored content between sessions`) is pushed to origin. This state update is the documentation closeout. Preserve unrelated dirty `.env.example` and `AGENTS.md` edits and all eight stashes. No merge or deployment is authorized.
 
 ## HW-01 Session Builder Session Navigation (November 25, 2026)
 
