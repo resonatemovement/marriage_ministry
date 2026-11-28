@@ -1,6 +1,6 @@
 Project State Document — Resonate Marriage Ministry
 Last updated: November 28, 2026
-Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 cross-Session content move implemented; `20261128100000` applied to linked DEV with rollback-only workflow verification; implementation commit `8390fde` pushed; no actual Session content moved, merge, or deployment)
+Current working branch: `feature/hw-01-multiple-homework-pages` (HW-01 page-only cross-Session transfer safeguard `20261128190204` applied to linked DEV; implementation commit `afe9fc4` pushed; no actual Session content moved, merge, or deployment)
 Repository: resonatemovement/marriage_ministry
 
 ## HW-01 Homework Cross-Session Transfers Are Page-Only (November 28, 2026)
@@ -10,7 +10,7 @@ Repository: resonatemovement/marriage_ministry
 - **DEV verification:** Confirmed linked DEV ref `lctkqjjkhpyootwvttvj`. Local and remote migration histories align at **189**, latest `20261128190204`; linked dry-run reports up to date. The migration and updated `supabase/tests/session_builder_content_move_runtime.sql` first ran together in a rollback-only transaction; the initial run caught an incorrect test expectation about the appended block's absolute position, which was corrected and rerun successfully. The migration was then applied to DEV and the rollback-only verifier passed against the deployed wrapper. Coverage verifies ordered whole-page transfer of Rich Text with a blank optional title, Checkbox, Long Answer, and Side-by-Side pair; destination page/content retention; published snapshot and saved Couple answer preservation; direct `homework_block` rejection without mutation; stale/unauthorized rejection; Session Material transfer compatibility; and failed-transfer rollback. Follow-up read-only counts found **0** verifier Auth users, groups, Sessions, and Homework roots. No real Homework was transferred.
 - **Security and lint:** Catalog checks confirm both public wrapper and private helper are `SECURITY DEFINER` with `search_path=""`; only authenticated can execute the public wrapper, while anon and authenticated cannot execute the private helper. Linked DB lint has no errors and reports only the existing unrelated warning set; no warning is emitted for the new wrapper/helper.
 - **Application validation:** Focused tests pass **22/22 across four files**. Full suite passes **1,618/1,618 across 277 files**. Typecheck, lint, production build, and `git diff --check` pass. Browser-authenticated desktop/mobile interaction could not be performed in this environment; responsive modal behavior is covered by source/contract checks but remains unverified in a browser.
-- **Git and safety:** Work remains on `feature/hw-01-multiple-homework-pages`; implementation and documentation commits/push are pending. Preserve unrelated dirty `.env.example` and `AGENTS.md` edits and all eight existing stashes. No actual transfer, merge, or deployment occurred.
+- **Git and safety:** Implementation and state documentation were committed as `afe9fc4` (`feat(homework): restrict cross-session moves to pages`) and pushed to `origin/feature/hw-01-multiple-homework-pages`. Preserve unrelated dirty `.env.example` and `AGENTS.md` edits and all eight existing stashes. No actual transfer, merge, or deployment occurred.
 
 ## HW-01 Homework Builder Content Overflow (November 28, 2026)
 
