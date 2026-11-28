@@ -28,7 +28,7 @@ import { useHomeworkEditorState } from "./homework-editor-state";
 import { HomeworkRichTextAuthoring } from "./homework-rich-text-authoring";
 import { isValidHomeworkVideoUrl } from "./homework-url";
 import type { HomeworkDraftLoadResult } from "./queries";
-import { MoveToSessionMenuItem } from "@/features/session-builder/move-to-session-dialog";
+import { MoveToSessionDialog, MoveToSessionMenuItem } from "@/features/session-builder/move-to-session-dialog";
 import { useSessionBuilderMoveContext } from "@/features/session-builder/move-context";
 import { showSuccessToastWithAction } from "@/lib/toast";
 import { homeworkPageMoveFeedback } from "@/features/session-builder/move-notification";
@@ -49,6 +49,8 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deletePageTarget, setDeletePageTarget] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [movePageDialogOpen, setMovePageDialogOpen] = useState(false);
+  const [movePageDialogKey, setMovePageDialogKey] = useState(0);
   const [pendingPageFocus, setPendingPageFocus] = useState<{ blockKey: string; pageId: string } | null>(null);
   const [highlightedBlockKey, setHighlightedBlockKey] = useState<string | null>(null);
   const error = "error" in result ? result.error : null;
@@ -189,12 +191,7 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
               <button type="button" aria-label="Move page up" disabled={selectedPage.position === 0} onClick={() => homeworkEditor.reorderPage(selectedPage.id, -1)} className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"><ArrowUp className="size-4" aria-hidden="true" /></button>
               <button type="button" aria-label="Move page down" disabled={selectedPage.position === pages.length - 1} onClick={() => homeworkEditor.reorderPage(selectedPage.id, 1)} className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"><ArrowDown className="size-4" aria-hidden="true" /></button>
               <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Homework page actions" className="grid size-10 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" aria-hidden="true" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">
-                {moveContext.sourceSession ? <MoveToSessionMenuItem sessions={moveContext.sessions} sourceSession={moveContext.sourceSession}
-                  kind="homework_page" itemId={selectedPage.id} itemLabel={`Page ${selectedPage.position + 1}: ${selectedPage.title.trim() || "Untitled Page"}`}
-                  sourceVersionId={result.draft.id} sourceVersionUpdatedAt={result.draft.updatedAt}
-                  sourceIsReady={moveContext.sourceCanMove && !homeworkEditor.dirty && Boolean(result.draft.id)}
-                  sourceBlockedMessage="Save or discard unsaved Homework or Session changes before moving this page."
-                  onMoved={moveContext.refreshAfterMove} /> : null}
+                {moveContext.sourceSession ? <MoveToSessionMenuItem onOpen={() => { setMovePageDialogKey((key) => key + 1); setMovePageDialogOpen(true); }} /> : null}
               </DropdownMenuContent></DropdownMenu>
               <button type="button" onClick={() => { setDeleteConfirmation(""); setDeletePageTarget(selectedPage.id); }} className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-danger-strong hover:bg-danger-strong/5"><Trash2 className="size-4" aria-hidden="true" />Delete Page</button>
             </div>
@@ -265,6 +262,13 @@ export function HomeworkBuilderContent({ result }: { result: HomeworkDraftLoadRe
       </div>
     </div>
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}><SheetContent side="right" className="overflow-y-auto p-0"><SheetHeader className="border-b border-border px-6 py-5"><SheetTitle>Add Content</SheetTitle><SheetDescription>Choose the type of Homework content to add.</SheetDescription></SheetHeader><div className="grid gap-3 p-6">{HOMEWORK_AUTHORING_BLOCK_TYPES.map((type) => <button key={type} type="button" onClick={() => addBlock(type)} className="flex items-center gap-3 rounded-md border border-border p-4 text-left hover:bg-surface-muted">{blockTypeIcon(type)}<span className="grid gap-1"><span className="text-sm font-semibold text-text-primary">{blockTypeLabel(type)}</span>{type === "checkbox_question" ? <span className="text-xs text-text-muted">Allow multiple answers.</span> : type === "radio_question" ? <span className="text-xs text-text-muted">Allow one answer.</span> : null}</span></button>)}</div></SheetContent></Sheet>
+    {selectedPage && moveContext.sourceSession ? <MoveToSessionDialog key={movePageDialogKey} open={movePageDialogOpen} onOpenChange={setMovePageDialogOpen}
+      sessions={moveContext.sessions} sourceSession={moveContext.sourceSession} kind="homework_page" itemId={selectedPage.id}
+      itemLabel={`Page ${selectedPage.position + 1}: ${selectedPage.title.trim() || "Untitled Page"}`}
+      sourceVersionId={result.draft.id} sourceVersionUpdatedAt={result.draft.updatedAt}
+      sourceIsReady={moveContext.sourceCanMove && !homeworkEditor.dirty && Boolean(result.draft.id)}
+      sourceBlockedMessage="Save or discard unsaved Homework or Session changes before moving this page."
+      onMoved={moveContext.refreshAfterMove} /> : null}
     <AlertDialog open={deleteTarget !== null} onOpenChange={closeDeleteDialog}>
       <AlertDialogContent>
         <AlertDialogHeader><AlertDialogTitle>Delete this Homework block?</AlertDialogTitle><AlertDialogDescription>This removal is staged until you save the authoring changes.</AlertDialogDescription></AlertDialogHeader>

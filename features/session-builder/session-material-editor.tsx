@@ -25,7 +25,7 @@ import { SessionResourcePicker } from "./session-resource-picker";
 import { formatResourceFileSize, formatResourceFileType, type ResourceCategory } from "@/features/resource-library/policy";
 import type { ResourceLibraryItem } from "@/features/resource-library/presentation";
 import { refreshSessionResourceAccess } from "./resource-actions";
-import { MoveToSessionMenuItem } from "./move-to-session-dialog";
+import { MoveToSessionDialog, MoveToSessionMenuItem } from "./move-to-session-dialog";
 import { useSessionBuilderMoveContext } from "./move-context";
 
 type UpdateBlocks = (update: (blocks: StagedMaterialBlock[]) => StagedMaterialBlock[]) => void;
@@ -198,6 +198,8 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.key, disabled: archived || !dragEnabled });
   const [confirming, setConfirming] = useState(false);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [moveDialogKey, setMoveDialogKey] = useState(0);
   const style = { transform: CSS.Transform.toString(transform), transition };
   function moveBy(direction: -1 | 1) { const target = keys[index + direction]; if (target) move(block.key, target); }
   const pageHeading = `Page ${index + 1}: ${block.title.trim() || "Untitled Page"}`;
@@ -207,11 +209,7 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
   </label>;
   const actionControls = archived ? null : confirming ? <div className="flex flex-wrap items-center justify-end gap-2"><span className="text-sm text-text-muted">Remove this block?</span><button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-md px-2 text-sm font-semibold hover:bg-surface-muted">Cancel</button><button type="button" onClick={remove} className="min-h-9 rounded-md px-2 text-sm font-semibold text-danger-strong hover:bg-surface-muted">{block.blockType === "library_resource" ? "Remove from Session" : "Remove"}</button></div> : <div className="flex shrink-0 items-center gap-1">
     {block.blockType === "library_resource" ? <a href={`/resource-library/${block.resourceId}/open`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md px-2 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Open Resource</a> : <button type="button" onClick={edit} className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-surface-muted">Edit</button>}
-    <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem>{moveContext.sourceSession ? <DropdownMenuSeparator /> : null}{moveContext.sourceSession ? <MoveToSessionMenuItem sessions={moveContext.sessions} sourceSession={moveContext.sourceSession}
-      kind={block.blockType === "rich_text" ? "session_material_page" : "session_material_resource"} itemId={block.persistedId ?? block.key}
-      itemLabel={block.blockType === "rich_text" ? `Page ${index + 1}: ${block.title.trim() || "Untitled Page"}` : block.title.trim() || block.resource?.title || "Session Material resource"}
-      sourceIsReady={moveContext.sourceCanMove && moveContext.sourceSession.status === "draft" && Boolean(block.persistedId)} sourceBlockedMessage={moveContext.sourceSession.status !== "draft" ? "Session Material can only be moved between Draft Sessions." : "Save or discard unsaved Session Material or Homework changes before moving this item."}
-      onMoved={moveContext.refreshAfterMove} /> : null}<DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+    <DropdownMenu><DropdownMenuTrigger asChild><button type="button" aria-label="Material actions" className="grid size-9 place-items-center rounded-md text-text-muted hover:bg-surface-muted"><MoreHorizontal className="size-4" /></button></DropdownMenuTrigger><DropdownMenuContent align="end">{block.blockType === "library_resource" ? <DropdownMenuItem onSelect={replace}>Replace Selection</DropdownMenuItem> : null}<DropdownMenuItem onSelect={duplicate}>Duplicate</DropdownMenuItem><DropdownMenuItem disabled={index === 0} onSelect={() => moveBy(-1)}>Move Up</DropdownMenuItem><DropdownMenuItem disabled={index === count - 1} onSelect={() => moveBy(1)}>Move Down</DropdownMenuItem>{moveContext.sourceSession ? <DropdownMenuSeparator /> : null}{moveContext.sourceSession ? <MoveToSessionMenuItem onOpen={() => { setMoveDialogKey((key) => key + 1); setMoveDialogOpen(true); }} /> : null}<DropdownMenuSeparator /><DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>{block.blockType === "library_resource" ? "Remove from Session" : "Delete"}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
     {dragEnabled ? <button type="button" {...attributes} {...listeners} aria-label="Drag to reorder" className="grid size-9 shrink-0 touch-none place-items-center rounded-md text-text-muted hover:bg-surface-muted"><GripVertical className="size-4" aria-hidden="true" /></button> : null}
   </div>;
   return <div ref={setNodeRef} style={style} className="grid min-w-0 gap-2">
@@ -229,5 +227,12 @@ function MaterialRow({ block, index, count, keys, archived, canManageRecommendat
       <span className="mt-1 block truncate text-sm font-semibold text-text-primary">{block.resource?.title ?? "Resource unavailable"}</span>
       <span className="block truncate text-xs text-text-muted">{block.resource ? `${formatResourceFileType(block.resource.currentVersion.mimeType)} · ${formatResourceFileSize(block.resource.currentVersion.sizeBytes)}` : ""}</span></span>
     </div> : <div className="flex items-center gap-3"><span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded bg-surface-muted text-brand-primary"><ExternalLink className="size-5" /></span><span className="min-w-0"><span className="block text-xs font-semibold uppercase tracking-wide text-brand-secondary">Video / Link</span><span className="mt-1 block truncate text-sm font-semibold text-text-primary">{materialPreview(block)}</span></span></div>}</div>
+    {moveContext.sourceSession && !archived ? <MoveToSessionDialog key={moveDialogKey} open={moveDialogOpen} onOpenChange={setMoveDialogOpen}
+      sessions={moveContext.sessions} sourceSession={moveContext.sourceSession}
+      kind={block.blockType === "rich_text" ? "session_material_page" : "session_material_resource"} itemId={block.persistedId ?? block.key}
+      itemLabel={block.blockType === "rich_text" ? `Page ${index + 1}: ${block.title.trim() || "Untitled Page"}` : block.title.trim() || block.resource?.title || "Session Material resource"}
+      sourceIsReady={moveContext.sourceCanMove && moveContext.sourceSession.status === "draft" && Boolean(block.persistedId)}
+      sourceBlockedMessage={moveContext.sourceSession.status !== "draft" ? "Session Material can only be moved between Draft Sessions." : "Save or discard unsaved Session Material or Homework changes before moving this item."}
+      onMoved={moveContext.refreshAfterMove} /> : null}
   </div>;
 }

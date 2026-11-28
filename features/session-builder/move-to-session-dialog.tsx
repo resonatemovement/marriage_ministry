@@ -16,10 +16,9 @@ import { sessionBuilderHref, sessionMoveFeedback } from "./move-notification";
 
 type MoveKind = MoveContentInput["kind"];
 
-export function MoveToSessionMenuItem({
-  sessions, sourceSession, kind, itemId, itemLabel, sourceVersionId = null,
-  sourceVersionUpdatedAt = null, sourceIsReady, sourceBlockedMessage, onMoved,
-}: {
+export type MoveToSessionDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   sessions: SessionSummary[];
   sourceSession: SessionSummary;
   kind: MoveKind;
@@ -30,33 +29,15 @@ export function MoveToSessionMenuItem({
   sourceIsReady: boolean;
   sourceBlockedMessage?: string;
   onMoved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [dialogKey, setDialogKey] = useState(0);
-  return <>
-    <DropdownMenuItem onSelect={() => { setDialogKey((value) => value + 1); setOpen(true); }}>Move to Session</DropdownMenuItem>
-    <MoveToSessionDialog key={dialogKey} open={open} onOpenChange={setOpen} sessions={sessions} sourceSession={sourceSession}
-      kind={kind} itemId={itemId} itemLabel={itemLabel} sourceVersionId={sourceVersionId}
-      sourceVersionUpdatedAt={sourceVersionUpdatedAt}
-      sourceIsReady={sourceIsReady} sourceBlockedMessage={sourceBlockedMessage} onMoved={onMoved} />
-  </>;
+};
+
+export function MoveToSessionMenuItem({ onOpen }: { onOpen: () => void }) {
+  return <DropdownMenuItem onSelect={onOpen}>Move to Session</DropdownMenuItem>;
 }
-function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind, itemId, itemLabel,
+
+export function MoveToSessionDialog({ open, onOpenChange, sessions, sourceSession, kind, itemId, itemLabel,
   sourceVersionId, sourceVersionUpdatedAt, sourceIsReady, sourceBlockedMessage, onMoved,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  sessions: SessionSummary[];
-  sourceSession: SessionSummary;
-  kind: MoveKind;
-  itemId: string;
-  itemLabel: string;
-  sourceVersionId: string | null;
-  sourceVersionUpdatedAt: string | null;
-  sourceIsReady: boolean;
-  sourceBlockedMessage?: string;
-  onMoved: () => void;
-}) {
+}: MoveToSessionDialogProps) {
   const router = useRouter();
   const isSessionMaterial = kind === "session_material_page" || kind === "session_material_resource";
   const destinations = sessions.filter((session) => session.id !== sourceSession.id && session.status !== "archived"

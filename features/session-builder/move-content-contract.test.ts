@@ -68,7 +68,7 @@ describe("Session Builder cross-Session content move contract", () => {
     expect(dialog).toContain("<Dialog.Title");
     expect(dialog).toContain("<Dialog.Description");
     expect(dialog).toContain("aria-label=\"Destination Session\"");
-    expect(dialog).toContain("onOpenChange={setOpen}");
+    expect(dialog).toContain("<Dialog.Root open={open} onOpenChange={onOpenChange}>");
     expect(dialog).toContain("Cancel</Dialog.Close>");
     expect(dialog).toContain("disabled={!canMove}");
     expect(dialog).toContain("max-h-[90dvh]");
